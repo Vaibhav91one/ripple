@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { MotionRoot } from "@/components/motion/MotionRoot";
 import { SiteCredits } from "@/components/SiteCredits";
+import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <MotionRoot>{children}</MotionRoot>
+        <Providers><MotionRoot>{children}</MotionRoot></Providers>
         <SiteCredits />
       </body>
     </html>
