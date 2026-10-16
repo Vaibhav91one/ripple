@@ -56,7 +56,7 @@ export function SecurityDashboard() {
   return (
     <TeamFrame title="Security" subtitle="Controls, frameworks, findings and vendor risk" kpis={d.kpis} angle={d.angle} teamName="Security">
       <Widget title="Framework readiness" meta="Controls passing">
-        <StatusBars rows={readiness.map((f) => ({ label: f.name, percent: f.percent, tone: f.percent >= 90 ? "covered" : f.percent >= 70 ? "gap" : "conflict" }))} />
+        <StatusBars rows={readiness.map((f) => ({ label: f.name, percent: f.percent, tone: f.percent >= 80 ? "covered" : f.percent >= 50 ? "gap" : "conflict" }))} />
       </Widget>
 
       <Widget title="Failing controls" meta={`${failing.length} failing`}>

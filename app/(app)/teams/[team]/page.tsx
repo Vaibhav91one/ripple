@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { TEAMS, isTeamId } from "@/components/shell/nav";
 import { EngDashboard } from "@/components/teams/eng/Dashboard";
@@ -23,9 +24,18 @@ export function generateStaticParams() {
   return TEAMS.map((t) => ({ team: t.id }));
 }
 
-export default async function TeamPage({ params }: PageProps<"/teams/[team]">) {
+async function Team({ params }: Pick<PageProps<"/teams/[team]">, "params">) {
   const { team } = await params;
   if (!isTeamId(team)) notFound();
   const Dashboard = DASHBOARDS[team];
   return <Dashboard />;
+}
+
+// params is read inside Suspense so the shell can prerender instantly (Cache Components).
+export default function TeamPage({ params }: PageProps<"/teams/[team]">) {
+  return (
+    <Suspense>
+      <Team params={params} />
+    </Suspense>
+  );
 }

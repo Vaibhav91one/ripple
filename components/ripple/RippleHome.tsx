@@ -8,7 +8,7 @@ import { AnimatedCount } from "@/components/motion/AnimatedCount";
 import { CardEnter } from "@/components/motion/CardEnter";
 import { GapChips } from "@/components/motion/GapChips";
 import { getRipple, isGraphDown } from "@/lib/api";
-import { GraphDownBanner } from "@/components/states/States";
+import { GraphDownBanner, NotFoundBlock } from "@/components/states/States";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { RippleGraph } from "./RippleGraph";
 import { TeamCard, type TeamStatus } from "./TeamCard";
@@ -51,7 +51,7 @@ export function RippleHome() {
   if (isGraphDown(error))
     return <div className="p-8"><GraphDownBanner onRetry={() => void refetch()} /></div>;
   if (error)
-    return <p className="p-8 text-conflict">{error.message}</p>;
+    return <NotFoundBlock title="Decision not found" href="/decisions" cta="All decisions">There is no decision with id &quot;{d}&quot;.</NotFoundBlock>;
 
   const name = (id: string) => data.nodes.find((n) => n.id === id)?.label ?? id[0].toUpperCase() + id.slice(1);
   const conflictRefs = new Set(data.conflicts.flatMap((c) => c.contractIds));
