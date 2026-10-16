@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as m from "@/lib/mock/ledgerly";
 import * as s from "@/lib/schemas";
-import { askStream, getChanges, getInbox, getRipple, getSource } from "@/lib/api";
+import { askStream, getChanges, getInbox, getWhoKnows, getRipple, getSource } from "@/lib/api";
 
 const parseAll = (schema: { parse: (x: unknown) => unknown }, xs: unknown[]) =>
   xs.forEach((x) => schema.parse(x));
@@ -25,6 +25,7 @@ describe("ledgerly mocks", () => {
     parseAll(s.Brief, m.briefs);
     parseAll(s.Change, m.changes);
     parseAll(s.BottleneckRow, m.bottleneck);
+    parseAll(s.WhoKnowsRow, m.whoKnows["api-v1"]);
     parseAll(s.InboxItem, m.inboxes["p-priya"]);
     parseAll(s.StreamEvent, m.askEvents);
     s.RippleResult.parse(m.rippleResult);
@@ -43,7 +44,9 @@ describe("ledgerly mocks", () => {
       0,
     );
     expect(atRisk).toBe(180_000);
-    expect(r.counts).toEqual({ affected: 40, notTold: 3, conflicts: 1, arrAtRisk: 180_000 });
+    expect(r.counts).toEqual({ teamsAffected: 5, notTold: 3, conflicts: 1, customers: 40, tickets: 12, deals: 3, contracts: 2, arrAtRisk: 180_000 });
+    expect(kinds("team")).toBe(5);
+    expect(r.nodes.some((n) => n.id === "eng" && n.kind === "team")).toBe(false);
     expect([...r.gap].sort()).toEqual(["devrel", "legal", "security"]);
     expect(r.teams.filter((t) => t.involved).map((t) => t.teamId)).toEqual(
       expect.arrayContaining(["support", "sales"]),
@@ -75,6 +78,7 @@ describe("ledgerly mocks", () => {
     await expect(getRipple("nope")).rejects.toThrow();
     expect((await getSource("art-rfc14")).docKind).toBe("rfc");
     expect(await getInbox("p-priya")).toHaveLength(3);
+    expect((await getWhoKnows("api-v1"))[0].personId).toBe("p-priya");
     expect((await getChanges(0)).length).toBe(m.changes.length);
     const events = [];
     for await (const e of askStream(m.askQuestion)) events.push(e);

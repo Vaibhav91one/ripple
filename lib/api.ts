@@ -6,6 +6,7 @@ import type {
   InboxItem,
   RippleResult,
   StreamEvent,
+  WhoKnowsRow,
 } from "@/lib/schemas";
 import * as m from "@/lib/mock/ledgerly";
 
@@ -28,6 +29,10 @@ export async function getChanges(since: number): Promise<Change[]> {
 
 export async function getBottleneck(): Promise<BottleneckRow[]> {
   return m.bottleneck;
+}
+
+export async function getWhoKnows(systemId: string): Promise<WhoKnowsRow[]> {
+  return m.whoKnows[systemId] ?? [];
 }
 
 export async function getInbox(personId: string): Promise<InboxItem[]> {

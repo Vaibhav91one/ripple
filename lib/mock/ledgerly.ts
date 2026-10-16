@@ -3,6 +3,7 @@ import type {
   Ack,
   Artifact,
   BottleneckRow,
+  WhoKnowsRow,
   Brief,
   Change,
   Conflict,
@@ -289,20 +290,19 @@ const ticketEdges: Edge[] = tickets.map((a) => ({
   from: a.id, to: "api-v1", type: "ABOUT", validFrom: a.ts, validTo: null, src: src(a.id, "429 errors from API v1"),
 }));
 const dealEdges: Edge[] = dealMessages.map((a, i) => ({
-  from: `deal-${i + 1}`, to: "api-v1", type: "PROMISES", validFrom: a.ts, validTo: null, src: src(a.id, "API v1 stays available through 2027"),
+  from: `deal-${i + 1}`, to: "api-v1", type: "PROMISED", validFrom: a.ts, validTo: null, src: src(a.id, "API v1 stays available through 2027"),
 }));
 const guaranteeEdges: Edge[] = contracts.map((c, i) => ({
   from: c.id, to: "api-v1", type: "GUARANTEES", validFrom: t("2025-07-01"), validTo: null,
   src: src(i === 0 ? "art-msa-northwind" : "art-msa-halden", "guarantees availability of API v1 until 2027-06-30"),
 }));
-const affectsEdge: Edge = {
-  from: "d-1", to: "api-v1", type: "AFFECTS", validFrom: t("2026-09-22"), validTo: null,
+const sunsetsEdge: Edge = {
+  from: "d-1", to: "api-v1", type: "SUNSETS", validFrom: t("2026-09-22"), validTo: null,
   src: src("art-rfc14", "API v1 will be shut down on Jan 31, 2027"),
 };
 export const edges: Edge[] = [
-  affectsEdge,
-  { from: "api-v1", to: "api-v2", type: "SUCCEEDED_BY", validFrom: t("2026-01-01"), validTo: null },
-  { from: "auth-service", to: "api-v1", type: "SERVES", validFrom: FROM, validTo: null, src: src("art-auth-design", "auth-service verifies v1 tokens") },
+  sunsetsEdge,
+  { from: "auth-service", to: "api-v1", type: "DEPENDS_ON", validFrom: FROM, validTo: null, src: src("art-auth-design", "auth-service verifies v1 tokens") },
   { from: "p-priya", to: "api-v1", type: "AUTHORED", validFrom: FROM, validTo: null, src: src("art-pr-auth", "wrote most of the original v1 auth handlers") },
   { from: "cust-41", to: "api-v2", type: "USES", validFrom: FROM, validTo: null },
   ...usesV1,
@@ -340,6 +340,10 @@ export const acks: Ack[] = [
 ];
 
 // ---------- ripple ----------
+const affectedTeams = ["support", "sales", "legal", "security", "devrel"];
+const teamEdges: Edge[] = affectedTeams.map((id) => ({
+  from: id, to: "api-v1", type: "AFFECTED", validFrom: t("2026-09-22"), validTo: null,
+}));
 const rippleNodes: RippleResult["nodes"] = [
   { id: "d-1", label: decisions[1].title, kind: "decision", hop: 0 },
   { id: "api-v1", label: "API v1", kind: "system", hop: 1 },
@@ -347,12 +351,13 @@ const rippleNodes: RippleResult["nodes"] = [
   ...tickets.map((a) => ({ id: a.id, label: a.title, kind: "ticket" as const, hop: 2 })),
   ...dealCustomers.map((c, i) => ({ id: `deal-${i + 1}`, label: deals[i].name, kind: "deal" as const, hop: 2 })),
   ...contracts.map((c) => ({ id: c.id, label: c.name, kind: "contract" as const, hop: 2 })),
+  ...affectedTeams.map((id) => ({ id, label: teams.find((x) => x.id === id)!.name, kind: "team" as const, hop: 3 })),
 ];
 
 export const rippleResult: RippleResult = {
   decision: decisions[1],
   nodes: rippleNodes,
-  edges: [affectsEdge, ...usesV1, ...ticketEdges, ...dealEdges, ...guaranteeEdges].map(({ from, to, type }) => ({ from, to, type })),
+  edges: [sunsetsEdge, ...usesV1, ...ticketEdges, ...dealEdges, ...guaranteeEdges, ...teamEdges].map(({ from, to, type }) => ({ from, to, type })),
   teams: [
     {
       teamId: "eng", involved: true, acked: true,
@@ -381,8 +386,8 @@ export const rippleResult: RippleResult = {
   ],
   gap: ["legal", "security", "devrel"],
   conflicts: [conflict],
-  // affected = customers on v1; arrAtRisk = ARR of the customers whose contracts guarantee v1
-  counts: { affected: 40, notTold: 3, conflicts: 1, arrAtRisk: 180_000 },
+  // teamsAffected excludes the deciding team (Eng); arrAtRisk = ARR of customers whose contracts guarantee v1
+  counts: { teamsAffected: 5, notTold: 3, conflicts: 1, customers: 40, tickets: 12, deals: 3, contracts: 2, arrAtRisk: 180_000 },
   cypher: [
     {
       name: "blast radius",
@@ -431,10 +436,20 @@ export const changes: Change[] = [
   { kind: "added", at: t("2026-10-10"), edge: { from: "cust-30", to: "api-v2", type: "USES", validFrom: t("2026-10-10"), validTo: null } },
 ];
 
+// Built from WAITING_ON edges between teams.
 export const bottleneck: BottleneckRow[] = [
-  { personId: "p-priya", systemId: "api-v1", authorShare: 0.62, openItems: 5, reason: "Top author of API v1 and owner of the sunset" },
-  { personId: "p-sam", systemId: "auth-service", authorShare: 0.4, openItems: 2, reason: "Only reviewer of the v1 auth flow" },
+  { blockerTeamId: "legal", openRequests: 4, totalWaitDays: 38, oldestDays: 17, waitingTeamIds: ["sales", "eng", "finance"] },
+  { blockerTeamId: "security", openRequests: 3, totalWaitDays: 21, oldestDays: 11, waitingTeamIds: ["eng", "devrel"] },
+  { blockerTeamId: "eng", openRequests: 2, totalWaitDays: 9, oldestDays: 6, waitingTeamIds: ["support"] },
 ];
+
+export const whoKnows: Record<string, WhoKnowsRow[]> = {
+  "api-v1": [
+    { personId: "p-priya", systemId: "api-v1", authored: 9, reviewed: 2, handled: 4, lastSeen: t("2026-10-15") }, // 9 of the last 12 PRs
+    { personId: "p-sam", systemId: "api-v1", authored: 1, reviewed: 6, handled: 1, lastSeen: t("2026-10-09") },
+    { personId: "p-ana", systemId: "api-v1", authored: 0, reviewed: 0, handled: 12, lastSeen: t("2026-10-16") },
+  ],
+};
 
 export const inboxes: Record<string, InboxItem[]> = {
   "p-priya": [
