@@ -12,14 +12,14 @@ This directory is **excluded from Ripple's MIT licence**: it may not be sold, su
 ## Beautiful UI: `components/kit/beautifului/`
 
 Copyright (c) 2026 Shane Levine. https://www.beautifului.dev. MIT, see `components/kit/beautifului/LICENSE`.
-Source copied from the public MIT mirror https://github.com/TurboKach/ai-native-react-components (Copyright (c) 2026 Turbo).
+Includes the Flowchart used by the `/graph` explorer (`flowchart.tsx`). Source copied from the public MIT mirror https://github.com/TurboKach/ai-native-react-components (Copyright (c) 2026 Turbo).
 
 ## Bencho: `components/kit/bencho/`
 
 Copyright (c) 2026 Lorenzo Cabra. https://bencho.dev. MIT, see `components/kit/bencho/LICENSE`.
-Free blocks only (Slide to confirm, Toast stack, Time scrubber). Pro blocks are not included.
+Free blocks only (Slide to confirm, Toast stack, Time scrubber, Magnetic Select, used by the team switcher). Pro blocks are not included.
 
 ## Obsidian UI: `components/kit/obsidian/`
 
 Copyright (c) 2026 ObsidianUI. https://www.obsidianui.dev. MIT, see `components/kit/obsidian/LICENSE`.
-Dashboard Shell only (`dashboard-shell/`), remapped to Ripple tokens.
+Dashboard Shell (`dashboard-shell/`) and the analytics components (`analytics/`: KPI card, sparkline, activity chart, leaderboard, status bars and pills, segmented control and others), remapped to Ripple tokens.

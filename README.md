@@ -2,9 +2,36 @@
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
-![Ripple home: the v1 sunset rippling through the Ledgerly graph](docs/screens/ripple-home.png)
+![Ripple overview: the v1 sunset across every team](docs/screens/v2-final-overview.png)
 
 Built for the WeMakeDevs x FalkorDB Graph Hacks, Track 03. Live demo data is a synthetic company, **Ledgerly**, that has just decided to sunset its API v1.
+
+v2 is a dashboard product: `/overview`, a `/graph` explorer, `/decisions`, `/changes`, `/inbox`, and seven team workspaces under `/teams/<team>`, all reading one FalkorDB graph.
+
+## Screens
+
+| | |
+|---|---|
+| ![Overview](docs/screens/v2-final-overview.png) `/overview`: KPIs, activity, blockers, team strip | ![Graph explorer](docs/screens/v2-final-graph.png) `/graph`: the ripple as a Flowchart, edge evidence on click |
+| ![Decision](docs/screens/v2-final-decisions-d-1.png) `/decisions/d-1`: the ripple, the gap, the conflict | ![Changes](docs/screens/v2-final-changes.png) `/changes`: dated edges added and ended |
+| ![Eng](docs/screens/v2-final-teams-eng.png) `/teams/eng` | ![Legal](docs/screens/v2-final-teams-legal.png) `/teams/legal` |
+| ![Security](docs/screens/v2-final-teams-security.png) `/teams/security` | ![Leadership](docs/screens/v2-final-teams-leadership.png) `/teams/leadership` |
+
+Every team page has more screenshots in `docs/screens/v2-final-teams-*.png`.
+
+## Team workspaces
+
+Each team gets a page modelled on the tool it already uses. Ripple does not replace those tools; it adds the part none of them has, which is how the v1 sunset reaches that team, from the same graph. Each page ends with a "Changes affecting <team>" panel (`ripple-angle.cypher`): why the decision reaches the team, who knows, recent edges, with source quotes.
+
+| Team | Feels like | What Ripple adds (the v1 sunset angle) |
+|---|---|---|
+| Eng (`/teams/eng`) | GitHub, LinearB | PRs and review load, plus which open PRs touch API v1 and who knows the system |
+| Support (`/teams/support`) | Zendesk, Gainsight | Ticket queue and SLA, plus which tickets and customers depend on v1 |
+| Sales (`/teams/sales`) | HubSpot | Pipeline and quarter goal, plus which open deals promised v1 and the ARR behind them |
+| Legal (`/teams/legal`) | Ironclad | Contracts, clauses and renewals, plus the MSAs that guarantee v1 past the sunset date, with the quote |
+| Security (`/teams/security`) | Vanta, Snyk | Controls by framework, findings, vendors, risk register, plus the controls and findings tied to v1 |
+| DevRel (`/teams/devrel`) | Mintlify | Docs pages, failed searches, SDK adoption, plus the docs pages that still describe v1 |
+| Leadership (`/teams/leadership`) | Asana Goals | Goals and risks, plus which goals are `BLOCKED_BY` the open decision |
 
 ## What it does
 
@@ -24,7 +51,7 @@ Ask it as a team (what hits me?) and inside a team (who knows this?):
 
 ## Why FalkorDB is central
 
-- **Multi-hop over 8+ node types in one query.** `ripple.cypher` crosses Decision, System, Ticket, Deal, Contract, Customer, Team and Person in a single Cypher statement (`DEPENDS_ON*0..2` plus entity hops, 12 `UNION ALL` branches).
+- **Multi-hop over 8+ node types in one query.** `ripple.cypher` crosses Decision, System, Ticket, Deal, Contract, Customer, Team and Person in a single Cypher statement (`DEPENDS_ON*0..2` plus entity hops, 12 branches joined by `UNION ALL`).
 - **Vector + full-text + graph in one query.** `search-vector.cypher` does a vector nearest-neighbour search on `Artifact.emb` and hops to the systems each hit is `ABOUT` in the same statement. Full-text search is a FalkorDB index on the same label.
 - **One graph per company key.** `graphFor(tenant)` selects a graph by name; tenants are isolated with no row-level filters. The demo is graph `demo`.
 - **Dated edges.** Every edge carries `valid_from` / `valid_to` (epoch ints), so "what changed" and "what was true then" are plain `WHERE` clauses, and moving the sunset date ends one edge and writes another.
@@ -38,6 +65,7 @@ One Next.js 16 app (UI plus route handlers) and one FalkorDB. No other services.
 ```
  browser ──► Next.js app (React UI, /api/* route handlers)
                 │  lib/graph/queries.ts  (typed wrappers over *.cypher)
+                │  lib/teams             (one compute per team workspace)
                 │  lib/agent             (tool-calling loop, 6 templates)
                 │  lib/briefs.ts         (claims + citation check)
                 │  lib/ingest            (extract -> quote check -> cache; embed)
@@ -46,6 +74,7 @@ One Next.js 16 app (UI plus route handlers) and one FalkorDB. No other services.
                              full-text index, 384-d vector index)
 ```
 
+- **Screens:** `app/(app)/` routes `overview`, `graph`, `decisions`, `changes`, `inbox`, `teams/[team]`. The `/graph` view uses the Beautiful UI Flowchart fed by `graph-view.cypher`.
 - **LLM: AI SDK, bring your own key** (Anthropic, OpenAI, Google, OpenRouter, OpenAI-compatible, Ollama). No key: the app runs on deterministic query wrappers and committed caches.
 - **Embeddings are local**: MiniLM-L6-v2 (384-d) via `@huggingface/transformers`, cached by content hash in `lib/ingest/cache/embed`.
 
@@ -81,7 +110,16 @@ Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Ask d
 | Contract | id, name, endsAt, customerId |
 | Decision | id, title, status, decidedAt |
 | Incident, Task | id plus title/status/timestamps |
-| Artifact + Doc / Ticket / Message / PR | id, kind, title, text, ts, uri, author, emb (384-d vector), status (tickets) |
+| Clause | id, contractId, number, title, text, risk, dueAt, v1Related |
+| Framework | id, name |
+| Control | id, frameworkId, name, status (passing/failing), auditBlocking, ownerId, v1Related |
+| Vendor | id, name, riskTier, assessmentStatus, nextReview |
+| Finding | id, title, severity, slaDueAt, systemId, status, ownerId, v1Related |
+| Risk | id, title, likelihood, impact, status, ownerId, teamId, v1Related |
+| Page | id, path, views30d, feedbackUp, feedbackDown, v1Related |
+| DocsStats | id, failedSearchesJson, sdkAdoptionJson |
+| Goal | id, title, ownerTeamId, progress, status, target, current |
+| Artifact + Doc / Ticket / Message / PR | id, kind, title, text, ts, uri, author, emb (384-d vector), status (tickets); v2 adds ticket priority/SLA fields and PR repo/state/reviewer fields |
 | Conflict | id, kind, severity, status, decisionId, contractIds, detectedAt, sources (JSON) |
 
 **Edges**, grouped:
@@ -92,6 +130,7 @@ Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Ask d
 - Commercial: `PROMISED`, `GUARANTEES`, `PARTY_TO`, `OWNED_BY`, `MANAGED_BY`
 - Decisions: `SUNSETS`, `SUPPORTED_BY`, `SUPERSEDES`, `INVOLVED_IN`, `ACKED`, `BETWEEN`
 - Process: `WAITING_ON`, `NOTIFIES`
+- v2 workspaces: `HAS_CLAUSE` (Contract to Clause), `COVERS` (Control to Framework), `BLOCKED_BY` (Goal to a Decision, Finding or Task), `FOUND_IN` (Finding to System), `REQUESTED_REVIEW` (reviewer to PR)
 
 **Rules**
 
@@ -102,7 +141,7 @@ Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Ask d
 
 ## Cypher we run
 
-Every template in `lib/graph/queries/`, verbatim. The agent only chooses a template and fills parameters.
+Every template in `lib/graph/queries/`, verbatim (this section is generated from the files). The agent only chooses a template and fills parameters.
 
 ### `artifact-text.cypher`
 
@@ -228,14 +267,25 @@ RETURN d.id AS id, d.title AS title, d.status AS status, d.decidedAt AS decidedA
   sn.src AS src, sn.quote AS quote
 ```
 
-### `diff.cypher`
+### `decisions.cypher`
 
-Edges added or ended after $since.
+Every decision, oldest first.
 
 ```cypher
-// Edges added or ended after $since.
+// Every decision, oldest first.
+MATCH (d:Decision)
+RETURN d.id AS id, d.title AS title, d.status AS status, d.decidedAt AS decidedAt
+ORDER BY d.decidedAt
+```
+
+### `diff.cypher`
+
+Edges added or ended after $since (conflict BETWEEN edges are detection bookkeeping, not changes).
+
+```cypher
+// Edges added or ended after $since (conflict BETWEEN edges are detection bookkeeping, not changes).
 MATCH (a)-[r]->(b)
-WHERE r.valid_from > $since OR r.valid_to > $since
+WHERE (r.valid_from > $since OR r.valid_to > $since) AND type(r) <> 'BETWEEN'
 RETURN a.id AS from, b.id AS to, type(r) AS type, r.valid_from AS validFrom, r.valid_to AS validTo,
   r.src AS src, r.quote AS quote
 ```
@@ -250,6 +300,180 @@ MATCH (t:Team) WHERE t.id IN $affected
 OPTIONAL MATCH (t)-[i:INVOLVED_IN]->(:Decision {id: $id})
 OPTIONAL MATCH (t)-[a:ACKED]->(:Decision {id: $id})
 RETURN t.id AS team, t.name AS name, count(i) > 0 AS involved, count(a) > 0 AS acked
+```
+
+### `graph-view.cypher`
+
+Edge evidence for the /graph flowchart: every current edge into the systems a decision's sunset reaches,
+
+```cypher
+// Edge evidence for the /graph flowchart: every current edge into the systems a decision's sunset reaches,
+// plus the SUNSETS edge and the DEPENDS_ON chain. Row: from, to, type, validFrom, src, quote.
+MATCH (d:Decision {id: $id})-[sn:SUNSETS]->(s:System)
+WHERE sn.valid_to IS NULL
+MATCH p = (s)<-[:DEPENDS_ON*0..2]-(x:System)
+WHERE ALL(e IN relationships(p) WHERE e.valid_to IS NULL)
+WITH DISTINCT x
+MATCH (a)-[r:ABOUT|PROMISED|GUARANTEES|USES|OWNS|CARES_ABOUT]->(x)
+WHERE r.valid_to IS NULL
+RETURN a.id AS from, x.id AS to, type(r) AS type, r.valid_from AS validFrom, r.src AS src, r.quote AS quote
+UNION ALL
+MATCH (d:Decision {id: $id})-[sn:SUNSETS]->(s:System)
+WHERE sn.valid_to IS NULL
+RETURN d.id AS from, s.id AS to, 'SUNSETS' AS type, sn.valid_from AS validFrom, sn.src AS src, sn.quote AS quote
+UNION ALL
+MATCH (d:Decision {id: $id})-[sn:SUNSETS]->(s:System)
+WHERE sn.valid_to IS NULL
+MATCH p = (s)<-[:DEPENDS_ON*0..2]-(x:System)
+WHERE ALL(e IN relationships(p) WHERE e.valid_to IS NULL)
+WITH DISTINCT x
+MATCH (x)-[r:DEPENDS_ON]->(y:System)
+WHERE r.valid_to IS NULL
+RETURN x.id AS from, y.id AS to, 'DEPENDS_ON' AS type, r.valid_from AS validFrom, r.src AS src, r.quote AS quote
+```
+
+### `inbox-person.cypher`
+
+A person's team, and the decisions that sunset a system their team owns.
+
+```cypher
+// A person's team, and the decisions that sunset a system their team owns.
+MATCH (p:Person {id: $id})-[:MEMBER_OF]->(t:Team)
+OPTIONAL MATCH (t)-[:OWNS]->(:System)<-[s:SUNSETS]-(d:Decision) WHERE s.valid_to IS NULL
+RETURN t.id AS team, collect(DISTINCT d.id) AS decisions
+```
+
+### `inbox-reviews.cypher`
+
+Tasks in review assigned to a person.
+
+```cypher
+// Tasks in review assigned to a person.
+MATCH (k:Task {status: 'in_review'})-[a:ASSIGNED]->(:Person {id: $id})
+RETURN k.id AS id, k.title AS title, k.createdAt AS at, a.by AS fromId
+ORDER BY at DESC
+```
+
+### `inbox-waiting.cypher`
+
+Teams with an open request waiting on this team.
+
+```cypher
+// Teams with an open request waiting on this team.
+MATCH (w:Team)-[r:WAITING_ON]->(:Team {id: $team})
+WHERE r.valid_to IS NULL
+RETURN w.id AS id, w.name AS name, r.valid_from AS at
+ORDER BY at
+```
+
+### `names.cypher`
+
+id -> display name for every node with a name or title (teams, people, systems, customers, decisions, deals, contracts, artifacts, tasks, findings).
+
+```cypher
+// id -> display name for every node with a name or title (teams, people, systems, customers, decisions, deals, contracts, artifacts, tasks, findings).
+MATCH (n)
+WHERE n.name IS NOT NULL OR n.title IS NOT NULL
+RETURN n.id AS id, coalesce(n.name, n.title) AS name
+```
+
+### `overview-activity.cypher`
+
+Edges added since $since (type + timestamp); the wrapper buckets them per day into changes and acks.
+
+```cypher
+// Edges added since $since (type + timestamp); the wrapper buckets them per day into changes and acks.
+MATCH ()-[r]->()
+WHERE r.valid_from >= $since AND type(r) <> 'BETWEEN'
+RETURN type(r) AS type, r.valid_from AS at
+```
+
+### `overview-blockers.cypher`
+
+Open BLOCKED_BY edges: a goal that cannot move until a decision, finding or task is resolved.
+
+```cypher
+// Open BLOCKED_BY edges: a goal that cannot move until a decision, finding or task is resolved.
+MATCH (g)-[b:BLOCKED_BY]->(x) WHERE b.valid_to IS NULL
+RETURN g.id AS fromId, x.id AS toId, b.valid_from AS since
+ORDER BY since
+```
+
+### `overview-teams.cypher`
+
+Head count per team for the overview strip.
+
+```cypher
+// Head count per team for the overview strip.
+MATCH (t:Team)
+OPTIONAL MATCH (p:Person {teamId: t.id})
+RETURN t.id AS id, t.name AS name, count(p) AS people
+ORDER BY id
+```
+
+### `people.cypher`
+
+Everyone in the directory.
+
+```cypher
+// Everyone in the directory.
+MATCH (p:Person)
+RETURN p.id AS id, p.name AS name, p.title AS title, p.email AS email, p.teamId AS teamId, p.active AS active
+ORDER BY p.id
+```
+
+### `ripple-angle.cypher`
+
+What the decision means for one team ($team, $decision, $since). Each branch returns kind + rows.
+
+```cypher
+// What the decision means for one team ($team, $decision, $since). Each branch returns kind + rows.
+// changes: recent edges that touch the team, its people, or things it owns/manages/handles (newest 8)
+MATCH (a)-[r]->(b)
+WHERE r.valid_from > $since AND type(r) <> 'BETWEEN'
+  AND (a.id = $team OR b.id = $team OR a.teamId = $team OR b.teamId = $team OR a.ownerTeamId = $team
+    OR (a)-[:MANAGED_BY]->(:Team {id: $team}) OR (a)-[:OWNED_BY]->(:Team {id: $team})
+    OR (a)-[:HANDLED_BY]->(:Person {teamId: $team}) OR (:Team {id: $team})-[:OWNS]->(a))
+WITH a, r, b ORDER BY r.valid_from DESC LIMIT 8
+RETURN 'changes' AS kind, collect({from: a.id, to: b.id, type: type(r), validFrom: r.valid_from, validTo: r.valid_to,
+  src: r.src, quote: r.quote}) AS rows
+UNION ALL
+// gap: is the team hit by what the decision sunsets, and did it take part or acknowledge?
+MATCH (t:Team {id: $team})
+OPTIONAL MATCH (d:Decision {id: $decision})-[:SUNSETS]->(s:System)
+OPTIONAL MATCH (t)-[a:AFFECTED|OWNS|CARES_ABOUT]->(s)
+OPTIONAL MATCH (t)-[i:INVOLVED_IN]->(d)
+OPTIONAL MATCH (t)-[k:ACKED]->(d)
+WITH count(a) > 0 AS affected, count(i) > 0 AS involved, count(k) > 0 AS acked
+RETURN 'gap' AS kind, [{affected: affected, involved: involved, acked: acked}] AS rows
+UNION ALL
+// facts: one sourced line per way the team is tied to the sunset (the wrapper keeps the first 3)
+MATCH (t:Team {id: $team})-[r:OWNS|CARES_ABOUT]->(s:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
+WITH t, r, s LIMIT 1
+RETURN 'facts' AS kind, collect({text: CASE type(r) WHEN 'OWNS' THEN 'Owns ' ELSE 'Cares about ' END + s.name, src: r.src, quote: r.quote}) AS rows
+UNION ALL
+MATCH (c:Contract)-[:MANAGED_BY]->(:Team {id: $team})
+MATCH (c)-[r:GUARANTEES]->(s:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
+WITH c, r, s ORDER BY c.id LIMIT 1
+RETURN 'facts' AS kind, collect({text: c.name + ' guarantees ' + s.name + ' past the sunset', src: r.src, quote: r.quote}) AS rows
+UNION ALL
+MATCH (d:Deal)-[:OWNED_BY]->(:Team {id: $team})
+MATCH (d)-[r:PROMISED]->(s:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL AND d.stage <> 'closed_lost'
+WITH d, r, s ORDER BY d.id LIMIT 1
+RETURN 'facts' AS kind, collect({text: d.name + ' was promised ' + s.name + ' through 2027', src: r.src, quote: r.quote}) AS rows
+UNION ALL
+MATCH (a:Ticket {status: 'open'})-[r:ABOUT]->(s:System {id: 'api-v1'}) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
+MATCH (a)-[:HANDLED_BY]->(p:Person {teamId: $team})
+WITH a, r, s ORDER BY a.id LIMIT 1
+RETURN 'facts' AS kind, collect({text: 'Open ticket: ' + a.title, src: r.src, quote: r.quote}) AS rows
+UNION ALL
+MATCH (t:Team {id: $team})-[:OWNS]->(s:System)<-[r:SUNSETS]-(d:Decision {id: $decision}) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
+WITH d, r, s LIMIT 1
+RETURN 'facts' AS kind, collect({text: d.title + ' (owns ' + s.name + ')', src: r.src, quote: r.quote}) AS rows
+UNION ALL
+MATCH (g:Goal)-[r:BLOCKED_BY]->(d:Decision {id: $decision}) WHERE $team = 'leadership' AND r.src IS NOT NULL
+WITH g, r, d ORDER BY g.id LIMIT 1
+RETURN 'facts' AS kind, collect({text: g.title + ' is blocked by ' + d.title, src: r.src, quote: r.quote}) AS rows
 ```
 
 ### `ripple.cypher`
@@ -377,6 +601,187 @@ RETURN node.id AS id, node.kind AS kind, node.title AS title, score
 ORDER BY score DESC LIMIT 10
 ```
 
+### `source.cypher`
+
+One artifact (doc, ticket, message or PR) by id.
+
+```cypher
+// One artifact (doc, ticket, message or PR) by id.
+MATCH (a:Artifact {id: $id})
+RETURN a.id AS id, a.kind AS kind, a.docKind AS docKind, a.status AS status, a.title AS title,
+  a.text AS text, a.ts AS ts, a.uri AS uri, a.author AS authorId
+```
+
+### `teams-devrel.cypher`
+
+DevRel dashboard rows: docs pages, docs stats (JSON strings), SDK repos, docs tasks, the team. Param: $team.
+
+```cypher
+// DevRel dashboard rows: docs pages, docs stats (JSON strings), SDK repos, docs tasks, the team. Param: $team.
+MATCH (g:Page)
+RETURN 'pages' AS kind, collect({id: g.id, path: g.path, views30d: g.views30d, feedbackUp: g.feedbackUp,
+  feedbackDown: g.feedbackDown, v1Related: coalesce(g.v1Related, false)}) AS rows
+UNION ALL
+MATCH (d:DocsStats)
+RETURN 'docsStats' AS kind, collect({id: d.id, failedSearches: d.failedSearchesJson, sdkAdoption: d.sdkAdoptionJson}) AS rows
+UNION ALL
+MATCH (s:System) WHERE s.id STARTS WITH 'sdk-'
+RETURN 'sdks' AS kind, collect({id: s.id, name: s.name, kind: s.kind, status: s.status, version: s.version,
+  successor: s.successor, onCallPersonId: s.onCallPersonId}) AS rows
+UNION ALL
+MATCH (k:Task {teamId: $team})
+RETURN 'tasks' AS kind, collect({id: k.id, title: k.title, teamId: k.teamId, assigneeId: k.assigneeId, status: k.status,
+  createdAt: k.createdAt, kind: k.kind, dueAt: k.dueAt}) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
+### `teams-eng.cypher`
+
+Eng dashboard rows. Every branch returns one row: kind + rows (a list of maps). Param: $team.
+
+```cypher
+// Eng dashboard rows. Every branch returns one row: kind + rows (a list of maps). Param: $team.
+MATCH (p:PR) WHERE p.state IS NOT NULL
+RETURN 'prs' AS kind, collect({id: p.id, title: p.title, repo: p.repo, authorId: p.author, state: p.state,
+  additions: p.additions, deletions: p.deletions, createdAt: p.createdAt, firstReviewAt: p.firstReviewAt,
+  mergedAt: p.mergedAt, reviewerIds: p.reviewerIds, v1Related: coalesce(p.v1Related, false)}) AS rows
+UNION ALL
+MATCH (i:Incident)
+RETURN 'incidents' AS kind, collect({id: i.id, title: i.title, severity: i.severity, systemId: i.systemId,
+  startedAt: i.startedAt, acknowledgedAt: i.acknowledgedAt, resolvedAt: i.resolvedAt}) AS rows
+UNION ALL
+MATCH (s:System)
+RETURN 'services' AS kind, collect({id: s.id, name: s.name, kind: s.kind, status: s.status, version: s.version,
+  successor: s.successor, onCallPersonId: s.onCallPersonId}) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
+### `teams-leadership.cypher`
+
+Leadership dashboard rows: goals, the risk register, what blocks what, decisions, the team. Param: $team.
+
+```cypher
+// Leadership dashboard rows: goals, the risk register, what blocks what, decisions, the team. Param: $team.
+MATCH (g:Goal)
+RETURN 'goals' AS kind, collect({id: g.id, title: g.title, ownerTeamId: g.ownerTeamId, progress: g.progress,
+  status: g.status, target: g.target, current: g.current}) AS rows
+UNION ALL
+MATCH (r:Risk)
+RETURN 'risks' AS kind, collect({id: r.id, title: r.title, likelihood: r.likelihood, impact: r.impact, status: r.status,
+  ownerId: r.ownerId, teamId: r.teamId, v1Related: coalesce(r.v1Related, false)}) AS rows
+UNION ALL
+MATCH (g:Goal)-[b:BLOCKED_BY]->(x)
+RETURN 'blockers' AS kind, collect({fromId: g.id, toId: x.id, since: b.valid_from}) AS rows
+UNION ALL
+MATCH (d:Decision)
+RETURN 'decisions' AS kind, collect({id: d.id, title: d.title, status: d.status, decidedAt: d.decidedAt}) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
+### `teams-legal.cypher`
+
+Legal dashboard rows: contracts with their customer, clauses with the quote that sources them, the team. Param: $team.
+
+```cypher
+// Legal dashboard rows: contracts with their customer, clauses with the quote that sources them, the team. Param: $team.
+MATCH (c:Contract)
+OPTIONAL MATCH (c)-[:PARTY_TO]->(cu:Customer)
+RETURN 'contracts' AS kind, collect({id: c.id, name: c.name, endsAt: c.endsAt, customerId: cu.id, noticeDays: c.noticeDays,
+  value: c.value, approvalState: c.approvalState}) AS rows
+UNION ALL
+MATCH (c:Contract)-[h:HAS_CLAUSE]->(k:Clause)
+RETURN 'clauses' AS kind, collect({id: k.id, contractId: c.id, number: k.number, title: k.title, text: k.text, risk: k.risk,
+  dueAt: k.dueAt, src: {artifactId: h.src, quote: h.quote}, v1Related: coalesce(k.v1Related, false)}) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
+### `teams-sales.cypher`
+
+Sales dashboard rows: deals with their customer, the quarter goal, the team. Param: $team.
+
+```cypher
+// Sales dashboard rows: deals with their customer, the quarter goal, the team. Param: $team.
+MATCH (d:Deal)
+OPTIONAL MATCH (d)-[:PARTY_TO]->(c:Customer)
+RETURN 'deals' AS kind, collect({id: d.id, name: d.name, stage: d.stage, probability: d.probability, ownerId: d.ownerId,
+  amount: d.amount, closeDate: d.closeDate, customerId: c.id, v1Related: coalesce(d.v1Related, false)}) AS rows
+UNION ALL
+MATCH (g:Goal {ownerTeamId: $team}) WHERE g.target IS NOT NULL
+RETURN 'goals' AS kind, collect({id: g.id, title: g.title, ownerTeamId: g.ownerTeamId, progress: g.progress,
+  status: g.status, target: g.target, current: g.current}) AS rows
+UNION ALL
+MATCH (d:Deal)-[r:PROMISED]->(:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
+RETURN 'promises' AS kind, collect({dealId: d.id, source: {artifactId: r.src, quote: r.quote}}) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
+### `teams-security.cypher`
+
+Security dashboard rows: controls, frameworks, findings, vendors, the risk register, GRC tasks, the team. Param: $team.
+
+```cypher
+// Security dashboard rows: controls, frameworks, findings, vendors, the risk register, GRC tasks, the team. Param: $team.
+MATCH (c:Control)
+RETURN 'controls' AS kind, collect({id: c.id, frameworkId: c.frameworkId, name: c.name, status: c.status,
+  auditBlocking: c.auditBlocking, ownerId: c.ownerId, v1Related: coalesce(c.v1Related, false)}) AS rows
+UNION ALL
+MATCH (f:Framework)
+RETURN 'frameworks' AS kind, collect({id: f.id, name: f.name}) AS rows
+UNION ALL
+MATCH (f:Finding)
+RETURN 'findings' AS kind, collect({id: f.id, title: f.title, severity: f.severity, slaDueAt: f.slaDueAt, systemId: f.systemId,
+  status: f.status, ownerId: f.ownerId, v1Related: coalesce(f.v1Related, false)}) AS rows
+UNION ALL
+MATCH (v:Vendor)
+RETURN 'vendors' AS kind, collect({id: v.id, name: v.name, riskTier: v.riskTier, assessmentStatus: v.assessmentStatus,
+  nextReview: v.nextReview}) AS rows
+UNION ALL
+MATCH (r:Risk)
+RETURN 'risks' AS kind, collect({id: r.id, title: r.title, likelihood: r.likelihood, impact: r.impact, status: r.status,
+  ownerId: r.ownerId, teamId: r.teamId, v1Related: coalesce(r.v1Related, false)}) AS rows
+UNION ALL
+MATCH (k:Task {teamId: $team}) WHERE k.kind IN ['questionnaire', 'access_review']
+RETURN 'tasks' AS kind, collect({id: k.id, title: k.title, teamId: k.teamId, assigneeId: k.assigneeId, status: k.status,
+  createdAt: k.createdAt, kind: k.kind, dueAt: k.dueAt}) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
+### `teams-support.cypher`
+
+Support dashboard rows: every ticket with its customer and system, the customers, the team. Param: $team.
+
+```cypher
+// Support dashboard rows: every ticket with its customer and system, the customers, the team. Param: $team.
+MATCH (t:Ticket) WHERE t.priority IS NOT NULL
+OPTIONAL MATCH (t)-[:RAISED_BY]->(c:Customer)
+OPTIONAL MATCH (t)-[:ABOUT]->(s:System)
+RETURN 'tickets' AS kind, collect({id: t.id, title: t.title, status: t.status, priority: t.priority,
+  createdAt: t.createdAt, firstResponseAt: t.firstResponseAt, slaDueAt: t.slaDueAt, assigneeId: t.assigneeId,
+  customerId: c.id, systemId: s.id, v1Related: coalesce(t.v1Related, false)}) AS rows
+UNION ALL
+MATCH (c:Customer)
+RETURN 'customers' AS kind, collect({id: c.id, name: c.name, arr: c.arr, tier: c.tier, region: c.region,
+  monthlyCalls: c.monthlyCalls, healthScore: c.healthScore, renewalDate: c.renewalDate}) AS rows
+UNION ALL
+MATCH (c:Customer)-[:USES]->(:System {id: 'api-v1'})
+RETURN 'v1CustomerIds' AS kind, collect(c.id) AS rows
+UNION ALL
+MATCH (p:Person {teamId: $team})
+RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```
+
 ### `trace-decision.cypher`
 
 A decision and the artifacts that support it (SUPPORTED_BY, with the edge quote when present).
@@ -443,17 +848,11 @@ RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 
 15/15 passed
 
-## Screens
+## Email and ack screens
 
-| | |
-|---|---|
-| ![Landing](docs/screens/landing.png) Landing | ![Ripple home](docs/screens/ripple-home.png) The ripple, with the gap chips |
-| ![Team view](docs/screens/team-view.png) One team's slice of the ripple | ![Conflict and source](docs/screens/conflict-and-source.png) A conflict with its two quotes |
-| ![Sidebar](docs/screens/ripple-sidebar.png) Decision sidebar | ![Brief email](docs/screens/brief-email.png) The per-team brief email |
-| ![Ack](docs/screens/ack.png) One-click ack | ![Ack expired](docs/screens/ack-expired.png) Expired ack link |
-| ![Inbox](docs/screens/inbox.png) Team inbox | ![Changes](docs/screens/changes.png) What changed (dated edges) |
-| ![Live change](docs/screens/live-change.png) Moving the sunset date resolves the conflict | ![Ask drawer](docs/screens/ask-drawer.png) Ask drawer |
-| ![Ask live](docs/screens/ask-live.png) Ask, streaming with tool calls | ![States](docs/screens/states.png) Empty, loading and error states |
+| | | |
+|---|---|---|
+| ![Brief email](docs/screens/brief-email.png) The per-team brief email | ![Ack](docs/screens/ack.png) One-click ack | ![Ack expired](docs/screens/ack-expired.png) Expired ack link |
 
 ## Deploy
 
@@ -464,7 +863,7 @@ See [docs/deploy.md](docs/deploy.md) (Zerops: `web` Next.js standalone plus a `f
 - The data is **synthetic** (Ledgerly), not a real company.
 - The extraction cache is **seeded from mocks** until an API key is set; with a key, `pnpm extract` fills it from the model, and every edge still passes the quote check.
 - **Single tenant in the demo**: the graph-per-key design is there, but the demo uses one graph (`demo`) and no sign-in is required.
-- Slack and Jira connectors are v1: today artifacts come from the seed, not live sources.
+- The team workspaces read the seeded graph, not the real GitHub, Zendesk, HubSpot, Ironclad, Vanta, Mintlify or Asana accounts. Slack and Jira connectors are v1: today artifacts come from the seed, not live sources.
 
 ## Licence
 
@@ -477,7 +876,8 @@ Kit components live in `components/kit/<kit>/`, restyled to the Ripple tokens, e
 | Kit | Licence | Link |
 | --- | --- | --- |
 | Rare UI (`components/kit/rareui`) | MIT + Commons Clause + Attribution (not covered by Ripple's MIT licence) | https://rareui.com |
-| Beautiful UI (`components/kit/beautifului`) | MIT | https://www.beautifului.dev |
-| Bencho, free blocks only (`components/kit/bencho`) | MIT | https://bencho.dev |
+| Beautiful UI, incl. Flowchart (`components/kit/beautifului`) | MIT | https://www.beautifului.dev |
+| Bencho, free blocks only: Slide to confirm, Toast stack, Time scrubber, Magnetic Select (`components/kit/bencho`) | MIT | https://bencho.dev |
+| Obsidian UI, Dashboard Shell and analytics components (`components/kit/obsidian`) | MIT | https://www.obsidianui.dev |
 
-Components by [Rare UI](https://rareui.com), [Beautiful UI](https://www.beautifului.dev) and [Bencho](https://bencho.dev).
+Components by [Rare UI](https://rareui.com), [Beautiful UI](https://www.beautifului.dev), [Bencho](https://bencho.dev) and [Obsidian UI](https://www.obsidianui.dev).
