@@ -8,6 +8,7 @@ export const LeadershipPayload = z.object({
   team: z.literal("leadership"),
   kpis: z.array(Kpi),
   angle: RippleAngle,
+  now: z.number(),
   goals: z.array(Goal),
   risks: z.array(Risk),
   blockers: z.array(Blocker),
@@ -16,24 +17,21 @@ export const LeadershipPayload = z.object({
 });
 export type LeadershipPayload = z.infer<typeof LeadershipPayload>;
 /** The rows the cypher in lib/graph/queries/teams-leadership.cypher returns, by kind. */
-export const LeadershipRows = LeadershipPayload.omit({ team: true, kpis: true, angle: true });
-export type LeadershipRows = Rows<LeadershipPayload>;
+export const LeadershipRows = LeadershipPayload.omit({ team: true, kpis: true, angle: true, now: true });
+export type LeadershipRows = Omit<Rows<LeadershipPayload>, "now">;
 
 function kpis(r: LeadershipRows, now: number): Kpi[] {
   void now;
-  const off = r.goals.filter((g) => g.status === "off_track").length;
-  const atRisk = r.goals.filter((g) => g.status === "at_risk").length;
-  const high = r.risks.filter((k) => k.likelihood * k.impact >= 15 && k.status !== "accepted").length;
-  const avg = r.goals.length ? Math.round(r.goals.reduce((a, g) => a + g.progress, 0) / r.goals.length) : 0;
+  const n = (s: Goal["status"]) => r.goals.filter((g) => g.status === s).length;
+  const open = r.decisions.filter((d) => d.status !== "superseded").length;
   return [
-    kpi("off-track", "Goals off track", off, "count", off > 0 ? "bad" : "ok"),
-    kpi("at-risk", "Goals at risk", atRisk, "count", atRisk > 0 ? "warn" : "ok"),
-    kpi("high-risks", "High risks", high, "count", high > 0 ? "warn" : "ok"),
-    kpi("blockers", "Blockers", r.blockers.length, "count", r.blockers.length > 0 ? "warn" : "ok"),
-    kpi("progress", "Average goal progress", avg, "percent"),
+    kpi("on-track", "Goals on track", n("on_track"), "count", "ok"),
+    kpi("at-risk", "Goals at risk", n("at_risk"), "count", n("at_risk") > 0 ? "warn" : "ok"),
+    kpi("off-track", "Goals off track", n("off_track"), "count", n("off_track") > 0 ? "bad" : "ok"),
+    kpi("open-decisions", "Open decisions", open, "count"),
   ];
 }
 
 export const buildLeadership = (r: LeadershipRows, angle: RippleAngle, now: number): LeadershipPayload => ({
-  team: "leadership", kpis: kpis(r, now), angle, ...r,
+  team: "leadership", kpis: kpis(r, now), angle, now, ...r,
 });
