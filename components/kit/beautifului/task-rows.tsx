@@ -74,12 +74,40 @@ const RetryIcon = (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" /></svg>
 );
 
-export default function TaskRows({ variant = "Capsules" }: { variant?: string }) {
+export type TaskRowStatus = "done" | "active" | "failed" | "pending";
+export type TaskRowInput = {
+  label: string;
+  meta: string;
+  status: TaskRowStatus;
+  /** Optional line shown when the row expands. */
+  detail?: string;
+};
+
+function fromInput(r: TaskRowInput, i: number) {
+  return {
+    key: `${i}-${r.label}`,
+    badge:
+      r.status === "done" ? <Badge tone="green">{CheckIcon}</Badge>
+      : r.status === "failed" ? <Badge tone="red">{XIcon}</Badge>
+      : <SpinnerRing active={r.status === "active"}>{i + 1}</SpinnerRing>,
+    label: r.label,
+    amount: r.meta,
+    pill:
+      r.status === "done" ? (
+        <span className="inline-flex h-5.5 items-center rounded-full bg-covered-soft px-2 text-[11.5px] font-medium text-covered">Completed</span>
+      ) : r.status === "failed" ? (
+        <span className="inline-flex h-5.5 items-center rounded-full bg-conflict-soft px-2 text-[11.5px] font-medium text-conflict">Failed</span>
+      ) : null,
+    details: r.detail ? [{ label: r.detail, meta: "" }] : [],
+  };
+}
+
+export default function TaskRows({ variant = "Capsules", rows: input }: { variant?: string; rows?: TaskRowInput[] }) {
   const tick = useTick(TICKS);
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
   const row2: "pending" | "failed" | "done" = tick < 3 ? "pending" : tick === 3 ? "failed" : "done";
 
-  const rows = [
+  const demo = [
     {
       key: "verify",
       badge: <Badge tone="green">{CheckIcon}</Badge>,
@@ -135,15 +163,16 @@ export default function TaskRows({ variant = "Capsules" }: { variant?: string })
     },
   ];
 
+  const rows = input ? input.map(fromInput) : demo;
   const list = variant === "List";
   return (
     <div
       className={`flex w-full max-w-110 flex-col ${
-        list ? "gap-0 self-start overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]" : "min-h-[196px] gap-2"
+        list ? "gap-0 self-start overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]" : `${input ? "" : "min-h-[196px]"} gap-2`
       }`}
     >
       {rows.map((row, i) => {
-        const open = manualOpen[row.key] ?? (row.key === "index" && tick === 2);
+        const open = manualOpen[row.key] ?? (!input && row.key === "index" && tick === 2);
         return (
           <div
             key={row.key}
@@ -171,7 +200,7 @@ export default function TaskRows({ variant = "Capsules" }: { variant?: string })
               {row.pill}
               <span
                 aria-hidden="true"
-                className="-ml-2 flex size-7 shrink-0 items-center justify-center rounded-full text-faint"
+                className={`-ml-2 flex size-7 shrink-0 items-center justify-center rounded-full text-faint ${row.details.length ? "" : "invisible"}`}
               >
                 <svg
                   width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"

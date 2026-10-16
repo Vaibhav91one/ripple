@@ -34,8 +34,8 @@ import { CircleCheck, CircleX, Info, TriangleAlert, X, type LucideIcon } from "l
    payment turns that toast into the payment going through, in
    place. */
 
-type Kind = "success" | "info" | "error" | "warning";
-type Toast = { id: number; kind: Kind; title: string; body: string; action?: string };
+export type Kind = "success" | "info" | "error" | "warning";
+export type Toast = { id: number | string; kind: Kind; title: string; body: string; action?: string };
 
 const ICON: Record<Kind, LucideIcon> = {
   success: CircleCheck,
@@ -62,17 +62,23 @@ export function ToastStack({
   peek = 14,
   gap = 10,
   corner = 20,
+  toasts,
+  onDismiss,
 }: {
   peek?: number;
   gap?: number;
   corner?: number;
+  /** Controlled mode: newest first. The parent owns the list; dismiss calls onDismiss(id). Omit for the self-refilling demo. */
+  toasts?: Toast[];
+  onDismiss?: (id: Toast["id"]) => void;
 }) {
   /* front first; ids count up so a returning toast is a new element */
   const next = useRef(SHOWN);
-  const [stack, setStack] = useState<Toast[]>(() =>
+  const [own, setStack] = useState<Toast[]>(() =>
     POOL.slice(0, SHOWN).map((t, i) => ({ ...t, id: i })),
   );
-  const [leaving, setLeaving] = useState<number | null>(null);
+  const stack = toasts ? toasts.slice(0, SHOWN) : own;
+  const [leaving, setLeaving] = useState<Toast["id"] | null>(null);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
 
@@ -94,21 +100,28 @@ export function ToastStack({
     return { y: top + (SHOWN - 1 - d) * peek, scale: 1 - d * 0.05 };
   };
 
-  const dismiss = (id: number) => {
+  const dismiss = (id: Toast["id"]) => {
     if (leaving !== null) return;
     setLeaving(id);
     window.setTimeout(() => {
+      if (toasts) {
+        onDismiss?.(id);
+        setLeaving(null);
+        return;
+      }
       setStack((s) => {
         const rest = s.filter((t) => t.id !== id);
         const n = next.current++;
-        const fresh = { ...POOL[n % POOL.length], id: n };
+        const fresh: Toast = { ...POOL[n % POOL.length], id: n };
         return [fresh, ...rest];
       });
       setLeaving(null);
     }, 220);
   };
 
-  const retry = (id: number) => {
+  const retry = (id: Toast["id"]) => {
+    if (toasts) return;
+    if (toasts) return;
     setStack((s) => s.map((t) => (t.id === id
       ? { ...t, kind: "success", title: "Payment complete", body: "Your card was charged.", action: undefined }
       : t)));
