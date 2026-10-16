@@ -72,9 +72,11 @@ export function ChangesScreen() {
   const toggle = (t: EdgeType) =>
     setTypes((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
 
+  if (down)
+    return <div className="mx-auto w-full max-w-[1280px] px-8 py-8"><GraphDownBanner onRetry={() => void down.refetch()} /></div>;
+
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-8 py-8">
-      {down && <GraphDownBanner onRetry={() => void down.refetch()} />}
       <PageHeader
         title="What changed"
         subtitle={`${inRange.length} edge ${inRange.length === 1 ? "change" : "changes"} since ${fmt(since)}`}

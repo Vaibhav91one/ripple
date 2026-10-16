@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Database, SearchX, Sparkles, Timer, TriangleAlert } from "lucide-react";
 import LoadingState from "@/components/kit/beautifului/loading-state";
 import { Button } from "@/components/ui/button";
@@ -61,3 +62,15 @@ export function ResetConfirm({ onConfirm, onCancel }: { onConfirm?: () => void; 
     </div>
   );
 }
+
+/** Unknown id / route: a neutral empty state, never a raw error string. */
+export const NotFoundBlock = ({ title, children, href = "/overview", cta = "Back to overview" }: { title: string; children: ReactNode; href?: string; cta?: string }) => (
+  <div className="grid h-full place-items-center p-8">
+    <div role="status" className="max-w-md space-y-2 rounded-lg border border-hairline bg-surface p-6">
+      <SearchX className="size-5 text-faint" aria-hidden />
+      <h2 className="font-medium text-strong">{title}</h2>
+      <p className="text-sm text-body">{children}</p>
+      <Button variant="outline" size="sm" asChild><Link href={href}>{cta}</Link></Button>
+    </div>
+  </div>
+);
