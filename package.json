@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "seed": "tsx lib/ingest/seed.ts",
+    "extract": "tsx lib/ingest/extract.ts",
+    "embed": "tsx lib/ingest/embed.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {

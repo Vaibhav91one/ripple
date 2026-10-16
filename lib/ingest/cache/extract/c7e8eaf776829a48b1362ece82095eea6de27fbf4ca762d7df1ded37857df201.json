@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-auth-design",
+  "sha256": "c7e8eaf776829a48b1362ece82095eea6de27fbf4ca762d7df1ded37857df201",
+  "edges": [
+    {
+      "from": "auth-service",
+      "type": "DEPENDS_ON",
+      "to": "api-v1",
+      "quote": "auth-service verifies v1 tokens"
+    }
+  ],
+  "dropped": []
+}

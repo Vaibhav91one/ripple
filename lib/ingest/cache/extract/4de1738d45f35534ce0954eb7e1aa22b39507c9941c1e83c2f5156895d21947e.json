@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-msa-halden",
+  "sha256": "4de1738d45f35534ce0954eb7e1aa22b39507c9941c1e83c2f5156895d21947e",
+  "edges": [
+    {
+      "from": "ctr-2",
+      "type": "GUARANTEES",
+      "to": "api-v1",
+      "quote": "guarantees availability of API v1 until 2027-06-30"
+    }
+  ],
+  "dropped": []
+}

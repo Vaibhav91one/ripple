@@ -221,7 +221,7 @@ export async function search(g: Graph, text: string): Promise<Result<z.infer<typ
   return { data: rows, cypher: [c] };
 }
 
-/** Hybrid vector -> graph search. Needs Artifact.emb (embeddings land in #14). */
+/** Hybrid vector -> graph search. Needs Artifact.emb (pnpm embed + seed). */
 export async function searchVector(g: Graph, vec: number[], k = 10) {
   const { rows, c } = await run(g, "search-vector", { vec, k }, Hit.extend({ systemIds: z.array(z.string()) }));
   return { data: rows, cypher: [c] };

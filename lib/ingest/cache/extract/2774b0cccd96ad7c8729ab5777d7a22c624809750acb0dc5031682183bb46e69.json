@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-tkt-8",
+  "sha256": "2774b0cccd96ad7c8729ab5777d7a22c624809750acb0dc5031682183bb46e69",
+  "edges": [
+    {
+      "from": "art-tkt-8",
+      "type": "ABOUT",
+      "to": "api-v1",
+      "quote": "429 errors from API v1"
+    }
+  ],
+  "dropped": []
+}

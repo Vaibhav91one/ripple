@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-rfc14",
+  "sha256": "b68d32a6977036b179fbea5dbb1dbbcc1c031c4f1e551cd46e2fdf0fea59bb9e",
+  "edges": [
+    {
+      "from": "d-1",
+      "type": "SUNSETS",
+      "to": "api-v1",
+      "quote": "API v1 will be shut down on Jan 31, 2027"
+    }
+  ],
+  "dropped": []
+}

@@ -1,6 +1,7 @@
 // Deterministic, idempotent Ledgerly seed (MERGE on id). Reuses lib/mock/ledgerly.ts.
-// Dates are epoch seconds. valid_to absent = current edge. No embeddings yet (issue #14).
+// Dates are epoch seconds. valid_to absent = current edge. Embeddings come from the committed cache (pnpm embed).
 import { closeClient, graphFor, query, type Graph } from "../graph/client";
+import { readEmbedding } from "./embed";
 import { ensureSchema } from "../graph/schema";
 import * as m from "../mock/ledgerly";
 import { EdgeType, type Artifact } from "../schemas";
@@ -108,6 +109,14 @@ export async function seed(graphName: string): Promise<void> {
       .map((a) => ({ id: a.id, props: clean({ ...a, author: a.authorId, authorId: undefined }) }));
     if (rows.length) await writeNodes(g, `${kindLabel[kind]}:Artifact`, rows);
   }
+
+  // vectors from lib/ingest/cache/embed (artifacts not embedded yet are skipped)
+  const embRows = m.artifacts.flatMap((a) => {
+    const v = readEmbedding(a);
+    return v ? [{ id: a.id, v }] : [];
+  });
+  if (embRows.length)
+    await query(g, "UNWIND $rows AS row MATCH (a:Artifact {id: row.id}) SET a.emb = vecf32(row.v)", { rows: embRows });
 
   await writeNodes(g, "PR:Artifact", Array.from({ length: 9 }, (_, i) => ({
     id: `pr-v1-${i + 1}`,
