@@ -9,10 +9,12 @@ import { CardEnter } from "@/components/motion/CardEnter";
 import { GapChips } from "@/components/motion/GapChips";
 import { getRipple, isGraphDown } from "@/lib/api";
 import { GraphDownBanner } from "@/components/states/States";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { RippleGraph } from "./RippleGraph";
 import { TeamCard, type TeamStatus } from "./TeamCard";
 import { useDecisionId } from "./useDecisionId";
-import { useTeam } from "./useTeam";
+import { StatusPills } from "./StatusPills";
+import { TEAM_TABS, useTeam } from "./useTeam";
 
 type NotifyToastResult = { teamId: string; taskId: string; email: { status: "sent" | "preview" | "failed"; to: string | null } };
 const ORDER: Record<TeamStatus, number> = { conflict: 0, gap: 1, covered: 2 };
@@ -20,7 +22,7 @@ const ORDER: Record<TeamStatus, number> = { conflict: 0, gap: 1, covered: 2 };
 export function RippleHome() {
   const [d] = useDecisionId();
   const { data, isPending, error, refetch } = useQuery({ queryKey: ["ripple", d], queryFn: () => getRipple(d) });
-  const [team] = useTeam();
+  const [team, setTeam] = useTeam();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +62,32 @@ export function RippleHome() {
 
   return (
     <div className="flex h-full flex-col">
+      <div className="px-5 pt-5">
+        <PageHeader
+          title={
+            <span className="flex items-center gap-3">
+              <span className="truncate">{data.decision.title}</span>
+              <StatusPills conflicts={conflicts} notTold={notTold} />
+            </span>
+          }
+        >
+          <div data-slot="team-tabs" role="group" aria-label="Filter by team" className="flex items-center gap-1 overflow-x-auto">
+            {[{ id: null, label: "All" }, ...TEAM_TABS].map((t) => (
+              <button
+                key={t.label}
+                type="button"
+                aria-pressed={team === t.id}
+                onClick={() => setTeam(t.id)}
+                className={`h-7 shrink-0 rounded-md px-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ripple ${
+                  team === t.id ? "bg-raised font-medium text-strong" : "text-faint hover:text-strong"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </PageHeader>
+      </div>
       <div className="flex min-h-0 flex-1">
         <section className="relative min-w-0 basis-3/5 p-4">
           <RippleGraph data={data} team={team} />
@@ -68,13 +96,13 @@ export function RippleHome() {
           </p>
         </section>
         <section className="flex min-w-0 basis-2/5 flex-col gap-3 overflow-y-auto border-l border-hairline p-5">
-          <h1 className="text-lg text-strong">
+          <p className="text-sm text-body">
             <AnimatedCount value={teamsAffected} /> affected
             <span className="text-faint"> · </span>
             <span className="text-gap"><AnimatedCount value={notTold} /> not told</span>
             <span className="text-faint"> · </span>
             <span className="text-conflict"><AnimatedCount value={conflicts} /> conflict{conflicts === 1 ? "" : "s"}</span>
-          </h1>
+          </p>
           <div className="flex flex-col gap-2.5">
             <CardEnter>
               {cards.map(({ t, s }) => (
