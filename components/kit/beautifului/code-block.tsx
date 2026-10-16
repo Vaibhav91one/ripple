@@ -7,22 +7,13 @@ import { useCallback, useEffect, useState } from "react";
 
 /* ─────────────────────────────────────────────────────────
  * CODE BLOCK
- * Agent-written code streams line by line; copy is live.
+ * Code streams line by line; copy is live. Data in via props.
  * ───────────────────────────────────────────────────────── */
 
 const LINE_MS = 240;
 const HOLD_MS = 3200;
 
 type Tok = { t: string; c?: "kw" | "str" | "num" | "fn" | "dim" };
-
-const LINES: Tok[][] = [
-  [{ t: "export async function ", c: "kw" }, { t: "traceChange", c: "fn" }, { t: "() {", c: "dim" }],
-  [{ t: "  const ", c: "kw" }, { t: "change = " }, { t: "await ", c: "kw" }, { t: "getDecision", c: "fn" }, { t: "(", c: "dim" }, { t: "\"RFC-14\"", c: "str" }, { t: ");", c: "dim" }],
-  [{ t: "  const ", c: "kw" }, { t: "reach = " }, { t: "await ", c: "kw" }, { t: "graph." }, { t: "fetch", c: "fn" }, { t: "({ change });", c: "dim" }],
-  [{ t: "  await ", c: "kw" }, { t: "notify." }, { t: "send", c: "fn" }, { t: "(reach, { channel: ", c: "dim" }, { t: "\"slack\"", c: "str" }, { t: " });", c: "dim" }],
-  [{ t: "  return ", c: "kw" }, { t: "reach.people;" }],
-  [{ t: "}", c: "dim" }],
-];
 
 const COLORS: Record<string, string> = {
   kw: "var(--ripple)",
@@ -32,40 +23,74 @@ const COLORS: Record<string, string> = {
   dim: "var(--faint)",
 };
 
-const RAW = `export async function traceChange() {
+// ponytail: one regex tokenizer for TS and Cypher; swap for a real highlighter if more languages land.
+const KEYWORDS =
+  /^(export|async|function|const|let|await|return|import|from|new|MATCH|OPTIONAL|WHERE|RETURN|ORDER|BY|DESC|ASC|WITH|AS|LIMIT|AND|OR|NOT|IN|CREATE|MERGE|SET|DELETE|UNWIND|DISTINCT)$/i;
+const TOKEN = /(\/\/.*$)|("[^"]*"|'[^']*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)(?=\()|([A-Za-z_]\w*)|(\s+)|(.)/gy;
+
+function tokenizeLine(line: string): Tok[] {
+  const out: Tok[] = [];
+  TOKEN.lastIndex = 0;
+  for (let m = TOKEN.exec(line); m; m = TOKEN.exec(line)) {
+    const [t, comment, str, num, fn, word] = m;
+    if (comment) out.push({ t, c: "dim" });
+    else if (str) out.push({ t, c: "str" });
+    else if (num) out.push({ t, c: "num" });
+    else if (fn) out.push({ t, c: "fn" });
+    else if (word && KEYWORDS.test(word)) out.push({ t, c: "kw" });
+    else if (/^[{}()[\];,:]+$/.test(t)) out.push({ t, c: "dim" });
+    else out.push({ t });
+  }
+  return out;
+}
+
+const SAMPLE = `export async function traceChange() {
   const change = await getDecision("RFC-14");
   const reach = await graph.fetch({ change });
   await notify.store(reach, { channel: "slack" });
   return reach.people;
 }`;
 
-export default function CodeBlock() {
+export default function CodeBlock({
+  code = SAMPLE,
+  language = "TypeScript",
+  title = "trace.ts",
+  loop = false,
+}: {
+  code?: string;
+  language?: string;
+  title?: string;
+  /** Replay the line-by-line stream forever (styleguide demo). */
+  loop?: boolean;
+}) {
+  const lines = code.split("\n").map(tokenizeLine);
   const [count, setCount] = useState(0);
   const [copied, setCopied] = useState(false);
-  const done = count >= LINES.length;
+  const done = count >= lines.length;
 
   useEffect(() => {
+    if (done && !loop) return;
     const t = setTimeout(
-      () => setCount((c) => (c >= LINES.length ? 0 : c + 1)),
+      () => setCount((c) => (c >= lines.length ? 0 : c + 1)),
       count === 0 ? 400 : done ? HOLD_MS : LINE_MS,
     );
     return () => clearTimeout(t);
-  }, [count, done]);
+  }, [count, done, loop, lines.length]);
 
   const copy = useCallback(() => {
-    navigator.clipboard.writeText(RAW).then(() => {
+    navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
-  }, []);
+  }, [code]);
 
   return (
     <div className="w-full max-w-95 overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
       {/* header */}
       <div className="primitive-card-bar flex items-center justify-between border-b border-hairline">
         <span className="flex items-baseline gap-2">
-          <span className="font-mono text-[12px] font-medium text-strong">trace.ts</span>
-          <span className="text-[11.5px] text-faint">TypeScript</span>
+          <span className="font-mono text-[12px] font-medium text-strong">{title}</span>
+          <span className="text-[11.5px] text-faint">{language}</span>
         </span>
         <button
           aria-label="Copy code"
@@ -84,8 +109,8 @@ export default function CodeBlock() {
       </div>
 
       {/* code */}
-      <pre className="min-h-[137px] bg-page px-3 py-2.5 font-mono text-[11.5px] leading-[1.7]">
-        {LINES.slice(0, count).map((line, i) => (
+      <pre className="min-h-[137px] overflow-x-auto bg-page px-3 py-2.5 font-mono text-[11.5px] leading-[1.7]">
+        {lines.slice(0, count).map((line, i) => (
           <div
             key={i}
             className="flex"
@@ -106,7 +131,7 @@ export default function CodeBlock() {
             </span>
           </div>
         ))}
-              </pre>
+      </pre>
     </div>
   );
 }

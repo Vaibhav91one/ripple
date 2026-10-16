@@ -23,8 +23,21 @@ const Icons: Record<string, React.ReactNode> = {
 };
 
 type DetailLine = { text: string; tone?: "add" };
+export type ToolRowData = {
+  icon: string;
+  label: string;
+  chip: string;
+  mono: boolean;
+  detailMono: boolean;
+  detail: DetailLine[];
+  /** Replaces the detail lines when set (e.g. a code block). */
+  body?: React.ReactNode;
+  /** Right-aligned note, e.g. a row count. */
+  meta?: string;
+};
+export type DiffChip = { file: string; add: number; del: number };
 
-const ROWS: { icon: string; label: string; chip: string; mono: boolean; detailMono: boolean; detail: DetailLine[] }[] = [
+const ROWS: ToolRowData[] = [
   {
     icon: "think", label: "Thinking", chip: "Tracing RFC-14…", mono: false, detailMono: false,
     detail: [
@@ -55,23 +68,34 @@ const ROWS: { icon: string; label: string; chip: string; mono: boolean; detailMo
   },
 ];
 
-const DIFFS = [
+const DIFFS: DiffChip[] = [
   { file: "rfc-14.md", add: 13, del: 0 },
   { file: "impact.ts", add: 74, del: 41 },
   { file: "clause-7-2.md", add: 8, del: 2 },
 ];
 
-export default function ToolChips() {
+export default function ToolChips({
+  rows = ROWS,
+  diffs = DIFFS,
+  live = false,
+  summary,
+}: {
+  rows?: ToolRowData[];
+  diffs?: DiffChip[];
+  /** Rows arrive from outside: show them all at once, no replay timer. */
+  live?: boolean;
+  summary?: string;
+}) {
   const [step, setStep] = useState(0);
   const [open, setOpen] = useState(true);
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
-  const total = ROWS.length + 1; // rows, then diff chips
+  const total = rows.length + 1; // rows, then diff chips
 
   useEffect(() => {
-    if (step >= total) return;
+    if (live || step >= total) return;
     const t = setTimeout(() => setStep((s) => s + 1), STEP_MS);
     return () => clearTimeout(t);
-  }, [step, total]);
+  }, [step, total, live]);
 
   const toggleRow = (label: string) =>
     setOpenRows((current) => {
@@ -81,7 +105,7 @@ export default function ToolChips() {
     });
 
   return (
-    <div className="min-h-[220px] w-full max-w-80 pb-1">
+    <div className={`w-full pb-1 ${live ? "" : "min-h-[220px] max-w-80"}`}>
       {/* collapsed run header */}
       <button
         type="button"
@@ -92,7 +116,7 @@ export default function ToolChips() {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-200" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}>
           <path d="M6 9l6 6 6-6" />
         </svg>
-        <span className="tabular-nums">4 tool calls, 2 messages</span>
+        <span className="tabular-nums">{summary ?? "4 tool calls, 2 messages"}</span>
       </button>
 
       {/* tool call rows */}
@@ -101,14 +125,14 @@ export default function ToolChips() {
             row hover pills room inside this overflow-hidden clip box */}
         <div className="-mx-1 overflow-hidden px-1.5 pb-1">
         <div className="mt-1.5 flex flex-col gap-1">
-          {ROWS.slice(0, step).map((row) => {
-            const rowOpen = openRows.has(row.label);
+          {(live ? rows : rows.slice(0, step)).map((row, ri) => {
+            const rowOpen = openRows.has(String(ri));
             return (
-            <div key={row.label} style={{ animation: "fade-up 300ms cubic-bezier(0.23,1,0.32,1) both" }}>
+            <div key={ri} style={{ animation: "fade-up 300ms cubic-bezier(0.23,1,0.32,1) both" }}>
               <button
                 type="button"
                 aria-expanded={rowOpen}
-                onClick={() => toggleRow(row.label)}
+                onClick={() => toggleRow(String(ri))}
                 className="group/row -mx-[3px] flex h-7 w-[calc(100%+6px)] min-w-0 items-center gap-2 rounded-lg px-[3px] text-left transition-colors duration-100 hover:bg-overlay"
               >
                 <span className="relative flex size-4 shrink-0 items-center justify-center text-faint">
@@ -135,6 +159,7 @@ export default function ToolChips() {
                 >
                   {row.chip}
                 </span>
+                {row.meta && <span className="ml-auto shrink-0 text-[11.5px] tabular-nums text-faint">{row.meta}</span>}
               </button>
 
               {/* expanded detail */}
@@ -144,7 +169,7 @@ export default function ToolChips() {
               >
                 <div className="min-h-0 overflow-hidden">
                   <div className="mt-0.5 mb-1 ml-2 flex flex-col gap-0.5 border-l border-hairline py-0.5 pl-3.5">
-                    {row.detail.map((line) => (
+                    {row.body ?? row.detail.map((line) => (
                       <span
                         key={line.text}
                         className={`truncate text-[11.5px] leading-[1.6] ${row.detailMono ? "font-mono" : ""} ${line.tone === "add" ? "text-covered" : "text-body"}`}
@@ -161,9 +186,9 @@ export default function ToolChips() {
         </div>
 
       {/* file-diff chips */}
-      {step >= total && (
+      {diffs.length > 0 && (live || step >= total) && (
         <div className="mt-2.5 flex max-w-full flex-wrap gap-1.5 border-t border-hairline pt-2.5">
-          {DIFFS.map((d, i) => (
+          {diffs.map((d, i) => (
             <span
               key={d.file}
               className="inline-flex h-7 max-w-full cursor-pointer items-center gap-1.5 rounded-md
@@ -176,15 +201,15 @@ export default function ToolChips() {
               {d.del > 0 && <span className="shrink-0 text-conflict tabular-nums">−{d.del}</span>}
             </span>
           ))}
-          <button
+          {!live && <button
             type="button"
             className="inline-flex h-7 items-center rounded-md px-1.5 font-mono text-[11.5px] text-faint
               underline decoration-transparent underline-offset-2 transition-colors duration-100
               hover:text-body hover:decoration-current"
-            style={{ animation: `fade-in 300ms ease-out ${DIFFS.length * 80}ms both` }}
+            style={{ animation: `fade-in 300ms ease-out ${diffs.length * 80}ms both` }}
           >
             +2 more
-          </button>
+          </button>}
         </div>
       )}
         </div>

@@ -93,6 +93,27 @@ function Dot({ tone }: { tone: string }) {
 
 const TONES = ["bg-ripple", "bg-gap", "bg-covered"];
 
+/** Header-only "working" state for real waits (no scripted trace). */
+export function ThinkingLive({ label = "Thinking" }: { label?: string }) {
+  return (
+    <div role="status" className="flex w-fit items-center gap-2 py-1">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--body)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
+      </svg>
+      <span
+        className="bg-clip-text text-[13px] font-medium whitespace-nowrap text-transparent"
+        style={{
+          backgroundImage: "linear-gradient(90deg, var(--faint) 35%, var(--strong) 50%, var(--faint) 65%)",
+          backgroundSize: "200% 100%",
+          animation: "shimmer-text 1.4s linear infinite",
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function ThinkingState({ variant = "Steps" }: { variant?: string }) {
   const stage = useSequence(STAGES);
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
