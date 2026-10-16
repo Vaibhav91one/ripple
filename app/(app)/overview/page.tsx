@@ -1,3 +1,10 @@
+import { Suspense } from "react";
+import { OverviewScreen } from "@/components/overview/OverviewScreen";
+
 export default function OverviewPage() {
-  return <p className="p-6 text-body">Overview: coming in the v2 dashboard.</p>;
+  return (
+    <Suspense>
+      <OverviewScreen />
+    </Suspense>
+  );
 }
