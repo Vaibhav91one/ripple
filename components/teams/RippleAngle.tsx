@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { StatusPill } from "@/components/kit/obsidian/analytics/status-pill";
-import { useSourcePanel } from "@/components/panels/SourcePanel";
+import { SourceChip } from "@/components/ripple/TeamCard";
 import type { RippleAngle as Angle } from "@/lib/schemas";
 import { fmtDay } from "./format";
 import { useNames } from "./useTeamDashboard";
@@ -11,7 +11,6 @@ import { useNames } from "./useTeamDashboard";
 /** Ripple's side of every team page: what the open decision means for this team, who knows, and the sources. */
 export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: string }) {
   const name = useNames();
-  const panel = useSourcePanel();
   const status = !angle.affected
     ? { tone: "neutral" as const, label: "Not affected" }
     : angle.acked || angle.involved
@@ -34,14 +33,7 @@ export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: strin
             {angle.facts.map((f, i) => (
               <li key={i} className="flex flex-col gap-1.5 text-sm text-body">
                 <p>{f.text}</p>
-                <button
-                  type="button"
-                  onClick={() => panel.open(f.source.artifactId, f.source.quote)}
-                  className="self-start rounded-full border border-hairline bg-page px-2 py-0.5 font-mono text-xs text-body hover:bg-raised"
-                  title={f.source.quote}
-                >
-                  {name(f.source.artifactId)}
-                </button>
+                <span className="self-start"><SourceChip artifactId={f.source.artifactId} quote={f.source.quote} /></span>
               </li>
             ))}
           </ul>

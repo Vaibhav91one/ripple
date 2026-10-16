@@ -19,7 +19,7 @@ const BADGE: Record<TeamStatus, { label: string; cls: string }> = {
 const KIND = { doc: "DOC", ticket: "TKT", message: "MSG", pr: "PR" } as const;
 
 /** Source chip showing the artifact title; the verbatim quote is the tooltip. */
-function SourceChip({ artifactId, quote }: { artifactId: string; quote: string }) {
+export function SourceChip({ artifactId, quote }: { artifactId: string; quote: string }) {
   const { data } = useQuery({ queryKey: ["source", artifactId], queryFn: () => getSource(artifactId) });
   const panel = useSourcePanel();
   return (
