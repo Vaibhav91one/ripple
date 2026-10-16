@@ -1,34 +1,62 @@
 import type { RippleResult } from "@/lib/schemas";
 
-type N = RippleResult["nodes"][number];
-export type Placed = N & { x: number; y: number; r: number };
-
 export const SIZE = 760;
 export const CENTER = SIZE / 2;
 export const RINGS = [100, 225, 330]; // radius of hop 1, 2, 3
-const KIND_ORDER = ["customer", "ticket", "deal", "contract"] as const;
-const R = { 0: 26, 1: 20, 2: 6, 3: 15 } as const;
+
+export type LNode = {
+  id: string;
+  label: string;
+  kind: string;
+  hop: number;
+  x: number;
+  y: number;
+  r: number;
+  count?: number;
+  /** tooltip: the individual items inside a cluster */
+  items?: string[];
+};
+export type LEdge = { key: string; from: LNode; to: LNode; hop: number; dashed?: boolean; conflict?: boolean };
+
+const KINDS = ["customer", "ticket", "deal", "contract"] as const;
+const PLURAL = { customer: "customers", ticket: "tickets", deal: "deals", contract: "contracts" } as const;
+// angle in degrees clockwise from top: cluster sectors on ring 2, then owner team + the rest on ring 3
+const CLUSTER_DEG = { customer: 40, ticket: 85, deal: 130, contract: 300 } as const;
+const OWNER = { customer: "support", ticket: "support", deal: "sales", contract: "legal" } as const;
+const TEAM_DEG: Record<string, number> = { support: 62, sales: 130, legal: 300, security: 340, devrel: 20 };
 
 const at = (radius: number, deg: number) => ({
-  x: CENTER + radius * Math.cos(((deg - 90) * Math.PI) / 180),
-  y: CENTER + radius * Math.sin(((deg - 90) * Math.PI) / 180),
+  x: CENTER + radius * Math.sin((deg * Math.PI) / 180),
+  y: CENTER - radius * Math.cos((deg * Math.PI) / 180),
 });
 
-/** Hop = ring; hop-2 nodes sit in sectors grouped by kind; teams spread evenly on ring 3. */
-export function place(nodes: N[]): Placed[] {
-  const out: Placed[] = [];
-  const put = (n: N, radius: number, deg: number, r: number) => out.push({ ...n, ...at(radius, deg), r });
-  const hop2 = KIND_ORDER.map((k) => nodes.filter((n) => n.hop === 2 && n.kind === k));
-  const weights = hop2.map((g) => (g.length ? Math.max(g.length, 6) : 0));
-  const total = weights.reduce((a, b) => a + b, 0) || 1;
-  let start = 0;
-  hop2.forEach((g, gi) => {
-    const span = (weights[gi] / total) * 360;
-    g.forEach((n, i) => put(n, RINGS[1] + (i % 2) * 16, start + ((i + 0.5) / g.length) * span, R[2]));
-    start += span;
+/** Decision at the centre, API v1 on ring 1, one cluster per kind on ring 2, teams on ring 3. */
+export function layout(data: RippleResult): { nodes: LNode[]; edges: LEdge[] } {
+  const nodes: LNode[] = [];
+  const byId = new Map<string, LNode>();
+  const add = (n: LNode) => (nodes.push(n), byId.set(n.id, n), n);
+
+  const decision = add({ ...data.nodes.find((n) => n.hop === 0)!, ...at(0, 0), r: 26 });
+  const system = add({ ...data.nodes.find((n) => n.kind === "system")!, ...at(RINGS[0], 0), r: 20 });
+  const clusters = KINDS.flatMap((kind) => {
+    const items = data.nodes.filter((n) => n.hop === 2 && n.kind === kind);
+    if (!items.length) return [];
+    const r = 22 + Math.min(16, Math.sqrt(items.length) * 2.6);
+    return [add({ id: `cluster-${kind}`, label: `${items.length} ${PLURAL[kind]}`, kind: `cluster-${kind}`, hop: 2, ...at(RINGS[1], CLUSTER_DEG[kind]), r, count: items.length, items: items.map((i) => i.label) })];
   });
-  nodes.filter((n) => n.hop === 0).forEach((n) => put(n, 0, 0, R[0]));
-  nodes.filter((n) => n.hop === 1).forEach((n, i, a) => put(n, RINGS[0], (i / a.length) * 360 + 180, R[1]));
-  nodes.filter((n) => n.hop >= 3).forEach((n, i, a) => put(n, RINGS[2], 18 + (i / a.length) * 360, R[3]));
-  return out;
+  data.nodes.filter((n) => n.kind === "team").forEach((n, i) => add({ ...n, ...at(RINGS[2], TEAM_DEG[n.id] ?? 280 + i * 20), r: 15 }));
+
+  const edges: LEdge[] = [];
+  const link = (a: LNode | undefined, b: LNode | undefined, o: Partial<LEdge> = {}) =>
+    a && b && edges.push({ key: `${a.id}-${b.id}`, from: a, to: b, hop: Math.min(Math.max(a.hop, b.hop), 3), ...o });
+  link(decision, system);
+  const owned = new Set<string>();
+  for (const c of clusters) {
+    const kind = c.kind.replace("cluster-", "") as (typeof KINDS)[number];
+    link(system, c);
+    link(c, byId.get(OWNER[kind]), { conflict: kind === "contract" });
+    owned.add(OWNER[kind]);
+  }
+  nodes.filter((n) => n.kind === "team" && !owned.has(n.id)).forEach((t) => link(system, t, { dashed: true }));
+  return { nodes, edges };
 }
