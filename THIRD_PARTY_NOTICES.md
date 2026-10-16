@@ -18,3 +18,8 @@ Source copied from the public MIT mirror https://github.com/TurboKach/ai-native-
 
 Copyright (c) 2026 Lorenzo Cabra. https://bencho.dev. MIT, see `components/kit/bencho/LICENSE`.
 Free blocks only (Slide to confirm, Toast stack, Time scrubber). Pro blocks are not included.
+
+## Obsidian UI: `components/kit/obsidian/`
+
+Copyright (c) 2026 ObsidianUI. https://www.obsidianui.dev. MIT, see `components/kit/obsidian/LICENSE`.
+Dashboard Shell only (`dashboard-shell/`), remapped to Ripple tokens.

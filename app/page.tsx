@@ -20,7 +20,7 @@ export default function Home() {
           Change one thing. See everyone it touches, and who hasn&apos;t been told.
         </h1>
         <div className="flex items-center justify-center gap-3">
-          <Button size="lg" asChild><Link href="/ripple">Try the demo</Link></Button>
+          <Button size="lg" asChild><Link href="/overview">Try the demo</Link></Button>
           <span className="group relative">
             <Button size="lg" variant="outline" disabled aria-describedby="soon">Sign in</Button>
             <span id="soon" role="tooltip" className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-hairline bg-overlay px-2 py-1 text-xs text-body opacity-0 transition-opacity group-hover:opacity-100">

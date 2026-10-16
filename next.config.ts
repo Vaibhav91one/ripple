@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   // bundling the redis client breaks the build ("a.BigInt is not a function")
   serverExternalPackages: ["falkordb", "@redis/client"],
   partialPrefetching: true,
+  // v1 URLs: /ripple?d=X opens that decision, bare /ripple opens the overview
+  async redirects() {
+    return [
+      { source: "/ripple", has: [{ type: "query", key: "d", value: "(?<d>.+)" }], destination: "/decisions/:d", permanent: false },
+      { source: "/ripple", destination: "/overview", permanent: false },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {
