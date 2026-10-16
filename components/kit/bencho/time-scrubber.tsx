@@ -58,6 +58,9 @@ const stillness = () =>
 const W = 300;
 /* px per minute along the ruler */
 const PX = 2;
+/* day mode: px per day, and seconds per day */
+const DPX = 28;
+const SEC = 86_400;
 const HALF = (W - 36) / 2;
 const DAY = 1440;
 
@@ -110,13 +113,29 @@ export function Scrub({
   format = "12h",
   corner = 20,
   start = 570,
+  mode = "time",
+  min,
+  max,
+  value,
+  onChange,
 }: {
   step?: string;
   momentum?: number;
   format?: string;
   corner?: number;
   start?: number;
+  /** "days" turns the ruler into a date picker: min, max, value and onChange are epoch seconds, step is one day. */
+  mode?: "time" | "days";
+  min?: number;
+  max?: number;
+  value?: number;
+  onChange?: (epochSeconds: number) => void;
 } = {}) {
+  const days = mode === "days";
+  const PX_ = days ? DPX : PX;
+  const lo = days && min != null ? Math.round(min / SEC) : -Infinity;
+  const hi = days && max != null ? Math.round(max / SEC) : Infinity;
+  if (days) { step = "1"; start = clamp(Math.round((value ?? max ?? 0) / SEC), lo, hi); }
   const still = stillness();
   const [pos, setPos] = useState(start);
   const p = useRef({ x: start, v: 0, to: start });
@@ -134,6 +153,11 @@ export function Scrub({
     if (k === lastStep.current) return;
     lastStep.current = k;
   };
+
+  const cb = useRef(onChange);
+  cb.current = onChange;
+  /* day mode reports only where it comes to rest */
+  const settle = (x: number) => { if (days) cb.current?.(Math.round(x) * SEC); };
 
   const set = (x: number) => {
     p.current.x = x;
@@ -156,6 +180,7 @@ export function Scrub({
         c.v = 0;
         set(c.to);
         raf.current = 0;
+        settle(c.to);
         return;
       }
       set(x);
@@ -167,11 +192,23 @@ export function Scrub({
 
   /* go to a time, by the spring */
   const goTo = (to: number, v = p.current.v) => {
+    to = clamp(to, lo, hi);
     p.current.to = to;
     p.current.v = v;
-    if (still) { p.current.v = 0; set(to); return; }
+    if (still) { p.current.v = 0; set(to); settle(to); return; }
     run();
   };
+
+  /* an outside change of value moves the ruler */
+  useEffect(() => {
+    if (!days || value == null) return;
+    const d = clamp(Math.round(value / SEC), lo, hi);
+    if (d !== Math.round(p.current.to)) {
+      p.current.to = d;
+      if (still) set(d); else run();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   /* ── the drag ──────────────────────────────────────────── */
   const drag = useRef<null | { x: number; t: number; v: number; k: number }>(null);
@@ -190,7 +227,7 @@ export function Scrub({
     if (!g) return;
     const now = performance.now();
     /* left is later: the ruler moves under a fixed mark */
-    const dm = -(e.clientX - g.x) / g.k / PX;
+    const dm = -(e.clientX - g.x) / g.k / PX_;
     const dt = Math.max(1, now - g.t) / 16.67;
     g.v = g.v * 0.5 + (dm / dt) * 0.5;
     g.x = e.clientX;
@@ -205,7 +242,7 @@ export function Scrub({
     if (!g) return;
     /* a hand that stopped before letting go threw nothing */
     /* capped, so a flick spins it hours, never days */
-    const v = performance.now() - g.t > 80 ? 0 : clamp(g.v, -14, 14);
+    const v = performance.now() - g.t > 80 ? 0 : clamp(g.v, -14, 14) / (days ? 14 : 1);
     const s = knobs.current.step;
     const carry = 6 + (clamp(knobs.current.momentum, 0, 100) / 100) * 30;
     const land = Math.round((p.current.x + v * carry) / s) * s;
@@ -226,7 +263,7 @@ export function Scrub({
       e.preventDefault();
       cancelAnimationFrame(raf.current);
       raf.current = 0;
-      set(p.current.x + e.deltaX / PX);
+      set(p.current.x + e.deltaX / PX_);
       clearTimeout(idle);
       idle = window.setTimeout(() => {
         const s = knobs.current.step;
@@ -240,23 +277,27 @@ export function Scrub({
 
   /* ── the ticks in the window ───────────────────────────── */
   const ticks: { m: number; x: number; f: number; kind: "hour" | "quarter" | "five" }[] = [];
-  const span = HALF / PX + 10;
-  for (let m = Math.ceil((pos - span) / 5) * 5; m <= pos + span; m += 5) {
-    const x = (m - pos) * PX;
+  const span = HALF / PX_ + 10;
+  const inc = days ? 1 : 5;
+  for (let m = Math.ceil((pos - span) / inc) * inc; m <= pos + span; m += inc) {
+    const x = (m - pos) * PX_;
     const f = clamp(1 - Math.pow(Math.abs(x) / HALF, 2), 0, 1);
     const w = wrap(m);
-    ticks.push({ m, x, f, kind: w % 60 === 0 ? "hour" : w % 15 === 0 ? "quarter" : "five" });
+    /* days: a labelled tick every Monday (epoch day 0 was a Thursday) */
+    ticks.push({ m, x, f, kind: days ? ((m + 3) % 7 === 0 ? "hour" : "five") : w % 60 === 0 ? "hour" : w % 15 === 0 ? "quarter" : "five" });
   }
+  const dayText = (d: number) =>
+    new Date(d * SEC * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
   const h24 = format === "24h";
-  const { time, mer } = label(pos, h24);
+  const { time, mer } = days ? { time: dayText(Math.round(pos)), mer: "" } : label(pos, h24);
   const s = Number(step) || 15;
 
   return (
     <div className="tms" style={{ "--tms-r": `${Math.max(0, corner)}px` } as React.CSSProperties}>
       <div className="tms-read" aria-live="polite" aria-label={`${time} ${mer}`}>
         <span className="tms-time">
-          {time.split("").map((c, i) =>
+          {days ? time : time.split("").map((c, i) =>
             c === ":" ? <span key={`c${i}`} className="tms-colon">:</span> : <Digit key={time.length - i} d={c} />,
           )}
         </span>
@@ -267,11 +308,11 @@ export function Scrub({
         className="tms-ruler"
         role="slider"
         tabIndex={0}
-        aria-label="Time"
+        aria-label={days ? "Since" : "Time"}
         aria-valuetext={`${time} ${mer}`}
-        aria-valuenow={wrap(Math.round(pos))}
-        aria-valuemin={0}
-        aria-valuemax={DAY - 1}
+        aria-valuenow={days ? Math.round(pos) * SEC : wrap(Math.round(pos))}
+        aria-valuemin={days ? min : 0}
+        aria-valuemax={days ? max : DAY - 1}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
@@ -296,14 +337,14 @@ export function Scrub({
             />
           ))}
           {ticks.filter((t) => t.kind === "hour").map((t) => {
-            const h = Math.floor(wrap(t.m) / 60);
+            const h = days ? 0 : Math.floor(wrap(t.m) / 60);
             return (
               <span
                 key={`l${t.m}`}
                 className="tms-hour"
                 style={{ transform: `translateX(${t.x.toFixed(2)}px) translateX(-50%)`, opacity: 0.15 + 0.85 * t.f }}
               >
-                {h24 ? String(h).padStart(2, "0") : `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`}
+                {days ? dayText(t.m) : h24 ? String(h).padStart(2, "0") : `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`}
               </span>
             );
           })}

@@ -5,13 +5,13 @@ import { parseAsInteger, useQueryState } from "nuqs";
 import { useState } from "react";
 import { getBottleneck, getChanges, getSource } from "@/lib/api";
 import type { EdgeType } from "@/lib/schemas";
+import DiffTable, { DiffChip, type DiffRow } from "@/components/kit/beautifului/diff-table";
+import TaskRows, { type TaskRowInput } from "@/components/kit/beautifului/task-rows";
+import { Scrub } from "@/components/kit/bencho/time-scrubber";
 import { DAY, defaultSince, filterChanges, nameOf, typeCounts } from "./helpers";
 
 const fmt = (ts: number) =>
   new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-
-const chip =
-  "inline-flex h-5.5 items-center gap-1.5 rounded-full bg-page px-2 text-[11.5px] font-medium text-body shadow-[var(--kit-shadow-hairline)]";
 
 export function ChangesScreen() {
   const [sinceParam, setSince] = useQueryState("since", parseAsInteger);
@@ -40,6 +40,30 @@ export function ChangesScreen() {
     }).flatMap((q) => (q.data ? [[q.data.id, q.data.title] as const] : [])),
   );
 
+  const tableRows: DiffRow[] = rows.map((c, i) => {
+    const ended = c.kind === "ended";
+    const title = c.edge.src && (titles.get(c.edge.src.artifactId) ?? c.edge.src.artifactId);
+    return {
+      id: `${c.edge.from}-${c.edge.type}-${c.edge.to}-${c.at}-${i}`,
+      tone: ended ? "removed" : "added",
+      cells: [
+        <span key="e" className="flex min-w-0 items-center gap-2">
+          <span className="truncate">{nameOf(c.edge.from)}</span>
+          <span className="shrink-0 font-mono text-[11px] opacity-80">→ {c.edge.type} →</span>
+          <span className="truncate">{nameOf(c.edge.to)}</span>
+        </span>,
+        fmt(c.at),
+        title ? <DiffChip key="s" label={title} dot={ended ? "bg-conflict" : "bg-covered"} tone={ended ? "removed" : "added"} /> : <span key="s" className="text-faint">No source</span>,
+      ],
+    };
+  });
+  const taskRows: TaskRowInput[] = (bottleneck.data ?? []).map((r) => ({
+    label: nameOf(r.blockerTeamId),
+    meta: `${r.openRequests} open · ${r.totalWaitDays} days total`,
+    status: "pending",
+    detail: `Oldest wait ${r.oldestDays} days. Waiting: ${r.waitingTeamIds.map(nameOf).join(", ")}`,
+  }));
+
   const toggle = (t: EdgeType) =>
     setTypes((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
 
@@ -52,22 +76,7 @@ export function ChangesScreen() {
             {inRange.length} edge {inRange.length === 1 ? "change" : "changes"} since {fmt(since)}
           </p>
         </div>
-        <label className="flex w-[360px] flex-col gap-2 text-[12px] text-faint">
-          <span className="flex justify-between">
-            <span>Since</span>
-            <span className="tabular-nums text-strong">{fmt(since)}</span>
-          </span>
-          <input
-            type="range"
-            aria-label="Since"
-            className="w-full accent-ripple"
-            min={Math.min(earliest, since) - DAY}
-            max={latest}
-            step={DAY}
-            value={since}
-            onChange={(e) => setSince(Number(e.target.value))}
-          />
-        </label>
+        <Scrub mode="days" min={Math.min(earliest, since) - DAY} max={latest} value={since} onChange={setSince} />
       </header>
 
       <div className="grid grid-cols-[1fr_360px] items-start gap-6">
@@ -95,87 +104,26 @@ export function ChangesScreen() {
               {changes.isPending ? "Loading changes…" : `Nothing changed since ${fmt(since)}. Drag the scrubber back.`}
             </p>
           ) : (
-            <table className="w-full table-fixed border-collapse text-left">
-              <colgroup>
-                <col />
-                <col className="w-[84px]" />
-                <col className="w-[220px]" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-hairline text-[12px] font-medium text-faint">
-                  <th className="px-4 py-2.5">Edge</th>
-                  <th className="px-4 py-2.5">When</th>
-                  <th className="px-4 py-2.5">Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((c, i) => {
-                  const ended = c.kind === "ended";
-                  const title = c.edge.src && titles.get(c.edge.src.artifactId);
-                  return (
-                    <tr
-                      key={`${c.edge.from}-${c.edge.type}-${c.edge.to}-${c.at}-${i}`}
-                      className={`border-b border-hairline last:border-0 ${ended ? "bg-conflict-soft" : "bg-covered-soft"}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div
-                          className={`flex items-center gap-2 text-[13px] ${ended ? "text-conflict line-through decoration-conflict/50" : "text-covered"}`}
-                        >
-                          <span aria-hidden className="w-3 font-mono">{ended ? "−" : "+"}</span>
-                          <span className="truncate font-medium">{nameOf(c.edge.from)}</span>
-                          <span className="font-mono text-[11px] opacity-80">→ {c.edge.type} →</span>
-                          <span className="truncate font-medium">{nameOf(c.edge.to)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[12.5px] tabular-nums text-body">{fmt(c.at)}</td>
-                      <td className="px-4 py-3">
-                        {c.edge.src ? (
-                          <span className={`${chip} max-w-full ${ended ? "opacity-60" : ""}`}>
-                            <span className={`size-1.5 shrink-0 rounded-full ${ended ? "bg-conflict" : "bg-covered"}`} />
-                            <span className="truncate">{title ?? c.edge.src.artifactId}</span>
-                          </span>
-                        ) : (
-                          <span className="text-[12px] text-faint">No source</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DiffTable
+              title="Edge changes"
+              className="max-w-none [&>div]:rounded-none [&>div]:shadow-none"
+              animate={false}
+              columns={[
+                { label: "Edge", width: "58%" },
+                { label: "When", width: "12%" },
+                { label: "Source", width: "30%" },
+              ]}
+              rows={tableRows}
+            />
           )}
         </section>
 
-        <aside className="overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
-          <div className="border-b border-hairline px-4 py-3">
+        <aside className="flex flex-col gap-2">
+          <div className="px-1">
             <h2 className="text-[12.5px] font-medium text-strong">Who&apos;s blocking whom</h2>
             <p className="text-[12px] text-faint">Open requests by blocker team</p>
           </div>
-          <ul className="flex flex-col">
-            {(bottleneck.data ?? []).map((r) => (
-              <li key={r.blockerTeamId} className="flex flex-col gap-2 border-b border-hairline px-4 py-3 last:border-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong">
-                    {nameOf(r.blockerTeamId)}
-                  </span>
-                  <span className="inline-flex h-5.5 items-center rounded-full bg-gap-soft px-2 text-[11.5px] font-medium tabular-nums text-gap">
-                    {r.oldestDays}d oldest
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[12px] text-body">
-                  <span className="tabular-nums">{r.openRequests} open</span>
-                  <span className="text-faint">·</span>
-                  <span className="tabular-nums">{r.totalWaitDays}d total wait</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-faint">
-                  Waiting:
-                  {r.waitingTeamIds.map((id) => (
-                    <span key={id} className={chip}>{nameOf(id)}</span>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <TaskRows rows={taskRows} />
         </aside>
       </div>
     </div>
