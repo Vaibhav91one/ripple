@@ -29,7 +29,7 @@ describe("ledgerly mocks", () => {
     parseAll(s.InboxItem, m.inboxes["p-priya"]);
     parseAll(s.StreamEvent, m.askEvents);
     s.RippleResult.parse(m.rippleResult);
-    expect(m.teams).toHaveLength(9);
+    expect(m.teams).toHaveLength(10);
   });
 
   it("counts match the story", () => {

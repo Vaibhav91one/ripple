@@ -33,6 +33,7 @@ export const teams: Team[] = [
   ["legal", "Legal"],
   ["security", "Security"],
   ["devrel", "DevRel"],
+  ["leadership", "Leadership"],
   ["finance", "Finance"],
   ["product", "Product"],
   ["data", "Data"],
@@ -53,13 +54,35 @@ const person = (
 });
 export const people: Person[] = [
   person("p-priya", "Priya", "Staff Engineer", "eng"),
+  person("p-kenji", "Kenji", "Senior Engineer", "eng"),
+  person("p-lena", "Lena", "Platform Engineer", "eng"),
+  person("p-omar", "Omar", "Backend Engineer", "eng"),
+  person("p-ravi", "Ravi", "Engineering Manager", "eng"),
   person("p-ana", "Ana", "Support Lead", "support"),
+  person("p-tomas", "Tomas", "Support Engineer", "support"),
+  person("p-nia", "Nia", "Support Specialist", "support"),
+  person("p-hugo", "Hugo", "Support Specialist", "support"),
   person("p-arjun", "Arjun", "Account Executive", "sales"),
+  person("p-bea", "Bea", "Account Executive", "sales"),
+  person("p-carlos", "Carlos", "Sales Engineer", "sales"),
+  person("p-dee", "Dee", "Sales Director", "sales"),
   person("p-mei", "Mei", "General Counsel", "legal"),
+  person("p-noah", "Noah", "Contracts Counsel", "legal"),
+  person("p-nora", "Nora", "Paralegal", "legal"),
   person("p-sam", "Sam", "Security Engineer", "security"),
+  person("p-zoe", "Zoe", "GRC Lead", "security"),
+  person("p-uri", "Uri", "Security Analyst", "security"),
+  person("p-tara", "Tara", "Security Manager", "security"),
   person("p-dev", "Dev", "Developer Advocate", "devrel"),
+  person("p-eli", "Eli", "Technical Writer", "devrel"),
+  person("p-maya", "Maya", "DevRel Manager", "devrel"),
+  person("p-vera", "Vera", "CEO", "leadership"),
+  person("p-jon", "Jon", "CTO", "leadership"),
+  person("p-rhea", "Rhea", "COO", "leadership"),
   person("p-fin", "Fiona", "Finance Manager", "finance"),
+  person("p-gus", "Gus", "Accountant", "finance"),
   person("p-prod", "Pat", "Product Manager", "product"),
+  person("p-uma", "Uma", "Product Designer", "product"),
   person("p-data", "Dana", "Data Analyst", "data"),
 ];
 
@@ -71,10 +94,16 @@ export const systems: System[] = [
     status: "deprecated",
     version: "1",
     successor: "api-v2",
+    onCallPersonId: "p-priya",
   },
-  { id: "api-v2", name: "API v2", kind: "api", status: "current", version: "2" },
-  { id: "auth-service", name: "auth-service", kind: "service", status: "current" },
-  { id: "billing", name: "billing", kind: "service", status: "current" },
+  { id: "api-v2", name: "API v2", kind: "api", status: "current", version: "2", onCallPersonId: "p-kenji" },
+  { id: "auth-service", name: "auth-service", kind: "service", status: "current", onCallPersonId: "p-lena" },
+  { id: "billing", name: "billing", kind: "service", status: "current", onCallPersonId: "p-omar" },
+  { id: "web-app", name: "web-app", kind: "repo", status: "current", onCallPersonId: "p-ravi" },
+  { id: "mobile-app", name: "mobile-app", kind: "repo", status: "current", onCallPersonId: "p-omar" },
+  { id: "ledger-db", name: "ledger-db", kind: "service", status: "current", onCallPersonId: "p-lena" },
+  { id: "sdk-js", name: "sdk-js", kind: "repo", status: "current", version: "3.4.0", onCallPersonId: "p-kenji" },
+  { id: "sdk-py", name: "sdk-py", kind: "repo", status: "current", version: "2.9.1", onCallPersonId: "p-kenji" },
 ];
 
 // ---------- customers (40 on v1 + 1 decoy already on v2) ----------
@@ -87,6 +116,8 @@ export const customers: Customer[] = Array.from({ length: 40 }, (_, i) => ({
   tier: i % 7 === 0 ? ("growth" as const) : ("starter" as const),
   region: i % 3 === 0 ? "EU" : "US",
   monthlyCalls: 50_000 + i * 1_000,
+  healthScore: 40 + ((i * 37) % 60),
+  renewalDate: t("2026-11-15") + ((i * 17) % 330) * 86400,
 }));
 // The two contract customers: enterprise, $120k + $60k = $180k ARR at risk.
 customers[0] = {
@@ -96,6 +127,8 @@ customers[0] = {
   tier: "enterprise",
   region: "US",
   monthlyCalls: 2_400_000,
+  healthScore: 62,
+  renewalDate: t("2027-06-30"),
 };
 // Enterprise but quiet: call volume alone would hide this one.
 customers[1] = {
@@ -105,6 +138,8 @@ customers[1] = {
   tier: "enterprise",
   region: "EU",
   monthlyCalls: 1_200,
+  healthScore: 48,
+  renewalDate: t("2027-06-30"),
 };
 export const v2Customer: Customer = {
   id: "cust-41",
@@ -113,6 +148,8 @@ export const v2Customer: Customer = {
   tier: "growth",
   region: "US",
   monthlyCalls: 300_000,
+  healthScore: 91,
+  renewalDate: t("2027-03-31"),
 };
 
 // ---------- artifacts ----------
@@ -269,18 +306,21 @@ export const deals: Deal[] = [
   ...dealCustomers.map((c, i) => ({
     id: `deal-${i + 1}`,
     name: `${c.name} expansion`,
-    stage: "negotiation",
+    stage: "negotiation" as const,
+    probability: 70,
+    ownerId: "p-arjun",
     amount: 30_000 + i * 5_000,
     closeDate: t("2026-11-15"),
     customerId: c.id,
+    v1Related: true,
   })),
   // decoy: lost deal
-  { id: "deal-lost", name: "Quill Logistics new logo", stage: "closed_lost", amount: 45_000, closeDate: t("2026-09-28"), customerId: "cust-18" },
+  { id: "deal-lost", name: "Quill Logistics new logo", stage: "closed_lost", probability: 0, ownerId: "p-arjun", amount: 45_000, closeDate: t("2026-09-28"), customerId: "cust-18", v1Related: false },
 ];
 
 export const contracts: Contract[] = [
-  { id: "ctr-1", name: "Northwind Capital MSA", endsAt: t("2027-06-30"), customerId: "cust-1" },
-  { id: "ctr-2", name: "Halden Bank MSA", endsAt: t("2027-06-30"), customerId: "cust-2" },
+  { id: "ctr-1", name: "Northwind Capital MSA", endsAt: t("2027-06-30"), customerId: "cust-1", noticeDays: 90, value: 120_000, approvalState: "signed" },
+  { id: "ctr-2", name: "Halden Bank MSA", endsAt: t("2027-06-30"), customerId: "cust-2", noticeDays: 60, value: 60_000, approvalState: "signed" },
 ];
 
 // ---------- edges ----------
@@ -329,7 +369,7 @@ export const conflict: Conflict = {
   ],
 };
 export const incidents: Incident[] = [
-  { id: "inc-1", title: "API v1 elevated 429s", severity: "medium", systemId: "api-v1", startedAt: t("2026-09-30"), resolvedAt: t("2026-09-30") + 7200 },
+  { id: "inc-1", title: "API v1 elevated 429s", severity: "medium", systemId: "api-v1", startedAt: t("2026-09-30"), acknowledgedAt: t("2026-09-30") + 600, resolvedAt: t("2026-09-30") + 7200 },
 ];
 export const tasks: Task[] = [
   { id: "task-1", title: "Draft v1 migration guide", teamId: "devrel", assigneeId: "p-dev", status: "open", createdAt: t("2026-10-07") },

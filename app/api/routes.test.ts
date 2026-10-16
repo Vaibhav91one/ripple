@@ -101,7 +101,7 @@ describe("route handlers (in order: /api/change mutates the graph)", () => {
 
   t("GET /api/people and /api/names", async () => {
     const p = await ok(z.array(s.Person), await get("people", "/api/people"));
-    expect(p).toHaveLength(9);
+    expect(p).toHaveLength(31);
     const n = await ok(z.record(z.string(), z.string()), await get("names", "/api/names"));
     expect(n).toMatchObject({ legal: "Legal", "p-priya": "Priya", "api-v1": "API v1", "d-1": "Sunset API v1 on Jan 31" });
   });

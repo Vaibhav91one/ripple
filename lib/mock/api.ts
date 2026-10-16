@@ -4,6 +4,7 @@ import type {
   Change,
   Decision,
   InboxItem,
+  Overview,
   Person,
   RippleResult,
   StreamEvent,
@@ -11,6 +12,9 @@ import type {
 } from "@/lib/schemas";
 import { applySunsetMove } from "@/components/live/applySunsetMove";
 import * as m from "./ledgerly";
+import * as v2 from "./ledgerly-v2";
+import { mockOverview, mockTeamDashboard } from "./teams";
+import type { TeamId } from "@/lib/teams/dashboards";
 
 // Offline fallback (NEXT_PUBLIC_RIPPLE_OFFLINE=1) and test fixture: same signatures as lib/api.ts, backed by lib/mock/ledgerly.ts.
 
@@ -59,7 +63,7 @@ export async function getInbox(personId: string): Promise<InboxItem[]> {
 }
 
 export async function getSource(artifactId: string): Promise<Artifact> {
-  const a = m.artifacts.find((x) => x.id === artifactId);
+  const a = [...m.artifacts, ...v2.extraArtifacts].find((x) => x.id === artifactId);
   if (!a) throw new Error(`No artifact ${artifactId}`);
   return a;
 }
@@ -70,4 +74,12 @@ export async function* askStream(
 ): AsyncGenerator<StreamEvent> {
   void question;
   for (const e of m.askEvents) yield e;
+}
+
+export async function getTeamDashboard(team: TeamId) {
+  return mockTeamDashboard(team);
+}
+
+export async function getOverview(): Promise<Overview> {
+  return mockOverview();
 }

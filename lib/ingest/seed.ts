@@ -4,6 +4,7 @@ import { closeClient, graphFor, query, type Graph } from "../graph/client";
 import { readEmbedding } from "./embed";
 import { ensureSchema } from "../graph/schema";
 import * as m from "../mock/ledgerly";
+import * as v2 from "../mock/ledgerly-v2";
 import { EdgeType, type Artifact } from "../schemas";
 
 const day = (d: string) => Math.floor(Date.parse(`${d}T09:00:00Z`) / 1000);
@@ -17,7 +18,7 @@ type EdgeRow = {
 };
 
 const clean = (o: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
 
 async function writeNodes(g: Graph, labels: string, rows: Row[]) {
   await query(g, `UNWIND $rows AS row MERGE (n:${labels} {id: row.id}) SET n += row.props`, { rows });
@@ -62,7 +63,7 @@ function buildEdges(): EdgeRow[] {
     out.push(edge(a.teamId, a.decisionId, "ACKED", a.at, { extra: { kind: a.kind, by: a.by } }));
   }
   for (const i of m.incidents) out.push(edge(i.id, i.systemId, "AFFECTED", i.startedAt));
-  for (const t of m.tasks) {
+  for (const t of v2.tasks) {
     out.push(edge(t.id, t.teamId, "ASSIGNED", t.createdAt));
     // `by` = who asked for the review (the inbox's "from"); mock tasks don't carry it
     if (t.assigneeId) out.push(edge(t.id, t.assigneeId, "ASSIGNED", t.createdAt, t.id === "task-2" ? { extra: { by: "p-prod" } } : {}));
@@ -72,6 +73,8 @@ function buildEdges(): EdgeRow[] {
   out.push(edge("devrel", "api-v1", "CARES_ABOUT", day("2026-01-01"), { src: { artifactId: "art-sdk-docs", quote: "still point at api.ledgerly.test/v1" } }));
   for (const c of m.contracts) out.push(edge(c.id, "legal", "MANAGED_BY", day("2025-07-01")));
   for (const d of m.deals) out.push(edge(d.id, "sales", "OWNED_BY", day("2026-01-01")));
+  // v2 dashboard edges (dated): new tickets/PRs, clauses, controls, findings, blockers, person acks
+  for (const e of v2.edges) out.push(edge(e.from, e.to, e.type, e.validFrom, { validTo: e.validTo, src: e.src, extra: e.extra }));
   // PRs: Priya authored nine about api-v1, Sam reviewed six of them
   for (let i = 1; i <= 9; i++) {
     out.push(edge("p-priya", `pr-v1-${i}`, "AUTHORED", day("2026-09-01")));
@@ -97,17 +100,34 @@ export async function seed(graphName: string): Promise<void> {
   const g = await graphFor(graphName);
   await ensureSchema(g);
 
-  const simple: [string, { id: string }[]][] = [
+  const simple: [string, ({ id: string } & Record<string, unknown>)[]][] = [
     ["Team", m.teams], ["Person", m.people], ["System", m.systems],
-    ["Customer", [...m.customers, m.v2Customer]], ["Deal", m.deals], ["Contract", m.contracts],
-    ["Decision", m.decisions], ["Incident", m.incidents], ["Task", m.tasks],
+    ["Customer", [...m.customers, m.v2Customer]], ["Deal", v2.deals], ["Contract", v2.contracts],
+    ["Decision", m.decisions], ["Incident", v2.incidents], ["Task", v2.tasks],
+    ["Clause", v2.clauses.map((c) => ({ ...c, src: undefined }))], ["Control", v2.controls], ["Framework", v2.frameworks],
+    ["Vendor", v2.vendors], ["Finding", v2.findings], ["Risk", v2.risks], ["Page", v2.pages], ["Goal", v2.goals],
+    ["DocsStats", [{
+      id: v2.docsStats.id,
+      failedSearchesJson: JSON.stringify(v2.docsStats.failedSearches),
+      sdkAdoptionJson: JSON.stringify(v2.docsStats.sdkAdoption),
+    }]],
   ];
   for (const [label, xs] of simple)
     await writeNodes(g, label, xs.map((x) => ({ id: x.id, props: clean(x) })));
 
+  // ticket meta (priority, SLA, assignee) rides on the Ticket artifact nodes; PR meta on the PR nodes
+  const ticketMeta = new Map(v2.ticketRows.map((t) => [t.id, {
+    priority: t.priority, createdAt: t.createdAt, firstResponseAt: t.firstResponseAt, slaDueAt: t.slaDueAt,
+    assigneeId: t.assigneeId, v1Related: t.v1Related,
+  }]));
+  const prMeta = (p: (typeof v2.prRows)[number]) => ({
+    repo: p.repo, state: p.state, additions: p.additions, deletions: p.deletions, createdAt: p.createdAt,
+    firstReviewAt: p.firstReviewAt, mergedAt: p.mergedAt, reviewerIds: p.reviewerIds, v1Related: p.v1Related,
+  });
+  const prMetaById = new Map(v2.prRows.map((p) => [p.id, prMeta(p)]));
   for (const kind of Object.keys(kindLabel) as Artifact["kind"][]) {
-    const rows = m.artifacts.filter((a) => a.kind === kind)
-      .map((a) => ({ id: a.id, props: clean({ ...a, author: a.authorId, authorId: undefined }) }));
+    const rows = [...m.artifacts, ...v2.extraArtifacts].filter((a) => a.kind === kind)
+      .map((a) => ({ id: a.id, props: clean({ ...a, author: a.authorId, authorId: undefined, ...ticketMeta.get(a.id), ...prMetaById.get(a.id) }) }));
     if (rows.length) await writeNodes(g, `${kindLabel[kind]}:Artifact`, rows);
   }
 
@@ -119,9 +139,12 @@ export async function seed(graphName: string): Promise<void> {
   if (embRows.length)
     await query(g, "UNWIND $rows AS row MATCH (a:Artifact {id: row.id}) SET a.emb = vecf32(row.v)", { rows: embRows });
 
-  await writeNodes(g, "PR:Artifact", Array.from({ length: 9 }, (_, i) => ({
-    id: `pr-v1-${i + 1}`,
-    props: { id: `pr-v1-${i + 1}`, kind: "pr", title: `API v1 auth fix ${i + 1}`, text: `Fixes v1 auth handler bug ${i + 1}`, ts: day("2026-09-01"), uri: `https://git.ledgerly.test/pr/${i + 1}`, author: "p-priya" },
+  await writeNodes(g, "PR:Artifact", v2.prRows.filter((p) => !m.artifacts.some((a) => a.id === p.id)).map((p) => ({
+    id: p.id,
+    props: clean({
+      id: p.id, kind: "pr", title: p.title, text: p.id.startsWith("pr-v1-") ? `Fixes v1 auth handler bug ${p.id.slice(6)}` : `${p.title}.`,
+      ts: p.createdAt, uri: `https://git.ledgerly.test/pr/${p.id.replace(/^pr-(v1-)?/, "")}`, author: p.authorId, ...prMeta(p),
+    }),
   })));
 
   const byType = new Map<string, EdgeRow[]>();
