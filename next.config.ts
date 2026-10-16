@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     "/*": ["./lib/graph/queries/**/*.cypher", "./lib/ingest/cache/**/*"],
   },
   cacheComponents: true,
+  serverExternalPackages: ["falkordb", "@redis/client"],
   partialPrefetching: true,
   turbopack: {
     rules: {

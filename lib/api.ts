@@ -5,7 +5,6 @@ import type {
   Decision,
   InboxItem,
   RippleResult,
-  StreamEvent,
   WhoKnowsRow,
 } from "@/lib/schemas";
 import * as m from "@/lib/mock/ledgerly";
@@ -45,10 +44,28 @@ export async function getSource(artifactId: string): Promise<Artifact> {
   return a;
 }
 
-/** Mock replies with the canned "Who knows the v1 auth flow?" sequence for any question. */
-export async function* askStream(
-  question: string,
-): AsyncGenerator<StreamEvent> {
-  void question;
-  for (const e of m.askEvents) yield e;
+/** Streams `/api/ask` (server-sent events); the route falls back to the cached mock answer without a model. */
+export async function* askStream(question: string): AsyncGenerator<unknown> {
+  const res = await fetch("/api/ask", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  if (!res.ok || !res.body) {
+    const msg = await res.json().then((j: { error?: string }) => j.error, () => undefined);
+    throw new Error(msg ?? `Ask failed (${res.status})`);
+  }
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += value;
+    const frames = buf.split("\n\n");
+    buf = frames.pop()!;
+    for (const f of frames) {
+      const data = f.split("\n").filter((l) => l.startsWith("data: ")).map((l) => l.slice(6)).join("\n");
+      if (data) yield JSON.parse(data);
+    }
+  }
 }
