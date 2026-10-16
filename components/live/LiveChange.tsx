@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ToastStack, type Toast } from "@/components/kit/bencho/toast-stack";
 import { AiStatus, type AiStatusState } from "@/components/kit/rareui/ai-status";
+import { postChange } from "@/lib/api";
 import type { RippleResult } from "@/lib/schemas";
 import { applySunsetMove } from "./applySunsetMove";
 
@@ -19,10 +20,13 @@ export function LiveChange({
   result,
   onApplied,
   autoRun = false,
+  online = true,
 }: {
   result: RippleResult;
   onApplied?: (result: RippleResult) => void;
   autoRun?: boolean;
+  /** POST /api/change moves the sunset on the graph; false keeps it client-side (demo pages). */
+  online?: boolean;
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [step, setStep] = useState<number>(-1);
@@ -47,8 +51,12 @@ export function LiveChange({
     setToasts([{ id: "moved", kind: "info", title: "RFC-14 updated", body: "sunset moved to Jul 15" }]);
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
     STEPS.forEach((s, i) => at(s.at, () => setStep(i)));
-    at(3000, () => {
-      const next = applySunsetMove(result, NEW_ON);
+    // online: the graph moves the sunset and re-runs the ripple while the steps play; fall back to the local move if it fails
+    const moved = online
+      ? postChange(result.decision.id, NEW_ON).catch(() => applySunsetMove(result, NEW_ON))
+      : Promise.resolve(applySunsetMove(result, NEW_ON));
+    at(3000, async () => {
+      const next = await moved;
       setAfter(next);
       setRunning(false);
       setToasts((t) => [

@@ -14,6 +14,9 @@ export function client(): Promise<FalkorDB> {
       host: process.env.FALKORDB_HOST ?? "localhost",
       port: Number(process.env.FALKORDB_PORT ?? 6379),
     },
+  }).catch((e) => {
+    db = undefined; // don't cache a failed connect: the next request retries
+    throw e;
   });
   return db;
 }

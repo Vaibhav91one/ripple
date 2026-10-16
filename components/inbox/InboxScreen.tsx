@@ -6,7 +6,8 @@ import { useState } from "react";
 import TaskRows from "@/components/kit/beautifului/task-rows";
 import { NotificationBell } from "@/components/kit/rareui/notification-bell";
 import { TaskList, type Task } from "@/components/kit/rareui/task-list";
-import { getInbox } from "@/lib/api";
+import { getInbox, isGraphDown } from "@/lib/api";
+import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
 import type { InboxItem } from "@/lib/schemas";
 
 const DAY = 86_400_000;
@@ -24,7 +25,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function InboxScreen() {
   const [p] = useQueryState("p", parseAsString.withDefault("p-priya"));
-  const { data = [] } = useQuery({ queryKey: ["inbox", p], queryFn: () => getInbox(p) });
+  const { data = [], isPending, error, refetch } = useQuery({ queryKey: ["inbox", p], queryFn: () => getInbox(p) });
   const [acked, setAcked] = useState<string[]>([]);
   const [now] = useState(() => Date.now());
 
@@ -36,6 +37,8 @@ export function InboxScreen() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-12">
+      {isGraphDown(error) && <GraphDownBanner onRetry={() => void refetch()} />}
+      {isPending && <LoadingBlock label="Loading your inbox" />}
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-strong">For me</h1>

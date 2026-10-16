@@ -3,12 +3,13 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useState } from "react";
-import { getBottleneck, getChanges, getSource } from "@/lib/api";
+import { getBottleneck, getChanges, getNames, getSource, isGraphDown } from "@/lib/api";
+import { GraphDownBanner } from "@/components/states/States";
 import type { EdgeType } from "@/lib/schemas";
 import DiffTable, { DiffChip, type DiffRow } from "@/components/kit/beautifului/diff-table";
 import TaskRows, { type TaskRowInput } from "@/components/kit/beautifului/task-rows";
 import { Scrub } from "@/components/kit/bencho/time-scrubber";
-import { DAY, defaultSince, filterChanges, nameOf, typeCounts } from "./helpers";
+import { DAY, defaultSince, filterChanges, nameOf as nameFrom, typeCounts } from "./helpers";
 
 const fmt = (ts: number) =>
   new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -30,6 +31,9 @@ export function ChangesScreen() {
     enabled: everything.isSuccess,
   });
   const bottleneck = useQuery({ queryKey: ["bottleneck"], queryFn: getBottleneck });
+  const namesQ = useQuery({ queryKey: ["names"], queryFn: getNames });
+  const nameOf = nameFrom(namesQ.data ?? {});
+  const down = [everything, changes, bottleneck, namesQ].find((q) => isGraphDown(q.error));
 
   const inRange = changes.data ?? [];
   const rows = filterChanges(inRange, types);
@@ -69,6 +73,7 @@ export function ChangesScreen() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-8 py-8">
+      {down && <GraphDownBanner onRetry={() => void down.refetch()} />}
       <header className="flex items-end justify-between gap-8">
         <div>
           <h1 className="text-2xl font-semibold text-strong">What changed</h1>

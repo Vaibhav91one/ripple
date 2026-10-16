@@ -1,0 +1,73 @@
+import type {
+  Artifact,
+  BottleneckRow,
+  Change,
+  Decision,
+  InboxItem,
+  Person,
+  RippleResult,
+  StreamEvent,
+  WhoKnowsRow,
+} from "@/lib/schemas";
+import { applySunsetMove } from "@/components/live/applySunsetMove";
+import * as m from "./ledgerly";
+
+// Offline fallback (NEXT_PUBLIC_RIPPLE_OFFLINE=1) and test fixture: same signatures as lib/api.ts, backed by lib/mock/ledgerly.ts.
+
+export async function getDecisions(): Promise<Decision[]> {
+  return m.decisions;
+}
+
+export async function getRipple(decisionId: string): Promise<RippleResult> {
+  if (decisionId !== m.rippleResult.decision.id)
+    throw new Error(`No ripple for decision ${decisionId}`);
+  return m.rippleResult;
+}
+
+/** `since` is epoch seconds. */
+export async function getChanges(since: number): Promise<Change[]> {
+  return m.changes.filter((c) => c.at >= since);
+}
+
+export async function getBottleneck(): Promise<BottleneckRow[]> {
+  return m.bottleneck;
+}
+
+export async function getWhoKnows(systemId: string): Promise<WhoKnowsRow[]> {
+  return m.whoKnows[systemId] ?? [];
+}
+
+export async function getPeople(): Promise<Person[]> {
+  return m.people;
+}
+
+export async function getNames(): Promise<Record<string, string>> {
+  return Object.fromEntries(
+    [m.teams, m.people, m.systems, m.customers, m.decisions, m.deals, m.contracts]
+      .flat()
+      .map((x) => [x.id, "name" in x ? x.name : x.title]),
+  );
+}
+
+/** Offline stand-in for POST /api/change: same assumption as applySunsetMove. */
+export async function postChange(decisionId: string, newOn: number): Promise<RippleResult> {
+  return applySunsetMove(await getRipple(decisionId), newOn);
+}
+
+export async function getInbox(personId: string): Promise<InboxItem[]> {
+  return m.inboxes[personId] ?? [];
+}
+
+export async function getSource(artifactId: string): Promise<Artifact> {
+  const a = m.artifacts.find((x) => x.id === artifactId);
+  if (!a) throw new Error(`No artifact ${artifactId}`);
+  return a;
+}
+
+/** Mock replies with the canned "Who knows the v1 auth flow?" sequence for any question. */
+export async function* askStream(
+  question: string,
+): AsyncGenerator<StreamEvent> {
+  void question;
+  for (const e of m.askEvents) yield e;
+}
