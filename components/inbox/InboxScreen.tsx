@@ -7,6 +7,7 @@ import TaskRows from "@/components/kit/beautifului/task-rows";
 import { NotificationBell } from "@/components/kit/rareui/notification-bell";
 import { TaskList, type Task } from "@/components/kit/rareui/task-list";
 import { getInbox, isGraphDown } from "@/lib/api";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
 import type { InboxItem } from "@/lib/schemas";
 
@@ -36,18 +37,12 @@ export function InboxScreen() {
   const waiting = data.filter((i) => i.kind === "waiting");
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-[960px] flex-col gap-8 px-8 py-8">
       {isGraphDown(error) && <GraphDownBanner onRetry={() => void refetch()} />}
       {isPending && <LoadingBlock label="Loading your inbox" />}
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-strong">For me</h1>
-          <p className="text-sm text-body">
-            {unread} to acknowledge, {reviews.length} to review, {waiting.length} waiting
-          </p>
-        </div>
+      <PageHeader title="For me" subtitle={`${unread} to acknowledge, ${reviews.length} to review, ${waiting.length} waiting`}>
         <NotificationBell count={unread} />
-      </header>
+      </PageHeader>
 
       <Section title="Briefs to acknowledge">
         {tasks.length ? (
@@ -78,6 +73,6 @@ export function InboxScreen() {
           <p className="text-sm text-faint">No one is waiting.</p>
         )}
       </Section>
-    </main>
+    </div>
   );
 }

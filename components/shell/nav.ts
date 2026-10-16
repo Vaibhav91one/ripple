@@ -22,7 +22,7 @@ export const NAV: DashboardShellNavSection[] = [
     items: [
       { id: "/overview", label: "Overview", icon: LayoutDashboard, href: "/overview" },
       { id: "/graph", label: "Graph", icon: Network, href: "/graph" },
-      { id: "/decisions", label: "Decisions", icon: GitPullRequestArrow, href: "/decisions/d-1" },
+      { id: "/decisions", label: "Decisions", icon: GitPullRequestArrow, href: "/decisions" },
       { id: "/changes", label: "Changes", icon: History, href: "/changes" },
       { id: "/inbox", label: "Inbox", icon: Inbox, href: "/inbox" },
     ],

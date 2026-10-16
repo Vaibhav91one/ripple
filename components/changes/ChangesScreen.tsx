@@ -4,6 +4,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useState } from "react";
 import { getBottleneck, getChanges, getNames, getSource, isGraphDown } from "@/lib/api";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner } from "@/components/states/States";
 import type { EdgeType } from "@/lib/schemas";
 import DiffTable, { DiffChip, type DiffRow } from "@/components/kit/beautifului/diff-table";
@@ -74,15 +75,12 @@ export function ChangesScreen() {
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-8 py-8">
       {down && <GraphDownBanner onRetry={() => void down.refetch()} />}
-      <header className="flex items-end justify-between gap-8">
-        <div>
-          <h1 className="text-2xl font-semibold text-strong">What changed</h1>
-          <p className="mt-1 text-[13px] text-faint">
-            {inRange.length} edge {inRange.length === 1 ? "change" : "changes"} since {fmt(since)}
-          </p>
-        </div>
+      <PageHeader
+        title="What changed"
+        subtitle={`${inRange.length} edge ${inRange.length === 1 ? "change" : "changes"} since ${fmt(since)}`}
+      >
         <Scrub mode="days" min={Math.min(earliest, since) - DAY} max={latest} value={since} onChange={setSince} />
-      </header>
+      </PageHeader>
 
       <div className="grid grid-cols-[1fr_360px] items-start gap-6">
         <section className="overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
