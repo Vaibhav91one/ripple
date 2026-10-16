@@ -12,25 +12,39 @@ import { useState } from "react";
  * Choices, paging, and submission are directly controlled.
  * ───────────────────────────────────────────────────────── */
 
-const QUESTIONS = [
+export type ApprovalQuestion = { q: string; type: "radio" | "check"; options: string[] };
+export type ApprovalAnswer = { selected: number[]; custom: string };
+
+const SAMPLE_QUESTIONS: ApprovalQuestion[] = [
   {
     q: "Acknowledge conflict?",
-    type: "radio" as const,
+    type: "radio",
     options: ["Move date", "Negotiate", "Escalate to owner"],
   },
   {
     q: "Who should be told?",
-    type: "check" as const,
+    type: "check",
     options: ["Legal", "Sales", "Customer success"],
   },
   {
     q: "Where do we send it first?",
-    type: "radio" as const,
+    type: "radio",
     options: ["Slack thread", "Email", "Weekly digest"],
   },
 ];
 
-export default function ApprovalCard() {
+export default function ApprovalCard({
+  questions: QUESTIONS = SAMPLE_QUESTIONS,
+  sentLabel = "Answers sent",
+  onSubmit,
+  onReset,
+}: {
+  questions?: ApprovalQuestion[];
+  sentLabel?: string;
+  /** Fires once, when the last answer is sent. */
+  onSubmit?: (answers: ApprovalAnswer[]) => void;
+  onReset?: () => void;
+} = {}) {
   const [qi, setQi] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number[]>>({});
   const [custom, setCustom] = useState<Record<number, string>>({});
@@ -41,21 +55,26 @@ export default function ApprovalCard() {
   const selected = answers[qi] ?? [];
   const hasAnswer = selected.length > 0 || Boolean(custom[qi]?.trim());
 
+  const send = (finalAnswers: Record<number, number[]>, finalCustom: Record<number, string>) => {
+    setSent(true);
+    onSubmit?.(QUESTIONS.map((_, i) => ({ selected: finalAnswers[i] ?? [], custom: finalCustom[i] ?? "" })));
+  };
+
   const toggle = (index: number) => {
-    setAnswers((current) => {
-      const picked = current[qi] ?? [];
-      const next = question.type === "radio"
-        ? [index]
-        : picked.includes(index)
-          ? picked.filter((item) => item !== index)
-          : [...picked, index];
-      return { ...current, [qi]: next };
-    });
+    const picked = answers[qi] ?? [];
+    const next = question.type === "radio"
+      ? [index]
+      : picked.includes(index)
+        ? picked.filter((item) => item !== index)
+        : [...picked, index];
+    const nextAnswers = { ...answers, [qi]: next };
+    setAnswers(nextAnswers);
     if (question.type === "radio") {
-      setCustom((current) => ({ ...current, [qi]: "" }));
+      const nextCustom = { ...custom, [qi]: "" };
+      setCustom(nextCustom);
       // single-choice auto-advances
       window.setTimeout(() => {
-        if (qi === QUESTIONS.length - 1) setSent(true);
+        if (qi === QUESTIONS.length - 1) send(nextAnswers, nextCustom);
         else setQi((current) => Math.min(QUESTIONS.length - 1, current + 1));
       }, 480);
     }
@@ -67,6 +86,7 @@ export default function ApprovalCard() {
     setCustom({});
     setSent(false);
     setOpen(true);
+    onReset?.();
   };
 
   if (!open) {
@@ -89,21 +109,21 @@ export default function ApprovalCard() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
             </span>
             <span className="text-[13px] font-medium text-strong" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) 100ms both" }}>
-              Answers sent
+              {sentLabel}
             </span>
             <button type="button" onClick={reset} className="text-[12px] font-medium text-ripple hover:underline">
               Start over
             </button>
           </div>
         ) : (
-          <div key={qi} className="primitive-card-pad" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) both" }}>
+          <div key={qi} className="p-4" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) both" }}>
             <div className="flex items-start justify-between gap-3">
               <span className="text-[13px] font-medium text-strong">{question.q}</span>
               <button
                 type="button"
                 aria-label="Dismiss"
                 onClick={() => setOpen(false)}
-                className="primitive-icon-button shrink-0
+                className="flex size-6 items-center justify-center rounded-md shrink-0
                   text-faint transition-colors duration-100 hover:bg-raised hover:text-strong"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -157,7 +177,7 @@ export default function ApprovalCard() {
         )}
 
         {/* footer — ring-dot pager + send arrow */}
-        <div className="primitive-card-footer flex items-center justify-between">
+        <div className="px-4 py-2.5 flex items-center justify-between">
           <span className="flex items-center gap-2">
             <button
               type="button"
@@ -203,7 +223,7 @@ export default function ApprovalCard() {
               type="button"
               aria-label={last ? "Send answers" : "Next question"}
               disabled={!hasAnswer}
-              onClick={() => last ? setSent(true) : setQi((current) => current + 1)}
+              onClick={() => last ? send(answers, custom) : setQi((current) => current + 1)}
               className="-mr-0.5 flex size-7 items-center justify-center rounded-[8px] transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
               style={{
                 background: hasAnswer ? "var(--strong)" : "var(--raised)",
