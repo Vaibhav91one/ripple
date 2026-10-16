@@ -475,7 +475,7 @@ export function SlideConfirm({
             transition={{ duration: 0.16, ease: [0.33, 0.55, 0.2, 1] }}
           >
             <Check size={20} strokeWidth={2} />
-            Notified
+            {doneLabel}
           </m.span>
         </m.button>
       </m.div>
