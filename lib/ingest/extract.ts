@@ -1,6 +1,7 @@
 // Per-artifact edge extraction with a verbatim-quote check and a committed content-hash cache.
 // Cache hit => the model is never called, so the demo runs with no API key.
 import { createHash } from "node:crypto";
+import { join } from "node:path";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { generateText, Output, type LanguageModel } from "ai";
 import { z } from "zod";
@@ -8,7 +9,8 @@ import { pickModel } from "../llm";
 import { artifacts, edges as mockEdges } from "../mock/ledgerly";
 import { EdgeType } from "../schemas";
 
-export const CACHE_DIR = new URL("./cache/extract/", import.meta.url);
+// Resolved from the project root (not import.meta.url): Turbopack treats new URL("./x/") as an asset import.
+export const CACHE_DIR = join(process.cwd(), "lib/ingest/cache/extract");
 
 export const ExtractedEdge = z.object({
   from: z.string().describe("id of the source entity"),
@@ -42,7 +44,7 @@ export function quoteCheck(text: string, edges: ExtractedEdge[]) {
   return { kept, dropped };
 }
 
-const cachePath = (hash: string) => new URL(`${hash}.json`, CACHE_DIR);
+const cachePath = (hash: string) => join(CACHE_DIR, `${hash}.json`);
 
 export function readCache(text: string): CacheEntry | null {
   const p = cachePath(sha256(text));

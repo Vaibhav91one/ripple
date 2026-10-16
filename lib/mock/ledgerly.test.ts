@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as m from "@/lib/mock/ledgerly";
 import * as s from "@/lib/schemas";
 import { askStream, getChanges, getInbox, getWhoKnows, getRipple, getSource } from "@/lib/api";
@@ -80,8 +80,15 @@ describe("ledgerly mocks", () => {
     expect(await getInbox("p-priya")).toHaveLength(3);
     expect((await getWhoKnows("api-v1"))[0].personId).toBe("p-priya");
     expect((await getChanges(0)).length).toBe(m.changes.length);
-    const events = [];
+    // askStream parses the /api/ask SSE body (frames split mid-chunk)
+    const sse = m.askEvents.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("");
+    const mid = Math.floor(sse.length / 2);
+    const enc = new TextEncoder();
+    vi.stubGlobal("fetch", async () =>
+      new Response(new ReadableStream({ start(c) { c.enqueue(enc.encode(sse.slice(0, mid))); c.enqueue(enc.encode(sse.slice(mid))); c.close(); } })));
+    const events: unknown[] = [];
     for await (const e of askStream(m.askQuestion)) events.push(e);
-    expect(events.at(-1)?.type).toBe("done");
+    vi.unstubAllGlobals();
+    expect(events).toEqual(m.askEvents);
   });
 });

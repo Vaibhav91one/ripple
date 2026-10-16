@@ -14,7 +14,7 @@ const cache = new Map<string, string>();
 export type Cypher = { name: string; text: string };
 export type Result<T> = { data: T; cypher: Cypher[] };
 
-function load(name: string): Cypher {
+export function load(name: string): Cypher {
   let text = cache.get(name);
   if (text === undefined) cache.set(name, (text = readFileSync(path.join(DIR, `${name}.cypher`), "utf8")));
   return { name, text };

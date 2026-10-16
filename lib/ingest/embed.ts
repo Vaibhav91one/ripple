@@ -1,10 +1,12 @@
 // MiniLM-L6-v2 (384-d) embeddings of title + first paragraph, cached by content hash and committed.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { pipeline } from "@huggingface/transformers";
 import { artifacts } from "../mock/ledgerly";
 import { sha256 } from "./extract";
 
-export const EMBED_DIR = new URL("./cache/embed/", import.meta.url);
+// Resolved from the project root (not import.meta.url): Turbopack treats new URL("./x/") as an asset import.
+export const EMBED_DIR = join(process.cwd(), "lib/ingest/cache/embed");
 const MODEL = "Xenova/all-MiniLM-L6-v2";
 
 /** title + first paragraph, capped at 200 words. */
@@ -22,7 +24,7 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   return out.tolist().map((v) => v.map((x) => Math.round(x * 1e5) / 1e5));
 }
 
-const file = (input: string) => new URL(`${sha256(input)}.json`, EMBED_DIR);
+const file = (input: string) => join(EMBED_DIR, `${sha256(input)}.json`);
 
 export function readEmbedding(a: { title: string; text: string }): number[] | null {
   const p = file(embedInput(a));
