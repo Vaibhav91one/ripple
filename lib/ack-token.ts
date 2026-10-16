@@ -1,11 +1,13 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-// Mock token: base64url JSON. Real HMAC signing comes in #16.
+// Signed token: base64url(JSON payload) + "." + base64url(HMAC-SHA256). Secret: ACK_TOKEN_SECRET.
 const Payload = z.object({
   teamId: z.string().min(1),
   decisionId: z.string().min(1),
   exp: z.number().int(), // epoch seconds
-  acked: z.boolean().optional(), // demo flag: already acknowledged
+  r: z.enum(["seen", "concern", "not_relevant"]).optional(), // suggested reply
+  acked: z.boolean().optional(), // demo flag: already acknowledged (styleguide/screenshots)
 });
 export type AckPayload = z.infer<typeof Payload>;
 
@@ -14,13 +16,31 @@ export type AckTokenState =
   | { state: "expired" | "acked"; payload: AckPayload }
   | { state: "invalid" };
 
-export const encodeAckToken = (p: AckPayload) =>
-  Buffer.from(JSON.stringify(p)).toString("base64url");
+let warned = false;
+function secret(): string {
+  const s = process.env.ACK_TOKEN_SECRET;
+  if (s) return s;
+  if (!warned) {
+    warned = true;
+    console.warn("ACK_TOKEN_SECRET is not set: signing ack tokens with an insecure dev default. Set it before deploying.");
+  }
+  return "ripple-dev-ack-secret";
+}
+const mac = (body: string) => createHmac("sha256", secret()).update(body).digest("base64url");
+
+export function encodeAckToken(p: AckPayload): string {
+  const body = Buffer.from(JSON.stringify(p)).toString("base64url");
+  return `${body}.${mac(body)}`;
+}
 
 /** Pure: `now` is epoch seconds. Never throws. */
 export function decodeAckToken(token: string, now = Math.floor(Date.now() / 1000)): AckTokenState {
   try {
-    const payload = Payload.parse(JSON.parse(Buffer.from(token, "base64url").toString("utf8")));
+    const [body, sig, extra] = token.split(".");
+    if (!body || !sig || extra !== undefined) return { state: "invalid" };
+    const want = Buffer.from(mac(body)), got = Buffer.from(sig);
+    if (want.length !== got.length || !timingSafeEqual(want, got)) return { state: "invalid" };
+    const payload = Payload.parse(JSON.parse(Buffer.from(body, "base64url").toString("utf8")));
     if (payload.exp < now) return { state: "expired", payload };
     if (payload.acked) return { state: "acked", payload };
     return { state: "ok", payload };

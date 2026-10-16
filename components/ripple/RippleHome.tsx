@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { ToastStack, type Toast } from "@/components/kit/bencho/toast-stack";
 import LoadingState from "@/components/kit/beautifului/loading-state";
 import { AnimatedCount } from "@/components/motion/AnimatedCount";
 import { CardEnter } from "@/components/motion/CardEnter";
@@ -12,13 +13,35 @@ import { TeamCard, type TeamStatus } from "./TeamCard";
 import { useDecisionId } from "./useDecisionId";
 import { useTeam } from "./useTeam";
 
+type NotifyToastResult = { teamId: string; taskId: string; email: { status: "sent" | "preview" | "failed"; to: string | null } };
 const ORDER: Record<TeamStatus, number> = { conflict: 0, gap: 1, covered: 2 };
 
 export function RippleHome() {
   const [d] = useDecisionId();
   const { data, isPending, error } = useQuery({ queryKey: ["ripple", d], queryFn: () => getRipple(d) });
   const [team] = useTeam();
-  const [notified, setNotified] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function notify() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decisionId: d }) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? res.statusText);
+      const made: Toast[] = (json.results as NotifyToastResult[]).map((r) => ({
+        id: r.taskId,
+        kind: r.email.status === "failed" ? "error" : r.email.status === "sent" ? "success" : "info",
+        title: `${name(r.teamId)} briefed`,
+        body: r.email.status === "sent" ? `Email sent to ${r.email.to}.` : r.email.status === "failed" ? "Email failed." : "Email saved as preview.",
+      }));
+      setToasts((t) => [...made.reverse(), ...t]);
+    } catch (e) {
+      setToasts((t) => [{ id: `err-${Date.now()}`, kind: "error", title: "Notify failed", body: String(e instanceof Error ? e.message : e).slice(0, 80) }, ...t]);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (isPending)
     return <div className="grid h-full place-items-center"><LoadingState /></div>;
@@ -70,16 +93,20 @@ export function RippleHome() {
           renderChip={(c) => <span className="inline-flex h-6 items-center rounded-full bg-gap-soft px-2.5 text-sm font-medium text-gap">{c.label}</span>}
         />
         <div className="ml-auto flex items-center gap-3">
-          {notified && <span role="status" className="text-sm text-covered">Briefs queued for {data.gap.length} teams</span>}
-          {/* ponytail: no-op until the notify route exists (Phase 3); toast via Bencho when wired */}
           <button
-            onClick={() => setNotified(true)}
-            className="h-8 rounded-lg bg-gap px-3 text-sm font-medium text-page transition-opacity hover:opacity-90"
+            onClick={notify}
+            disabled={busy}
+            className="h-8 rounded-lg bg-gap px-3 text-sm font-medium text-page transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            Notify gaps
+            {busy ? "Notifying..." : "Notify gaps"}
           </button>
         </div>
       </footer>
+      {toasts.length > 0 && (
+        <div className="fixed bottom-20 right-5 z-50" role="status">
+          <ToastStack toasts={toasts} onDismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
+        </div>
+      )}
     </div>
   );
 }
