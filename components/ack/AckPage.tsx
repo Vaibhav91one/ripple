@@ -54,7 +54,7 @@ export function AckPage({ token, reply }: { token: string; reply?: string }) {
           </li>
         ))}
       </ol>
-      <AckConfirm reply={reply} />
+      <AckConfirm token={token} reply={reply} />
     </main>
   );
 }
