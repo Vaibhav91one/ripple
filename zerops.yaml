@@ -1,0 +1,66 @@
+# Zerops pipeline for Ripple. Key names checked against docs.zerops.io/zerops-yaml/specification,
+# /docker/overview and /nodejs/how-to/build-pipeline. Not run on a real account yet; "UNCONFIRMED" marks guesses.
+# Project secrets (set in the project, shared by both services): FALKORDB_PASSWORD, RESET_TOKEN, LLM_API_KEY.
+# RAM/CPU/disk are NOT set here: they live in the import yaml (verticalAutoscaling), see docs/deploy.md.
+zerops:
+  # `setup` must equal the service hostname (or be selected via zeropsSetup in the import yaml).
+  - setup: falkordb
+    run:
+      base: docker@latest
+      prepareCommands:
+        # Pinned tag, per the docker page (prepareCommands output is cached, so never use :latest).
+        - docker image pull falkordb/falkordb:6.0.2
+      # --network=host is required by the docker page; ports are declared below, not with -p.
+      # REDIS_ARGS is read by the falkordb image entrypoint (UNCONFIRMED against the Zerops docs; it is a FalkorDB image feature).
+      # UNCONFIRMED: persistence. Mount a volume at /var/lib/falkordb/data if Zerops offers one; without it, the web service reseeds on boot.
+      start: >-
+        docker run --rm --network=host
+        -e REDIS_ARGS="--requirepass $FALKORDB_PASSWORD"
+        falkordb/falkordb:6.0.2
+      ports:
+        - port: 6379
+          protocol: TCP
+          httpSupport: false # internal only: do not add a public route for this port
+
+  - setup: web
+    build:
+      base: nodejs@22
+      prepareCommands:
+        - npm i -g pnpm@10.18.2 # UNCONFIRMED: global npm install is allowed in the build container
+      buildCommands:
+        - pnpm install --frozen-lockfile
+        - pnpm build
+        # standalone needs static + public copied next to server.js (Next docs: self-hosting guide)
+        - cp -r .next/static .next/standalone/.next/static
+        - cp -r public .next/standalone/public
+      deployFiles:
+        # whole folder lands in /var/www/.next/standalone (paths are kept; "~" shortening not relied on)
+        - .next/standalone
+      cache: node_modules
+    run:
+      base: nodejs@22
+      ports:
+        - port: 3000
+          httpSupport: true
+      envVariables:
+        NODE_ENV: production
+        PORT: "3000"
+        HOSTNAME: 0.0.0.0
+        FALKORDB_HOST: falkordb # services reach each other by hostname (docs: "app:3000")
+        FALKORDB_PORT: "6379"
+        # FALKORDB_PASSWORD, RESET_TOKEN, LLM_API_KEY come from project-level secrets (UNCONFIRMED: that
+        # project env vars are visible by bare name in every service; otherwise add them here).
+        LLM_PROVIDER: anthropic
+        MODEL_AGENT: claude-sonnet-5-5
+        MODEL_EXTRACT: claude-haiku-5-5
+      # server.js does process.chdir(__dirname), so the .cypher files resolve from the standalone folder.
+      start: node .next/standalone/server.js
+      healthCheck:
+        httpGet:
+          port: 3000
+          path: /
+    deploy:
+      readinessCheck:
+        httpGet:
+          port: 3000
+          path: / # not /api/health: a FalkorDB blip must not fail the deploy or restart the web container
