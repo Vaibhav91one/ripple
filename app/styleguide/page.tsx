@@ -1,3 +1,5 @@
+import { MotionDemo } from "@/components/motion/MotionDemo";
+
 // Every design token in one place (#1). Motion (#2) and kit components (#3) add sections here.
 const surfaces = ["page", "surface", "raised", "overlay"] as const;
 const text = [["strong", "Headings, numbers", "text-strong"], ["body", "Running text", "text-body"], ["faint", "Labels, hints", "text-faint"]] as const;
@@ -75,6 +77,8 @@ export default function Styleguide() {
         </div>
         <p className="text-lg text-strong">5 affected · <span className="text-gap">3 not told</span> · <span className="text-conflict">1 conflict</span></p>
       </section>
+
+      <MotionDemo />
     </main>
   );
 }
