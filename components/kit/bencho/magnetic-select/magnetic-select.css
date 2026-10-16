@@ -163,3 +163,11 @@
 @media (prefers-reduced-motion: reduce) {
   .mag-skin { transition-duration: 160ms; }
 }
+
+/* ── focus follows the disc, not the box ────────────────────
+   Ripple's global :focus-visible draws a square outline, and the
+   chip is a square POSITION holding a round skin, so the ring
+   landed as a box around a circle. The ring belongs on the skin,
+   which is the only thing that knows it is round. */
+.mag-chip:focus-visible { outline: none; }
+.mag-chip:focus-visible .mag-skin { box-shadow: 0 0 0 2px var(--color-ripple); }
