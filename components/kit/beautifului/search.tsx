@@ -20,44 +20,62 @@ const ITEMS = [
   "Close covered decisions",
 ];
 
-export default function SearchList() {
+/** The input row with clear action; controlled. */
+export function SearchField({
+  value,
+  onChange,
+  placeholder = "Search the company brain…",
+  label = placeholder,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`flex h-10 items-center gap-2 border-b border-hairline px-3 transition-colors duration-100 hover:bg-raised ${className}`}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2" strokeLinecap="round" className="shrink-0">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.3-4.3" />
+      </svg>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-strong outline-none placeholder:text-faint"
+      />
+      {value && (
+        <button
+          aria-label="Clear search"
+          type="button"
+          onClick={() => onChange("")}
+          className="flex size-5.5 items-center justify-center rounded-full text-faint
+            transition-colors duration-100 hover:bg-overlay/70 hover:text-strong"
+          style={{ animation: "fade-in 150ms ease-out both" }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function SearchList({ items = ITEMS }: { items?: string[] } = {}) {
   const [query, setQuery] = useState("");
   const results = query
-    ? ITEMS.filter((i) => i.toLowerCase().includes(query.toLowerCase()))
-    : ITEMS.slice(0, 5);
+    ? items.filter((i) => i.toLowerCase().includes(query.toLowerCase()))
+    : items.slice(0, 5);
   const empty = query.length > 2 && results.length === 0;
 
   return (
     <div className="flex min-h-[248px] w-full max-w-72 flex-col items-stretch">
       <div className="w-full self-start overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-raised)]">
-        {/* input row */}
-        <div className="flex h-10 items-center gap-2 border-b border-hairline px-3 transition-colors duration-100 hover:bg-raised">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2" strokeLinecap="round" className="shrink-0">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search the company brain…"
-            aria-label="Search the company brain"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-strong outline-none placeholder:text-faint"
-          />
-          {query && (
-            <button
-              aria-label="Clear search"
-              type="button"
-              onClick={() => setQuery("")}
-              className="flex size-5.5 items-center justify-center rounded-full text-faint
-                transition-colors duration-100 hover:bg-overlay/70 hover:text-strong"
-              style={{ animation: "fade-in 150ms ease-out both" }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
+        <SearchField value={query} onChange={setQuery} />
 
         {/* results / empty state */}
         {empty ? (

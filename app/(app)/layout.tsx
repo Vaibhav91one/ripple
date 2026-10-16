@@ -3,6 +3,7 @@ import { TopBar } from "@/components/ripple/TopBar";
 import { AskDrawer } from "@/components/ask/AskDrawer";
 import { SourcePanel } from "@/components/panels/SourcePanel";
 import { ConflictDialog } from "@/components/ripple/ConflictDialog";
+import { DecisionSidebar } from "@/components/sidebar/DecisionSidebar";
 
 // App shell: top bar, left slot for the decision sidebar (empty for now), then the screen.
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <TopBar />
       </Suspense>
       <div className="flex min-h-0 flex-1">
-        <aside data-slot="decision-sidebar" className="shrink-0 empty:hidden" />
+        <aside data-slot="decision-sidebar" className="relative w-10 shrink-0 md:overflow-y-auto border-r border-hairline bg-surface md:w-65">
+          <Suspense>
+            <DecisionSidebar />
+          </Suspense>
+        </aside>
         <main className="min-w-0 flex-1">
           <Suspense>{children}</Suspense>
         </main>
