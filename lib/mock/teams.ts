@@ -28,9 +28,9 @@ export function mockTeamDashboard(team: TeamId): TeamDashboard {
     case "eng":
       return buildEng({ prs: v2.prRows, incidents: v2.incidents, services: m.systems, people: people(team) }, a, now);
     case "support":
-      return buildSupport({ tickets: v2.ticketRows, customers: [...m.customers, m.v2Customer], people: people(team) }, a, now);
+      return buildSupport({ tickets: v2.ticketRows, customers: [...m.customers, m.v2Customer], people: people(team), v1CustomerIds: [...new Set(m.edges.filter((e) => e.type === "USES" && e.to === "api-v1").map((e) => e.from))] }, a, now);
     case "sales":
-      return buildSales({ deals: v2.deals, goals: v2.goals.filter((g) => g.ownerTeamId === "sales" && g.target != null), people: people(team) }, a, now);
+      return buildSales({ deals: v2.deals, goals: v2.goals.filter((g) => g.ownerTeamId === "sales" && g.target != null), people: people(team), promises: [...m.edges, ...v2.edges].flatMap((e) => (e.type === "PROMISED" && e.src ? [{ dealId: e.from, source: e.src }] : [])) }, a, now);
     case "legal":
       return buildLegal({ contracts: v2.contracts, clauses: v2.clauses, people: people(team) }, a, now);
     case "security":
