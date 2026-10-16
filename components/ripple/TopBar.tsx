@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { parseAsString, useQueryState } from "nuqs";
 import { getDecisions } from "@/lib/api";
 import { useDecisionId } from "./useDecisionId";
+import { TEAM_TABS, useTeam } from "./useTeam";
 
 export function TopBar() {
   const [d] = useDecisionId();
+  const [team, setTeam] = useTeam();
   const [, setAsk] = useQueryState("ask", parseAsString);
   const { data } = useQuery({ queryKey: ["decisions"], queryFn: getDecisions });
   const title = data?.find((x) => x.id === d)?.title;
@@ -22,7 +24,21 @@ export function TopBar() {
       </span>
       <span className="h-4 w-px bg-hairline" />
       <span className="truncate text-sm text-body">{title ?? " "}</span>
-      <div data-slot="team-tabs" className="flex flex-1 items-center gap-1" />
+      <div data-slot="team-tabs" role="group" aria-label="Filter by team" className="flex flex-1 items-center gap-1 overflow-x-auto">
+        {[{ id: null, label: "All" }, ...TEAM_TABS].map((t) => (
+          <button
+            key={t.label}
+            type="button"
+            aria-pressed={team === t.id}
+            onClick={() => setTeam(t.id)}
+            className={`h-7 shrink-0 rounded-md px-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ripple ${
+              team === t.id ? "bg-raised font-medium text-strong" : "text-faint hover:text-strong"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       <button
         onClick={() => setAsk("1")}
         className="h-8 rounded-lg bg-ripple-soft px-3 text-sm font-medium text-ripple transition-colors hover:bg-ripple/25"

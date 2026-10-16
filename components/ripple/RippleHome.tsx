@@ -10,12 +10,14 @@ import { getRipple } from "@/lib/api";
 import { RippleGraph } from "./RippleGraph";
 import { TeamCard, type TeamStatus } from "./TeamCard";
 import { useDecisionId } from "./useDecisionId";
+import { useTeam } from "./useTeam";
 
 const ORDER: Record<TeamStatus, number> = { conflict: 0, gap: 1, covered: 2 };
 
 export function RippleHome() {
   const [d] = useDecisionId();
   const { data, isPending, error } = useQuery({ queryKey: ["ripple", d], queryFn: () => getRipple(d) });
+  const [team] = useTeam();
   const [notified, setNotified] = useState(false);
 
   if (isPending)
@@ -27,14 +29,14 @@ export function RippleHome() {
   const conflictRefs = new Set(data.conflicts.flatMap((c) => c.contractIds));
   const status = (t: (typeof data.teams)[number]): TeamStatus =>
     t.why.some((w) => conflictRefs.has(w.ref)) ? "conflict" : data.gap.includes(t.teamId) ? "gap" : "covered";
-  const cards = data.teams.map((t) => ({ t, s: status(t) })).sort((a, b) => ORDER[a.s] - ORDER[b.s]);
+  const cards = data.teams.map((t) => ({ t, s: status(t) })).sort((a, b) => (team ? Number(b.t.teamId === team) - Number(a.t.teamId === team) : 0) || ORDER[a.s] - ORDER[b.s]);
   const { teamsAffected, notTold, conflicts } = data.counts;
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex min-h-0 flex-1">
         <section className="relative min-w-0 basis-3/5 p-4">
-          <RippleGraph data={data} />
+          <RippleGraph data={data} team={team} />
           <p className="absolute bottom-3 left-5 text-xs text-faint">
             Rings are hops. Sectors group customers {data.counts.customers}, tickets {data.counts.tickets}, deals {data.counts.deals}, contracts {data.counts.contracts}.
           </p>
@@ -50,7 +52,12 @@ export function RippleHome() {
           <div className="flex flex-col gap-2.5">
             <CardEnter>
               {cards.map(({ t, s }) => (
-                <TeamCard key={t.teamId} name={name(t.teamId)} status={s} team={t} cypher={s === "gap" ? (data.cypher[1] ?? data.cypher[0]) : data.cypher[0]} />
+                <div
+                  key={t.teamId}
+                  className={`rounded-xl transition-opacity duration-200 ${team ? (t.teamId === team ? "ring-1 ring-ripple" : "opacity-45") : ""}`}
+                >
+                  <TeamCard name={name(t.teamId)} status={s} team={t} cypher={s === "gap" ? (data.cypher[1] ?? data.cypher[0]) : data.cypher[0]} />
+                </div>
               ))}
             </CardEnter>
           </div>
