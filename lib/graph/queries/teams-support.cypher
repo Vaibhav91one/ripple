@@ -10,5 +10,8 @@ MATCH (c:Customer)
 RETURN 'customers' AS kind, collect({id: c.id, name: c.name, arr: c.arr, tier: c.tier, region: c.region,
   monthlyCalls: c.monthlyCalls, healthScore: c.healthScore, renewalDate: c.renewalDate}) AS rows
 UNION ALL
+MATCH (c:Customer)-[:USES]->(:System {id: 'api-v1'})
+RETURN 'v1CustomerIds' AS kind, collect(c.id) AS rows
+UNION ALL
 MATCH (p:Person {teamId: $team})
 RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows

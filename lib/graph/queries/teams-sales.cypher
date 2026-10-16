@@ -8,5 +8,8 @@ MATCH (g:Goal {ownerTeamId: $team}) WHERE g.target IS NOT NULL
 RETURN 'goals' AS kind, collect({id: g.id, title: g.title, ownerTeamId: g.ownerTeamId, progress: g.progress,
   status: g.status, target: g.target, current: g.current}) AS rows
 UNION ALL
+MATCH (d:Deal)-[r:PROMISED]->(:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
+RETURN 'promises' AS kind, collect({dealId: d.id, source: {artifactId: r.src, quote: r.quote}}) AS rows
+UNION ALL
 MATCH (p:Person {teamId: $team})
 RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
