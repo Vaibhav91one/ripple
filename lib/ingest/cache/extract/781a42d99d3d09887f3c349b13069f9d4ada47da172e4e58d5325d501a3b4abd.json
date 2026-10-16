@@ -1,0 +1,21 @@
+{
+  "origin": "model",
+  "artifactId": "art-fresh",
+  "sha256": "781a42d99d3d09887f3c349b13069f9d4ada47da172e4e58d5325d501a3b4abd",
+  "edges": [
+    {
+      "from": "p-zed",
+      "type": "OWNS",
+      "to": "billing-engine",
+      "quote": "Zed owns the billing-engine"
+    }
+  ],
+  "dropped": [
+    {
+      "from": "p-zed",
+      "type": "OWNS",
+      "to": "ledger",
+      "quote": "Zed owns the ledger"
+    }
+  ]
+}

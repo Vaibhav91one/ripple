@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { rmSync } from "node:fs";
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it } from "vitest";
@@ -67,7 +68,7 @@ describe("extractArtifact", () => {
       expect(again?.cached).toBe(true);
       expect(model.doGenerateCalls).toHaveLength(1);
     } finally {
-      rmSync(new URL(`${sha256(a.text)}.json`, CACHE_DIR), { force: true });
+      rmSync(join(CACHE_DIR, `${sha256(a.text)}.json`), { force: true });
     }
   });
 });
