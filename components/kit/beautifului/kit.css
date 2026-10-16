@@ -1,0 +1,140 @@
+/* Beautiful UI (beautifului.dev, MIT) shared CSS, mapped onto Ripple tokens. */
+:root {
+  --kit-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --kit-ease-link: cubic-bezier(0.16, 1, 0.3, 1);
+  --kit-shadow-hairline: 0 0 0 1px var(--hairline);
+  --kit-shadow-btn: 0 0 0 1px var(--hairline), 0 1px 2px color-mix(in oklab, var(--page) 30%, transparent);
+  --kit-shadow-card: 0 0 0 1px var(--hairline), 0 1px 2px color-mix(in oklab, var(--page) 20%, transparent), 0 2px 6px color-mix(in oklab, var(--page) 20%, transparent);
+  --kit-shadow-raised: 0 0 0 1px var(--hairline), 0 2px 10px color-mix(in oklab, var(--page) 22%, transparent);
+  --kit-shadow-overlay: 0 0 0 1px var(--hairline), 0 8px 28px color-mix(in oklab, var(--page) 34%, transparent);
+  --kit-shadow-inset-field: inset 0 1px 2px color-mix(in oklab, var(--page) 40%, transparent);
+}
+
+/* ── Keyframes ─────────────────────────────────────────── */
+@keyframes shimmer-text{0%{background-position:150%}to{background-position:-50%}}
+@keyframes fade-up{0%{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fade-in{0%{opacity:0}to{opacity:1}}
+@keyframes eq-bounce{0%,to{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+@keyframes stream-in{0%{opacity:0;filter:blur(4px)}to{opacity:1;filter:blur()}}
+@keyframes caret-blink{0%,to{opacity:1}50%{opacity:0}}
+@keyframes pop-in{0%{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{to{transform:rotate(1turn)}}
+@keyframes pixel-on{0%,to{opacity:.15}18%,42%{opacity:1}62%{opacity:.15}}
+
+/* ── Streaming caret (atoms/StreamText) ────────────────── */
+.stream-caret{background:var(--strong);vertical-align:text-bottom;border-radius:1px;width:2px;height:1.05em;margin-left:1.5px;animation:caret-blink 1s step-end infinite;display:inline-block;translate:0 -.5px}
+.stream-caret.is-streaming{animation:none}
+
+/* ── Animated underline ────────────────────────────────── */
+.animated-underline{display:inline-block;position:relative}
+.animated-underline:after{content:"";transform-origin:0;height:1px;transition:transform .28s var(--kit-ease-link);background:currentColor;position:absolute;bottom:-1px;left:0;right:0;transform:scaleX(0)}
+a:focus-visible .animated-underline:after,a:hover .animated-underline:after{transform:scaleX(1)}
+
+/* ── Records table ─────────────────────────────────────── */
+.records-shell{border:1px solid var(--hairline);background:var(--surface);border-radius:10px;width:100%;min-width:0;overflow:hidden;box-shadow:0 1px 2px color-mix(in oklab, var(--page) 6%, transparent)}
+.records-toolbar{border-bottom:1px solid var(--hairline);background:var(--surface);justify-content:space-between;align-items:center;gap:12px;min-height:52px;padding:8px 10px;display:flex}
+.records-add-calculation,.records-company-header,.records-link,.records-primary-button,.records-quiet-button,.records-secondary-button,.records-select-button,.records-strength,.records-toolbar-left,.records-toolbar-right{align-items:center;display:inline-flex}
+.records-toolbar-left,.records-toolbar-right{gap:4px}
+.records-toolbar-right{flex-shrink:0}
+.records-primary-button,.records-quiet-button,.records-secondary-button,.records-select-button{border-radius:var(--radius-control);white-space:nowrap;height:32px;transition:background-color .14s var(--kit-ease-out),color .14s var(--kit-ease-out),transform .14s var(--kit-ease-out),box-shadow .14s var(--kit-ease-out);gap:7px;padding:0 10px;font-size:12px;font-weight:550}
+.records-select-button{color:var(--strong);border:1px solid var(--hairline);background:var(--surface);gap:8px}
+.records-quiet-button:hover,.records-secondary-button:hover,.records-select-button:hover{background:var(--raised);color:var(--strong)}
+.records-quiet-button{color:var(--body)}
+.records-quiet-button.is-active{background:var(--ripple-soft);color:var(--ripple)}
+.records-secondary-button{border:1px solid var(--hairline);color:var(--body);box-shadow:none}
+.records-primary-button{background:var(--ripple);color:var(--page);box-shadow:none;margin-left:3px}
+.records-primary-button:hover{filter:saturate(.9)brightness(1.04)}
+.records-add-calculation:active,.records-primary-button:active,.records-quiet-button:active,.records-secondary-button:active,.records-select-button:active{transform:scale(.96)}
+.records-database-icon{color:var(--covered);display:inline-flex}
+.records-filter-wrap{position:relative}
+.records-filter-dot{background:var(--ripple);border-radius:99px;width:5px;height:5px;margin-left:-2px}
+.records-filter-menu{z-index:30;border:1px solid var(--hairline);border-radius:var(--radius-card);background:var(--surface);width:190px;box-shadow:var(--kit-shadow-overlay);animation:pop-in .16s var(--kit-ease-out) both;transform-origin:0 0;padding:6px;position:absolute;top:calc(100% + 7px);left:0}
+.records-sort-menu{left:-48px}
+.records-filter-label{color:var(--faint);letter-spacing:.04em;text-transform:uppercase;padding:5px 8px 6px;font-size:10.5px;font-weight:650}
+.records-filter-menu button{border-radius:var(--radius-chip);width:100%;color:var(--body);text-align:left;align-items:center;gap:7px;padding:7px 8px;font-size:12px;transition:background-color .12s ease-out,color .12s ease-out;display:flex}
+.records-filter-menu button.is-selected,.records-filter-menu button:hover{background:var(--raised);color:var(--strong)}
+.records-menu-check{width:13px;color:var(--ripple);text-align:center;font-size:12px;font-weight:700}
+.records-scroll{overscroll-behavior:none;scrollbar-color:var(--hairline) transparent;scrollbar-gutter:stable;max-height:438px;overflow:auto}
+.records-scroll:focus-visible{outline:2px solid var(--ripple);outline-offset:-2px}
+.records-table{border-collapse:separate;border-spacing:0;width:100%;min-width:990px;color:var(--strong);table-layout:fixed;font-size:12px}
+.records-company-col{width:270px}
+.records-category-col{width:275px}
+.records-last-col{width:190px}
+.records-strength-col{width:210px}
+.records-link-col{width:175px}
+.records-table td,.records-table th{border-right:1px solid var(--hairline)}
+.records-table td,.records-table th{border-bottom:1px solid var(--hairline)}
+.records-table td,.records-table th{text-align:left;vertical-align:middle}
+.records-table tr>:last-child{border-right:0}
+.records-table thead th{z-index:5;background:var(--surface);height:42px;color:var(--body);font-size:12px;font-weight:600;position:sticky;top:0}
+.records-header-cell{padding:0}
+.records-header-cell.records-sticky-cell{z-index:7}
+.records-company-header,.records-header-button{gap:8px;width:100%;height:42px;padding:0 12px}
+.records-company-header{padding-left:6px}
+.records-header-button{color:var(--body);text-align:left;align-items:center;transition:background-color .12s ease-out,color .12s ease-out;display:flex}
+.records-header-button:hover{background:var(--raised);color:var(--strong)}
+.records-header-icon{color:var(--faint);flex-shrink:0;display:inline-flex}
+.records-sort{opacity:0;transition:opacity .12s ease-out,transform .16s var(--kit-ease-out);flex-shrink:0;margin-left:auto;display:inline-flex}
+.records-header-button:hover .records-sort,.records-sort.is-visible{opacity:1}
+.records-company-header{display:flex}
+.records-company-header>span:not(.records-checkbox-box){white-space:nowrap}
+.records-add-field{color:var(--faint);opacity:0;margin-left:auto;transition:opacity .12s ease-out,color .12s ease-out;display:inline-flex}
+.records-add-field:focus-visible,.records-company-header:hover .records-add-field{opacity:1}
+.records-add-field:hover{color:var(--strong)}
+.records-checkbox{border-radius:var(--radius-chip);flex:0 0 24px;justify-content:center;align-items:center;width:24px;height:24px;display:inline-flex;position:relative}
+.records-checkbox input{opacity:0;width:1px;height:1px;position:absolute}
+.records-checkbox-box{color:var(--body);width:18px;height:18px;transition:border-color .14s ease-out,background-color .14s ease-out,box-shadow .14s ease-out,transform .14s var(--kit-ease-out);background:var(--raised);border:1px solid var(--hairline);border-radius:6px;justify-content:center;align-items:center;display:inline-flex}
+.records-checkbox:hover .records-checkbox-box{background:var(--raised);border-color:var(--faint)}
+.records-checkbox:active .records-checkbox-box{transform:scale(.96)}
+.records-checkbox input:focus-visible+.records-checkbox-box{outline:2px solid var(--ripple);outline-offset:2px}
+.records-checkbox-box.is-active{border-color:var(--ripple);color:var(--page);background:var(--ripple);box-shadow:none}
+.records-checkbox-dash{background:var(--body);border-radius:99px;width:8px;height:1.5px}
+.records-cell{white-space:nowrap;text-overflow:ellipsis;height:42px;padding:0 12px;overflow:hidden}
+.records-sticky-cell{z-index:2;background:var(--surface);position:sticky;left:0;box-shadow:5px 0 8px -10px color-mix(in oklab, var(--page) 40%, transparent)}
+.records-company-cell{align-items:center;gap:4px;padding-left:6px;display:flex;overflow:visible}
+.records-row>.records-cell{transition:background-color .12s ease-out,color .12s ease-out}
+.records-row:hover>.records-cell{background:var(--raised)}
+.records-row.is-selected>.records-cell{background:var(--ripple)}
+.records-company-mark{width:20px;height:20px;color:var(--body);background:var(--raised);border:0;border-radius:6px;flex:0 0 20px;justify-content:center;align-items:center;font-size:10px;font-weight:650;display:inline-flex}
+.records-company-name{min-width:0;color:var(--strong);text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:500;overflow:hidden}
+.records-company-name.has-link:focus-visible,.records-company-name.has-link:hover{color:var(--ripple);text-underline-offset:3px;text-decoration:underline}
+.records-tags{gap:4px;min-width:0;display:flex}
+.records-tag,.records-tags{align-items:center;overflow:hidden}
+.records-tag{cursor:pointer;border:1px solid var(--tag-color);flex-shrink:0;max-width:115px;height:23px;display:inline-flex}
+.records-tag{color:var(--tag-color);border-radius:6px;padding:0 7px}
+.records-tag{background:color-mix(in oklab, var(--tag-color) 14%, transparent);border-color:color-mix(in oklab, var(--tag-color) 35%, transparent)}
+.records-tag{text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:500}
+.records-more-tag{border:1px solid var(--hairline);height:23px;border-radius:6px;flex-shrink:0;align-items:center;padding:0 7px;font-size:11px;font-weight:500;display:inline-flex}
+.records-tag-dot{border-radius:50%;flex:0 0 5px;width:5px;height:5px;margin-right:5px}
+.records-more-tag{border-color:var(--hairline);background:var(--page)}
+.records-more-tag,.records-muted{color:var(--faint)}
+.records-strength{color:var(--body);gap:8px}
+.records-strength-dot{border-radius:50%;flex:0 0 8px;width:8px;height:8px;display:inline-block}
+.records-link{max-width:100%;color:var(--ripple);text-overflow:ellipsis;gap:5px;text-decoration:underline;overflow:hidden}
+.records-link{text-underline-offset:3px;transition:color .12s ease-out,text-decoration-color .12s ease-out}
+.records-link:focus-visible,.records-link:hover{color:var(--strong);text-decoration-color:currentColor}
+.records-table tfoot td{z-index:4;background:var(--page);height:38px;color:var(--body);font-size:11.5px;position:sticky;bottom:0}
+.records-table tfoot .records-sticky-cell{z-index:6;background:var(--page)}
+.records-calculation-label{color:var(--body);font-weight:550}
+.records-calculation-number{color:var(--strong);font-variant-numeric:tabular-nums;margin-right:3px}
+.records-add-calculation{color:var(--faint);transition:color .12s ease-out,transform .14s var(--kit-ease-out);gap:6px}
+.records-add-calculation:hover{color:var(--strong)}
+.records-average{color:var(--body);align-items:center;gap:7px;display:inline-flex}
+.records-calculation-row-secondary td{background:var(--page);position:sticky;bottom:38px}
+.records-calculation-row-secondary .records-sticky-cell{background:var(--page);position:sticky}
+.records-footer{min-height:38px;color:var(--faint);justify-content:space-between;align-items:center;gap:12px;padding:0 12px;font-size:11.5px;display:flex}
+.records-footer strong{color:var(--body);font-weight:600}
+.records-footer-hint{opacity:0;align-items:center;gap:5px;transition:opacity .16s ease-out;display:inline-flex}
+.records-shell:hover .records-footer-hint{opacity:1}
+.records-scroll-cue{color:var(--faint);display:inline-flex}
+
+/* ── Insight cards chart ───────────────────────────────── */
+.insight-chart-stage{overflow:hidden}
+.insight-chart-cursor{z-index:4;background:var(--strong);opacity:.26;pointer-events:none;width:1px;position:absolute;top:0;bottom:0}
+.insight-chart-tooltip-anchor{z-index:5;pointer-events:none;position:absolute;top:8px;transform:translate(-50%)}
+.insight-chart-tooltip{border:1px solid var(--hairline);min-width:154px;color:var(--strong);background:var(--overlay);box-shadow:var(--kit-shadow-overlay);border-radius:10px;padding:9px 10px;font-size:12px}
+.insight-chart-tooltip-time{color:var(--faint);margin-bottom:7px;font-size:11px;display:block}
+.insight-chart-tooltip-row{justify-content:space-between;align-items:center;gap:16px;line-height:1.65;display:flex}
+.insight-chart-tooltip-label{color:var(--strong);align-items:center;gap:7px;display:inline-flex}
+.insight-chart-tooltip-row strong{color:var(--faint);font-variant-numeric:tabular-nums;font-weight:500}
+.insight-chart-tooltip-dot{border-radius:50%;flex:0 0 8px;width:8px;height:8px}

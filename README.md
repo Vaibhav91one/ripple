@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Third-party components
+
+Kit components live in `components/kit/<kit>/`, restyled to the Ripple tokens, each with its licence file. See `THIRD_PARTY_NOTICES.md`.
+
+| Kit | Licence | Link |
+| --- | --- | --- |
+| Rare UI (`components/kit/rareui`) | MIT + Commons Clause + Attribution (not covered by Ripple's MIT licence) | https://rareui.com |
+| Beautiful UI (`components/kit/beautifului`) | MIT | https://www.beautifului.dev |
+| Bencho, free blocks only (`components/kit/bencho`) | MIT | https://bencho.dev |
+
+Components by [Rare UI](https://rareui.com), [Beautiful UI](https://www.beautifului.dev) and [Bencho](https://bencho.dev).
