@@ -111,7 +111,7 @@ export default function KitStyleguide() {
         <Demo name="Insight cards"><InsightCards /></Demo>
         <Demo name="Sidebar nav"><SidebarNav /></Demo>
         <Demo name="Search"><SearchList /></Demo>
-        <Demo name="Code block"><CodeBlock /></Demo>
+        <Demo name="Code block"><CodeBlock loop /></Demo>
         <Demo name="Loading state"><LoadingState /></Demo>
         <Demo name="Filter table" wide><FilterTable /></Demo>
         <Demo name="Records table" wide><RecordsTable /></Demo>

@@ -103,7 +103,21 @@ function parseToken(draft: string): { kind: "at" | "slash"; query: string; start
   };
 }
 
-export default function PromptBar({ variant = "Rounded" }: { variant?: string }) {
+export default function PromptBar({
+  variant = "Rounded",
+  onSubmit,
+  placeholder = "Write a message…",
+  busy = false,
+  compact = false,
+}: {
+  variant?: string;
+  /** Called with the trimmed draft on send. Providing it turns off the demo autoplay. */
+  onSubmit?: (text: string) => void;
+  placeholder?: string;
+  busy?: boolean;
+  /** Drop the demo's tall min-height and bottom padding. */
+  compact?: boolean;
+}) {
   const pill = variant === "Pill";
   const [draft, setDraft] = useState("");
   const [dismissed, setDismissed] = useState(false);
@@ -114,7 +128,7 @@ export default function PromptBar({ variant = "Rounded" }: { variant?: string })
   const [connected, setConnected] = useState(false);
   const [active, setActive] = useState(0);
   const [listening, setListening] = useState(false);
-  const [auto, setAuto] = useState(true);
+  const [auto, setAuto] = useState(!onSubmit);
   const [autoStep, setAutoStep] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [rowBox, setRowBox] = useState<{ top: number; height: number } | null>(null);
@@ -247,9 +261,10 @@ export default function PromptBar({ variant = "Rounded" }: { variant?: string })
     inputRef.current?.focus();
   };
 
-  const canSend = draft.trim().length > 0 || attachments.length > 0;
+  const canSend = !busy && (draft.trim().length > 0 || attachments.length > 0);
   const send = () => {
     if (!canSend) return;
+    onSubmit?.(draft.trim());
     setDraft("");
     setAttachments([]);
     closeMenus();
@@ -257,7 +272,7 @@ export default function PromptBar({ variant = "Rounded" }: { variant?: string })
 
   return (
     <div
-      className="flex min-h-[384px] w-full max-w-105 flex-col justify-end pb-8"
+      className={`flex w-full flex-col justify-end ${compact ? "" : "min-h-[384px] max-w-105 pb-8"}`}
       onPointerDownCapture={takeOver}
       onKeyDownCapture={takeOver}
     >
@@ -479,7 +494,7 @@ export default function PromptBar({ variant = "Rounded" }: { variant?: string })
                 send();
               }
             }}
-            placeholder={listening ? "Listening…" : "Write a message…"}
+            placeholder={listening ? "Listening…" : placeholder}
             aria-label="Prompt"
             className={`min-h-7 min-w-0 w-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-strong outline-none [overflow-wrap:anywhere] placeholder:text-faint ${
               expanded ? "col-span-full col-start-1 row-start-1" : "col-start-2 row-start-1"
