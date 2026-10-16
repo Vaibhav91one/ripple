@@ -7,7 +7,7 @@ import { Slot, Slottable } from "@radix-ui/react-slot";
 import {
   animate,
   AnimatePresence,
-  motion,
+  m,
   useMotionValue,
   useReducedMotion,
   useSpring,
@@ -125,7 +125,7 @@ function BellIcon({
   clapper: MotionValue<number>;
 }) {
   return (
-    <motion.svg
+    <m.svg
       viewBox="0 0 18 18"
       fill="currentColor"
       aria-hidden
@@ -140,7 +140,7 @@ function BellIcon({
         fillOpacity={0.55}
         d="M3.5 6.5C3.5 3.46279 5.96279 1 9 1C12.0372 1 14.5 3.46279 14.5 6.5V10.75C14.5 11.4408 15.0592 12 15.75 12C16.1642 12 16.5 12.3358 16.5 12.75C16.5 13.1642 16.1642 13.5 15.75 13.5H2.25C1.83579 13.5 1.5 13.1642 1.5 12.75C1.5 12.3358 1.83579 12 2.25 12C2.94079 12 3.5 11.4408 3.5 10.75V6.5Z"
       />
-      <motion.path
+      <m.path
         style={{
           rotate: clapper,
           transformBox: "fill-box",
@@ -148,7 +148,7 @@ function BellIcon({
         }}
         d="M10.2 15H7.80099C7.64999 15 7.50799 15.068 7.41299 15.185C7.31799 15.302 7.28099 15.456 7.31199 15.603C7.48499 16.425 8.17999 17 9.00099 17C9.82199 17 10.517 16.425 10.69 15.603C10.721 15.456 10.684 15.302 10.589 15.185C10.494 15.068 10.351 15 10.2 15Z"
       />
-    </motion.svg>
+    </m.svg>
   );
 }
 
@@ -171,7 +171,7 @@ function DigitColumn({ value, reduced }: { value: number; reduced: boolean }) {
   }, [value, reduced, position]);
 
   return (
-    <motion.span
+    <m.span
       className="relative inline-block h-[1em] overflow-hidden"
       style={{
         width: "1ch",
@@ -179,7 +179,7 @@ function DigitColumn({ value, reduced }: { value: number; reduced: boolean }) {
         WebkitMaskImage: reduced ? undefined : mask,
       }}
     >
-      <motion.span className="absolute inset-0" style={{ y }}>
+      <m.span className="absolute inset-0" style={{ y }}>
         {Array.from({ length: WINDOW * 2 + 1 }, (_, i) => {
           const tile = value - WINDOW + i;
           return (
@@ -192,8 +192,8 @@ function DigitColumn({ value, reduced }: { value: number; reduced: boolean }) {
             </span>
           );
         })}
-      </motion.span>
-    </motion.span>
+      </m.span>
+    </m.span>
   );
 }
 
@@ -219,7 +219,7 @@ function CountBadge({
   return (
     <AnimatePresence initial={false}>
       {total > 0 && (
-        <motion.span
+        <m.span
           key="badge"
           // motion does not turn layout animation off for reduced motion, so we do it here
           layout={!reduced}
@@ -261,7 +261,7 @@ function CountBadge({
                   })}
             </span>
           )}
-        </motion.span>
+        </m.span>
       )}
     </AnimatePresence>
   );

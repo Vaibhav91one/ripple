@@ -2,7 +2,7 @@
 // Bencho (bencho.dev) free block, MIT, see ./LICENSE. Restyled to Ripple tokens.
 import "./bencho.css";
 import { useEffect, useRef, useState } from "react";
-import { animate, motion, useMotionValue, useTransform } from "motion/react";
+import { animate, m, useMotionValue, useTransform } from "motion/react";
 import { ArrowRight, Check } from "lucide-react";
 
 /* ══ Slide to notify Legal ═════════════════════════════════════
@@ -411,7 +411,7 @@ export function SlideConfirm({
 
   return (
     <div className="sld" style={{ width: span, height: H }}>
-      <motion.div
+      <m.div
         className="sld-track"
         ref={track}
         style={{ borderRadius: r, scale: pulse }}
@@ -422,17 +422,17 @@ export function SlideConfirm({
         {/* the part already crossed. It is not a progress bar —
             it is the ground the handle has covered, which is why
             it ends AT the handle rather than under it */}
-        <motion.i
+        <m.i
           className="sld-wash"
           aria-hidden="true"
           style={{ width: wash, borderRadius: gripR }}
         />
 
-        <motion.span className="sld-say" style={{ opacity: say }}>
+        <m.span className="sld-say" style={{ opacity: say }}>
           Slide to notify Legal
-        </motion.span>
+        </m.span>
 
-        <motion.button
+        <m.button
           type="button"
           className="sld-grip"
           onPointerEnter={() => setHot(true)}
@@ -454,13 +454,13 @@ export function SlideConfirm({
           transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.7 }}
           aria-label={done ? "Notified" : "Slide to notify Legal"}
         >
-          <motion.span className="sld-arrow" style={{ opacity: arrow }} aria-hidden="true">
+          <m.span className="sld-arrow" style={{ opacity: arrow }} aria-hidden="true">
             <ArrowRight size={20} strokeWidth={2} />
-          </motion.span>
+          </m.span>
 
           {/* the word only exists once there is room for it, and
               it arrives with the width rather than after it */}
-          <motion.span
+          <m.span
             className="sld-done"
             aria-hidden="true"
             initial={false}
@@ -469,9 +469,9 @@ export function SlideConfirm({
           >
             <Check size={20} strokeWidth={2} />
             Notified
-          </motion.span>
-        </motion.button>
-      </motion.div>
+          </m.span>
+        </m.button>
+      </m.div>
     </div>
   );
 }

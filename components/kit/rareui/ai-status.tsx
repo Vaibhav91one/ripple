@@ -3,7 +3,7 @@
 
 import {
     AnimatePresence,
-    motion,
+    m,
     useReducedMotion,
     type Transition,
     type Variants,
@@ -152,7 +152,7 @@ function AiStatus({
         >
             <span data-slot="ai-status-icon" className="relative flex size-5 shrink-0 items-center justify-center">
                 <AnimatePresence initial={false} mode="popLayout">
-                    <motion.span
+                    <m.span
                         key={state}
                         aria-hidden
                         variants={iconVariants}
@@ -163,12 +163,12 @@ function AiStatus({
                         className="flex items-center justify-center"
                     >
                         {icon ?? config.icon ?? <AiStatusIcon state={state} />}
-                    </motion.span>
+                    </m.span>
                 </AnimatePresence>
             </span>
 
             {/* the row springs between widths, so the detail and timer glide instead of jumping */}
-            <motion.div
+            <m.div
                 className="relative overflow-x-clip"
                 initial={false}
                 animate={{ width: bounds.width || 'auto' }}
@@ -177,7 +177,7 @@ function AiStatus({
                 <div ref={measureRef} className="flex w-max items-center gap-1.5 whitespace-nowrap">
                     <span className="relative grid">
                         <AnimatePresence initial={false} mode="popLayout">
-                            <motion.span
+                            <m.span
                                 key={text}
                                 variants={swapVariants}
                                 initial="enter"
@@ -188,12 +188,12 @@ function AiStatus({
                                 className={cn('font-semibold', !shimmering && 'text-faint')}
                             >
                                 {shimmering ? <Shimmer reduced={reduced}>{text}</Shimmer> : text}
-                            </motion.span>
+                            </m.span>
                         </AnimatePresence>
                     </span>
                     <AnimatePresence initial={false} mode="popLayout">
                         {detail && (
-                            <motion.span
+                            <m.span
                                 key={detail}
                                 data-slot="ai-status-detail"
                                 variants={swapVariants}
@@ -218,7 +218,7 @@ function AiStatus({
                                     favicon && <span className="flex size-3.5 shrink-0 items-center justify-center">{favicon}</span>
                                 )}
                                 <span className="max-w-56 truncate">{detail}</span>
-                            </motion.span>
+                            </m.span>
                         )}
                     </AnimatePresence>
                     {time && active && (
@@ -227,7 +227,7 @@ function AiStatus({
                         </span>
                     )}
                 </div>
-            </motion.div>
+            </m.div>
         </div>
     )
 }
@@ -244,13 +244,13 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
         case 'thinking':
             return (
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-faint">
-                    <motion.path
+                    <m.path
                         d={SPARKLE_PATH}
                         fill="currentColor"
                         animate={reduced ? undefined : { rotate: [0, 90], scale: [1, 0.8, 1] }}
                         transition={loop({ duration: 2.4, ...LOOP })}
                     />
-                    <motion.path
+                    <m.path
                         d={TWINKLE_PATH}
                         fill="currentColor"
                         animate={reduced ? undefined : { scale: [0.4, 1, 0.4], opacity: [0.3, 1, 0.3] }}
@@ -261,20 +261,20 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
         case 'researching':
             return (
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-faint">
-                    <motion.g
+                    <m.g
                         animate={reduced ? undefined : { x: [0, 2, 0, -2, 0], y: [-2, 0, 2, 0, -2] }}
                         transition={loop({ duration: 2, repeat: Infinity, ease: 'linear' })}
                     >
                         <circle {...STROKE} cx={10.5} cy={10.5} r={5.5} strokeWidth={2.25} />
                         <path {...STROKE} d="M14.75 14.75L19 19" strokeWidth={2.5} />
-                    </motion.g>
+                    </m.g>
                 </svg>
             )
         case 'analyzing':
             return (
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-faint">
                     {[6, 12, 18].map((x, i) => (
-                        <motion.line
+                        <m.line
                             key={x}
                             {...STROKE}
                             x1={x}
@@ -292,7 +292,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
             return (
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-faint">
                     <g transform="translate(-1.2 -2)">
-                        <motion.path
+                        <m.path
                             {...STROKE}
                             d={WAVE_PATH}
                             strokeWidth={2.25}
@@ -302,7 +302,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                             animate={reduced ? { pathLength: 1 } : { pathLength: [...WAVE_PROGRESS, 1, 1], opacity: [...WAVE_PROGRESS.map(() => 1), 1, 0] }}
                             transition={loop(SCRIBBLE)}
                         />
-                        <motion.g
+                        <m.g
                             initial={false}
                             animate={
                                 reduced
@@ -313,14 +313,14 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                         >
                             {/* puts the pen tip, not its corner, on the point being drawn */}
                             <path d={PEN_PATH} fill="currentColor" transform="scale(0.66) translate(-3 -21)" />
-                        </motion.g>
+                        </m.g>
                     </g>
                 </svg>
             )
         case 'done':
             return (
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-faint">
-                    <motion.path
+                    <m.path
                         {...STROKE}
                         d="M5 12.5L10 17.5L19 7"
                         strokeWidth={2.5}
@@ -333,7 +333,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
         case 'error':
             return (
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-conflict">
-                    <motion.path
+                    <m.path
                         {...STROKE}
                         d="M7 7L17 17M17 7L7 17"
                         strokeWidth={2.5}
@@ -344,7 +344,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
             )
         default:
             return (
-                <motion.span
+                <m.span
                     className="size-2.5 rounded-full bg-faint"
                     animate={reduced ? undefined : { scale: [1, 0.7, 1], opacity: [1, 0.5, 1] }}
                     transition={loop({ duration: 1.2, ...LOOP })}
@@ -358,7 +358,7 @@ function Shimmer({ reduced, children }: { reduced: boolean; children: React.Reac
         return <span className="text-faint">{children}</span>
     }
     return (
-        <motion.span
+        <m.span
             className="bg-clip-text text-transparent [--ai-status-ink:var(--faint)] [--ai-status-shine:var(--strong)]"
             style={{ backgroundImage: SHIMMER, backgroundSize: '250% 100%' }}
             initial={{ backgroundPosition: '100% 0' }}
@@ -366,7 +366,7 @@ function Shimmer({ reduced, children }: { reduced: boolean; children: React.Reac
             transition={{ duration: 1.6, ease: 'linear', repeat: Infinity }}
         >
             {children}
-        </motion.span>
+        </m.span>
     )
 }
 

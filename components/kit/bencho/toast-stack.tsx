@@ -2,7 +2,7 @@
 // Bencho (bencho.dev) free block, MIT, see ./LICENSE. Restyled to Ripple tokens.
 import "./bencho.css";
 import { type CSSProperties, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { CircleCheck, CircleX, Info, TriangleAlert, X, type LucideIcon } from "lucide-react";
 
 /* ══ Toast stack ══════════════════════════════════════════
@@ -136,7 +136,7 @@ export function ToastStack({
         const p = place(k);
         const front = k === 0;
         return (
-          <motion.div
+          <m.div
             key={t.id}
             className="tst-toast"
             data-kind={t.kind}
@@ -169,7 +169,7 @@ export function ToastStack({
             >
               <X size={16} strokeWidth={2} aria-hidden="true" />
             </button>
-          </motion.div>
+          </m.div>
         );
       })}
     </div>

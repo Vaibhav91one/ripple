@@ -6,7 +6,7 @@ import type { ComponentProps, ReactNode } from "react";
 import {
   animate,
   AnimatePresence,
-  motion,
+  m,
   useMotionTemplate,
   useMotionValue,
   useReducedMotion,
@@ -85,8 +85,8 @@ function Circle({
   const reduced = useReducedMotion() ?? false;
 
   return (
-    <motion.div className="flex" variants={reduced ? undefined : circleMotion}>
-      <motion.button
+    <m.div className="flex" variants={reduced ? undefined : circleMotion}>
+      <m.button
         type="button"
         aria-label={label}
         onClick={onClick}
@@ -104,8 +104,8 @@ function Circle({
         >
           {children}
         </svg>
-      </motion.button>
-    </motion.div>
+      </m.button>
+    </m.div>
   );
 }
 
@@ -166,7 +166,7 @@ export function DeleteButton({
   };
 
   return (
-    <motion.div
+    <m.div
       data-slot="delete-button"
       data-state={open ? "open" : "closed"}
       data-status={status}
@@ -178,7 +178,7 @@ export function DeleteButton({
       }}
       {...props}
     >
-      <motion.button
+      <m.button
         ref={trigger}
         type="button"
         aria-label="Delete"
@@ -197,7 +197,7 @@ export function DeleteButton({
       >
         <AnimatePresence mode="wait" initial={false}>
           {status === "deleted" ? (
-            <motion.svg
+            <m.svg
               key="done"
               {...ICON}
               width="20"
@@ -209,15 +209,15 @@ export function DeleteButton({
               exit={{ opacity: 0, scale: 0.6 }}
               transition={timing(SWAP)}
             >
-              <motion.path
+              <m.path
                 d="M4 12.5 9.5 18 20 7"
                 initial={reduced ? undefined : { pathLength: 0 }}
                 animate={reduced ? undefined : { pathLength: 1 }}
                 transition={SETTLE}
               />
-            </motion.svg>
+            </m.svg>
           ) : (
-            <motion.svg
+            <m.svg
               key="bin"
               {...ICON}
               width="20"
@@ -231,19 +231,19 @@ export function DeleteButton({
               exit={{ opacity: 0 }}
               transition={timing(SWAP)}
             >
-              <motion.path d={bin} />
-              <motion.g
+              <m.path d={bin} />
+              <m.g
                 style={{ transformBox: "view-box", transformOrigin: HINGE }}
                 animate={{ rotate: open ? LID_OPEN : 0 }}
                 transition={timing(LID)}
               >
                 <path d="M3 6h18" />
                 <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </motion.g>
-            </motion.svg>
+              </m.g>
+            </m.svg>
           )}
         </AnimatePresence>
-      </motion.button>
+      </m.button>
 
       <span role="status" aria-live="polite" className="sr-only">
         {status === "deleted" ? "Deleted" : status === "kept" ? "Kept" : ""}
@@ -251,7 +251,7 @@ export function DeleteButton({
 
       <AnimatePresence>
         {open && (
-          <motion.div
+          <m.div
             key="panel"
             style={{ width: PANEL }}
             className={cn(
@@ -276,10 +276,10 @@ export function DeleteButton({
             <Circle label="Cancel" onClick={() => resolve("kept")}>
               <path d="M6 6 18 18M18 6 6 18" />
             </Circle>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </m.div>
   );
 }
 

@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { ComponentProps, CSSProperties } from "react";
-import { motion, useReducedMotion, type Transition } from "motion/react";
+import { m, useReducedMotion, type Transition } from "motion/react";
 import { cn } from "@/lib/utils";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -98,7 +98,7 @@ function TaskCheck({
   const timing = useTiming();
 
   return (
-    <motion.svg
+    <m.svg
       viewBox="0 0 24 24"
       aria-hidden
       className={cn(
@@ -109,7 +109,7 @@ function TaskCheck({
       animate={{ scale: filled ? POP_SCALE : 1 }}
       transition={filled ? timing(POP) : INSTANT}
     >
-      <motion.circle
+      <m.circle
         cx="12"
         cy="12"
         r={RING_R}
@@ -122,7 +122,7 @@ function TaskCheck({
         animate={{ opacity: filled ? 0 : 1 }}
         transition={timing(FILL)}
       />
-      <motion.circle
+      <m.circle
         cx="12"
         cy="12"
         r="12"
@@ -132,7 +132,7 @@ function TaskCheck({
         animate={{ scale: filled ? 1 : 0 }}
         transition={timing(FILL)}
       />
-      <motion.path
+      <m.path
         d="M7.4 12.4 10.6 15.5 16.6 8.9"
         fill="none"
         stroke="white"
@@ -144,7 +144,7 @@ function TaskCheck({
         transition={timing(TICK)}
         onAnimationComplete={onDrawn}
       />
-    </motion.svg>
+    </m.svg>
   );
 }
 
@@ -164,7 +164,7 @@ function TaskLabel({
 
   return (
     <span className="min-w-0 flex-1">
-      <motion.span
+      <m.span
         style={STRIKE_STYLE}
         className={cn(
           "font-medium tracking-[-0.01em] transition-colors duration-300",
@@ -179,7 +179,7 @@ function TaskLabel({
         onAnimationComplete={onStruck}
       >
         {label}
-      </motion.span>
+      </m.span>
     </span>
   );
 }
@@ -245,7 +245,7 @@ export function TaskItem({
   };
 
   return (
-    <motion.button
+    <m.button
       type="button"
       role="checkbox"
       aria-checked={done}
@@ -280,7 +280,7 @@ export function TaskItem({
         size={size}
         onStruck={onStruck}
       />
-    </motion.button>
+    </m.button>
   );
 }
 
@@ -342,7 +342,7 @@ export function TaskList({
       {...props}
     >
       {[...open, ...finished].map((task) => (
-        <motion.li
+        <m.li
           key={task.id}
           layout
           transition={timing(REORDER)}
@@ -363,7 +363,7 @@ export function TaskList({
               setParked((ids) => ids.filter((id) => id !== task.id))
             }
           />
-        </motion.li>
+        </m.li>
       ))}
       <li role="status" aria-live="polite" className="sr-only">
         {announcement}

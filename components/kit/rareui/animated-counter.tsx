@@ -6,7 +6,7 @@ import type { ComponentProps, ReactNode, Ref } from "react";
 import {
   animate,
   AnimatePresence,
-  motion,
+  m,
   useMotionValue,
   useReducedMotion,
   useTransform,
@@ -217,9 +217,9 @@ const fades = (reduced: boolean) => ({
 
 function Fixed({ children, ...slot }: SlotProps & { children: ReactNode }) {
   return (
-    <motion.span {...shifts(slot)} className="inline-block">
+    <m.span {...shifts(slot)} className="inline-block">
       {children}
-    </motion.span>
+    </m.span>
   );
 }
 
@@ -229,7 +229,7 @@ function Mark({
   ...slot
 }: SlotProps & { char: string; ref?: Ref<HTMLSpanElement> }) {
   return (
-    <motion.span
+    <m.span
       ref={ref}
       data-slot="animated-counter-mark"
       {...shifts(slot)}
@@ -237,7 +237,7 @@ function Mark({
       className="inline-block"
     >
       {char}
-    </motion.span>
+    </m.span>
   );
 }
 
@@ -259,7 +259,7 @@ const Digit = memo(function Digit({
   const y = useWheel(from, digit, dir, duration, slot.reduced);
 
   return (
-    <motion.span
+    <m.span
       ref={ref}
       data-slot="animated-counter-digit"
       {...shifts(slot)}
@@ -274,10 +274,10 @@ const Digit = memo(function Digit({
     >
       {/* widest-face width, for fonts with no tabular figures */}
       {SIZER}
-      <motion.span style={{ y }} className="absolute inset-x-0 top-0">
+      <m.span style={{ y }} className="absolute inset-x-0 top-0">
         {STACK}
-      </motion.span>
-    </motion.span>
+      </m.span>
+    </m.span>
   );
 });
 

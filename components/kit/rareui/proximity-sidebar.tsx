@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react"
 import {
-  motion,
+  m,
   useMotionValue,
   useReducedMotion,
   useSpring,
@@ -171,7 +171,7 @@ const Dash = ({
       className="group flex h-px w-[110px] items-center border-0 bg-transparent p-0 outline-none"
       onClick={() => onSelect(section.id)}
     >
-      <motion.span
+      <m.span
         className={`block transition-colors duration-150 ease-out group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 ${preset.className}`}
         style={{
           height: preset.thickness,
