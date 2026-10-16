@@ -1,3 +1,5 @@
-export default function GraphPage() {
-  return <p className="p-6 text-body">Graph: coming in the v2 dashboard.</p>;
+import { GraphPage } from "@/components/graph/GraphPage";
+
+export default function GraphRoute() {
+  return <GraphPage />;
 }

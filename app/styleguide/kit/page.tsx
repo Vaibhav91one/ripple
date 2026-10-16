@@ -16,6 +16,7 @@ import InsightCards from "@/components/kit/beautifului/insight-cards";
 import SidebarNav from "@/components/kit/beautifului/sidebar-nav";
 import SearchList from "@/components/kit/beautifului/search";
 import CodeBlock from "@/components/kit/beautifului/code-block";
+import Flowchart from "@/components/kit/beautifului/flowchart";
 import LoadingState from "@/components/kit/beautifului/loading-state";
 import { TaskList } from "@/components/kit/rareui/task-list";
 import { NotificationBell } from "@/components/kit/rareui/notification-bell";
@@ -125,6 +126,7 @@ export default function KitStyleguide() {
         <Demo name="Sidebar nav"><SidebarNav /></Demo>
         <Demo name="Search"><SearchList /></Demo>
         <Demo name="Code block"><CodeBlock loop /></Demo>
+        <Demo name="Flowchart" wide><Flowchart /></Demo>
         <Demo name="Loading state"><LoadingState /></Demo>
         <Demo name="Filter table" wide><FilterTable /></Demo>
         <Demo name="Records table" wide><RecordsTable /></Demo>

@@ -56,15 +56,20 @@ export default function CodeBlock({
   language = "TypeScript",
   title = "trace.ts",
   loop = false,
+  stream = true,
+  className = "max-w-95",
 }: {
   code?: string;
   language?: string;
   title?: string;
   /** Replay the line-by-line stream forever (styleguide demo). */
   loop?: boolean;
+  /** false shows every line at once (long queries); the styleguide keeps the stream */
+  stream?: boolean;
+  className?: string;
 }) {
   const lines = code.split("\n").map(tokenizeLine);
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(stream ? 0 : lines.length);
   const [copied, setCopied] = useState(false);
   const done = count >= lines.length;
 
@@ -85,7 +90,7 @@ export default function CodeBlock({
   }, [code]);
 
   return (
-    <div className="w-full max-w-95 overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
+    <div className={`w-full overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)] ${className}`}>
       {/* header */}
       <div className="primitive-card-bar flex items-center justify-between border-b border-hairline">
         <span className="flex items-baseline gap-2">
@@ -109,7 +114,7 @@ export default function CodeBlock({
       </div>
 
       {/* code */}
-      <pre className="min-h-[137px] overflow-x-auto bg-page px-3 py-2.5 font-mono text-[11.5px] leading-[1.7]">
+      <pre className="max-h-[min(60vh,420px)] min-h-[137px] overflow-auto bg-page px-3 py-2.5 font-mono text-[11.5px] leading-[1.7]">
         {lines.slice(0, count).map((line, i) => (
           <div
             key={i}
