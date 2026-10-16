@@ -17,8 +17,10 @@ export const System = z.object({
   name: z.string(),
   kind: z.enum(["api", "service", "repo"]),
   status: z.enum(["current", "deprecated", "sunset"]),
-  version: z.string().optional(),
-  successor: id.optional(),
+  // nullish: cypher returns null for a missing property
+  version: z.string().nullish(),
+  successor: id.nullish(),
+  onCallPersonId: id.nullish(),
 });
 export const Customer = z.object({
   id,
@@ -27,20 +29,29 @@ export const Customer = z.object({
   tier: z.enum(["enterprise", "growth", "starter"]),
   region: z.string().optional(),
   monthlyCalls: z.number().int().optional(),
+  healthScore: z.number().int().min(0).max(100),
+  renewalDate: ts,
 });
+export const DealStage = z.enum(["prospecting", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"]);
 export const Deal = z.object({
   id,
   name: z.string(),
-  stage: z.string(),
+  stage: DealStage,
+  probability: z.number().int().min(0).max(100),
+  ownerId: id,
   amount: z.number().int(),
   closeDate: ts,
   customerId: id,
+  v1Related: z.boolean(),
 });
 export const Contract = z.object({
   id,
   name: z.string(),
   endsAt: ts,
   customerId: id,
+  noticeDays: z.number().int(),
+  value: z.number().int(),
+  approvalState: z.enum(["draft", "in_review", "approved", "signed"]),
 });
 export const Decision = z.object({
   id,
@@ -69,6 +80,8 @@ export const EdgeType = z.enum([
   "PROMISED", "GUARANTEES", "PARTY_TO", "OWNED_BY", "MANAGED_BY", "CONTACT",
   "SUNSETS", "SUPPORTED_BY", "SUPERSEDES", "INVOLVED_IN", "ACKED",
   "WAITING_ON", "NOTIFIES", "ATTENDED", "AFFECTED", "CAUSED_BY", "BETWEEN",
+  // v2 dashboards: clause of a contract, control covers a framework, goal/blocker, finding on a system, PR review request
+  "HAS_CLAUSE", "COVERS", "BLOCKED_BY", "FOUND_IN", "REQUESTED_REVIEW",
 ]);
 export type EdgeType = z.infer<typeof EdgeType>;
 export const Edge = z.object({
@@ -93,18 +106,21 @@ export const Conflict = z.object({
 export const Incident = z.object({
   id,
   title: z.string(),
-  severity: Severity,
+  severity: z.enum(["low", "medium", "high", "critical"]),
   systemId: id,
   startedAt: ts,
+  acknowledgedAt: ts.nullable(),
   resolvedAt: ts.nullable(),
 });
 export const Task = z.object({
   id,
   title: z.string(),
   teamId: id,
-  assigneeId: id.optional(),
+  assigneeId: id.nullish(),
   status: z.enum(["open", "in_review", "done"]),
   createdAt: ts,
+  kind: z.enum(["questionnaire", "access_review", "review", "general"]).nullish(),
+  dueAt: ts.nullish(),
 });
 export const Ack = z.object({
   teamId: id,
@@ -236,3 +252,156 @@ export type BottleneckRow = z.infer<typeof BottleneckRow>;
 export type WhoKnowsRow = z.infer<typeof WhoKnowsRow>;
 export type InboxItem = z.infer<typeof InboxItem>;
 export type StreamEvent = z.infer<typeof StreamEvent>;
+
+// ---------- v2 dashboard rows (ids only; screens resolve names with getNames) ----------
+export const Priority = z.enum(["urgent", "high", "normal", "low"]);
+export const TicketRow = z.object({
+  id,
+  title: z.string(),
+  status: z.enum(["open", "closed"]),
+  priority: Priority,
+  createdAt: ts,
+  firstResponseAt: ts.nullable(),
+  slaDueAt: ts,
+  assigneeId: id,
+  customerId: id.nullable(),
+  systemId: id.nullable(),
+  v1Related: z.boolean(),
+});
+export const PrRow = z.object({
+  id,
+  title: z.string(),
+  repo: id,
+  authorId: id,
+  state: z.enum(["open", "merged", "closed"]),
+  additions: z.number().int(),
+  deletions: z.number().int(),
+  createdAt: ts,
+  firstReviewAt: ts.nullable(),
+  mergedAt: ts.nullable(),
+  reviewerIds: z.array(id),
+  v1Related: z.boolean(),
+});
+export const Clause = z.object({
+  id,
+  contractId: id,
+  number: z.string(),
+  title: z.string(),
+  text: z.string(),
+  risk: z.enum(["low", "med", "high"]),
+  dueAt: ts.nullable(),
+  src: Source,
+  v1Related: z.boolean(),
+});
+export const Framework = z.object({ id, name: z.string() });
+export const Control = z.object({
+  id,
+  frameworkId: id,
+  name: z.string(),
+  status: z.enum(["passing", "failing"]),
+  auditBlocking: z.boolean(),
+  ownerId: id,
+  v1Related: z.boolean(),
+});
+export const Vendor = z.object({
+  id,
+  name: z.string(),
+  riskTier: z.enum(["low", "medium", "high"]),
+  assessmentStatus: z.enum(["current", "due", "overdue"]),
+  nextReview: ts,
+});
+export const Finding = z.object({
+  id,
+  title: z.string(),
+  severity: z.enum(["low", "medium", "high", "critical"]),
+  slaDueAt: ts,
+  systemId: id,
+  status: z.enum(["open", "in_progress", "resolved"]),
+  ownerId: id,
+  v1Related: z.boolean(),
+});
+export const Risk = z.object({
+  id,
+  title: z.string(),
+  likelihood: z.number().int().min(1).max(5),
+  impact: z.number().int().min(1).max(5),
+  status: z.enum(["open", "mitigating", "accepted"]),
+  ownerId: id,
+  teamId: id,
+  v1Related: z.boolean(),
+});
+export const Page = z.object({
+  id,
+  path: z.string(),
+  views30d: z.number().int(),
+  feedbackUp: z.number().int(),
+  feedbackDown: z.number().int(),
+  v1Related: z.boolean(),
+});
+export const DocsStats = z.object({
+  id,
+  failedSearches: z.array(z.object({ query: z.string(), count: z.number().int() })),
+  sdkAdoption: z.array(z.object({ sdk: z.string(), version: z.string(), share: z.number().int() })),
+});
+export const Goal = z.object({
+  id,
+  title: z.string(),
+  ownerTeamId: id,
+  progress: z.number().int().min(0).max(100),
+  status: z.enum(["on_track", "at_risk", "off_track"]),
+  target: z.number().int().nullish(),
+  current: z.number().int().nullish(),
+});
+/** A BLOCKED_BY edge: `fromId` (a goal) cannot move until `toId` (a decision or finding) is resolved. */
+export const Blocker = z.object({ fromId: id, toId: id, since: ts });
+
+export const Kpi = z.object({
+  id,
+  label: z.string(),
+  value: z.number(),
+  unit: z.enum(["count", "usd", "percent", "hours"]),
+  tone: z.enum(["ok", "warn", "bad"]).optional(),
+});
+/** The "Ripple angle" every team dashboard carries: what the v1 sunset means for this team. */
+export const RippleAngle = z.object({
+  decisionId: id,
+  affected: z.boolean(),
+  involved: z.boolean(),
+  acked: z.boolean(),
+  changes: z.array(Change),
+  facts: z.array(z.object({ text: z.string(), source: Source })).max(3),
+});
+export const TeamStripItem = z.object({
+  teamId: id,
+  name: z.string(),
+  people: z.number().int(),
+  affected: z.boolean(),
+  told: z.boolean(),
+});
+export const Overview = z.object({
+  now: ts,
+  kpis: z.array(Kpi),
+  openDecisions: z.array(z.object({ decision: Decision, notTold: z.array(id) })),
+  blockers: z.array(Blocker),
+  recentChanges: z.array(Change),
+  activity: z.array(z.object({ day: ts, changes: z.number().int(), acks: z.number().int() })),
+  whoKnows: z.array(WhoKnowsRow),
+  teams: z.array(TeamStripItem),
+});
+
+export type TicketRow = z.infer<typeof TicketRow>;
+export type PrRow = z.infer<typeof PrRow>;
+export type Clause = z.infer<typeof Clause>;
+export type Framework = z.infer<typeof Framework>;
+export type Control = z.infer<typeof Control>;
+export type Vendor = z.infer<typeof Vendor>;
+export type Finding = z.infer<typeof Finding>;
+export type Risk = z.infer<typeof Risk>;
+export type Page = z.infer<typeof Page>;
+export type DocsStats = z.infer<typeof DocsStats>;
+export type Goal = z.infer<typeof Goal>;
+export type Blocker = z.infer<typeof Blocker>;
+export type Kpi = z.infer<typeof Kpi>;
+export type RippleAngle = z.infer<typeof RippleAngle>;
+export type TeamStripItem = z.infer<typeof TeamStripItem>;
+export type Overview = z.infer<typeof Overview>;

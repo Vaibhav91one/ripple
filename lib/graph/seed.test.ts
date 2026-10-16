@@ -65,6 +65,21 @@ describe("ledgerly seed", () => {
     for (const d of ["art-tkt-closed", "art-tkt-invoice", "deal-lost", "cust-41", "art-msg-lost"]) expect(got).not.toContain(d);
     expect(got).toHaveLength(40 + 12 + 3 + 2 + 9);
   });
+  t("v2 data: people, tickets, PRs, deals, contracts and the new labels", async () => {
+    expect(await num("MATCH (p:Person) RETURN count(p) AS n")).toBe(31);
+    expect(await num("MATCH (t:Ticket) RETURN count(t) AS n")).toBe(39);
+    expect(await num("MATCH (t:Ticket) WHERE t.priority IS NULL RETURN count(t) AS n")).toBe(0);
+    expect(await num("MATCH (p:PR) WHERE p.state IS NOT NULL RETURN count(p) AS n")).toBe(31);
+    expect(await num("MATCH (d:Deal) RETURN count(d) AS n")).toBe(16);
+    expect(await num("MATCH (c:Contract) RETURN count(c) AS n")).toBe(8);
+    expect(await num("MATCH (i:Incident) RETURN count(i) AS n")).toBe(6);
+    expect(await num("MATCH (:Contract)-[:HAS_CLAUSE]->(k:Clause) RETURN count(k) AS n")).toBe(13);
+    expect(await num("MATCH (:Control)-[:COVERS]->(:Framework) RETURN count(*) AS n")).toBe(14);
+    expect(await num("MATCH (:Goal)-[:BLOCKED_BY]->(:Decision {id:'d-1'}) RETURN count(*) AS n")).toBe(1);
+    expect(await num("MATCH (f:Finding {title:'v1 API keys never rotated'})-[:FOUND_IN]->(:System {id:'api-v1'}) RETURN count(f) AS n")).toBe(1);
+    expect(await num("MATCH (p:Page {path:'/v1/quickstart'}) WHERE p.views30d > 40000 RETURN count(p) AS n")).toBe(1);
+    expect(await num("MATCH (c:Customer) WHERE c.healthScore IS NULL OR c.renewalDate IS NULL RETURN count(c) AS n")).toBe(0);
+  });
   t("every relationship has valid_from and observed_at", async () => {
     expect(await num("MATCH ()-[r]->() WHERE r.valid_from IS NULL OR r.observed_at IS NULL RETURN count(r) AS n")).toBe(0);
   });

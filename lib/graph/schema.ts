@@ -4,6 +4,7 @@ import { query, type Graph } from "./client";
 export const LABELS = [
   "Team", "Person", "System", "Customer", "Deal", "Contract", "Decision",
   "Incident", "Task", "Artifact", "Doc", "Ticket", "Message", "PR",
+  "Clause", "Control", "Framework", "Vendor", "Finding", "Risk", "Page", "DocsStats", "Goal",
 ] as const;
 
 const STATEMENTS = [
