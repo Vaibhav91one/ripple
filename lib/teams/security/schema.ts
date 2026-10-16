@@ -6,6 +6,8 @@ import { kpi, type Rows } from "../util";
 
 export const SecurityPayload = z.object({
   team: z.literal("security"),
+  /** Epoch seconds the SLA and review dates are judged against. */
+  now: z.number().int(),
   kpis: z.array(Kpi),
   angle: RippleAngle,
   controls: z.array(Control),
@@ -18,27 +20,32 @@ export const SecurityPayload = z.object({
 });
 export type SecurityPayload = z.infer<typeof SecurityPayload>;
 /** The rows the cypher in lib/graph/queries/teams-security.cypher returns, by kind. */
-export const SecurityRows = SecurityPayload.omit({ team: true, kpis: true, angle: true });
-export type SecurityRows = Rows<SecurityPayload>;
+export const SecurityRows = SecurityPayload.omit({ team: true, now: true, kpis: true, angle: true });
+export type SecurityRows = Omit<Rows<SecurityPayload>, "now">;
 
-function kpis(r: SecurityRows, now: number): Kpi[] {
-  void now;
-  const failing = r.controls.filter((c) => c.status === "failing");
-  const blocking = failing.filter((c) => c.auditBlocking).length;
-  const openF = r.findings.filter((f) => f.status !== "resolved");
-  const overdue = openF.filter((f) => f.slaDueAt < now).length;
-  const vendors = r.vendors.filter((v) => v.assessmentStatus !== "current").length;
-  const tasks = r.tasks.filter((t) => t.status !== "done").length;
+const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 100);
+
+/** Share of each framework's controls that pass (the readiness bars). */
+export const frameworkReadiness = (r: Pick<SecurityRows, "controls" | "frameworks">) =>
+  r.frameworks.map((f) => {
+    const cs = r.controls.filter((c) => c.frameworkId === f.id);
+    return { id: f.id, name: f.name, percent: pct(cs.filter((c) => c.status === "passing").length, cs.length), total: cs.length };
+  });
+
+function kpis(r: SecurityRows): Kpi[] {
+  const passRate = pct(r.controls.filter((c) => c.status === "passing").length, r.controls.length);
+  const fw = frameworkReadiness(r);
+  const readiness = fw.length ? Math.round(fw.reduce((a, f) => a + f.percent, 0) / fw.length) : 100;
+  const critical = r.findings.filter((f) => f.severity === "critical" && f.status !== "resolved").length;
+  const blockers = r.controls.filter((c) => c.status === "failing" && c.auditBlocking).length;
   return [
-    kpi("failing-controls", "Failing controls", failing.length, "count", failing.length > 0 ? "warn" : "ok"),
-    kpi("audit-blockers", "Audit-blocking controls failing", blocking, "count", blocking > 0 ? "bad" : "ok"),
-    kpi("open-findings", "Open findings", openF.length, "count", openF.length > 0 ? "warn" : "ok"),
-    kpi("overdue-findings", "Findings past SLA", overdue, "count", overdue > 0 ? "bad" : "ok"),
-    kpi("vendor-reviews", "Vendors due or overdue for review", vendors, "count", vendors > 0 ? "warn" : "ok"),
-    kpi("grc-tasks", "Open questionnaires and access reviews", tasks, "count"),
+    kpi("control-pass-rate", "Control pass rate", passRate, "percent", passRate < 80 ? "warn" : "ok"),
+    kpi("framework-readiness", "Framework readiness", readiness, "percent", readiness < 80 ? "warn" : "ok"),
+    kpi("critical-findings", "Critical findings", critical, "count", critical > 0 ? "bad" : "ok"),
+    kpi("audit-blockers", "Audit blockers", blockers, "count", blockers > 0 ? "bad" : "ok"),
   ];
 }
 
 export const buildSecurity = (r: SecurityRows, angle: RippleAngle, now: number): SecurityPayload => ({
-  team: "security", kpis: kpis(r, now), angle, ...r,
+  team: "security", now, kpis: kpis(r), angle, ...r,
 });
