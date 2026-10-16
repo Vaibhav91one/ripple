@@ -1,0 +1,293 @@
+/*
+ * Obsidian UI (obsidianui.dev) Analytics Dashboard, MIT, see ../LICENSE.
+ * Rules extracted from the dashboard stylesheet, one block per component, recoloured to Ripple tokens:
+ * Obsidian's --ad-ink (text, borders and fills at different strengths) becomes --strong mixed with transparent.
+ * Every component root carries .oa, which defines the local mixes below.
+ */
+.oa {
+  --k4: color-mix(in oklab, var(--strong) 4.5%, transparent);
+  --k6: color-mix(in oklab, var(--strong) 6%, transparent);
+  --k8: color-mix(in oklab, var(--strong) 8%, transparent);
+  --k10: color-mix(in oklab, var(--strong) 10%, transparent);
+  --k40: color-mix(in oklab, var(--strong) 40%, transparent);
+  --k50: color-mix(in oklab, var(--strong) 50%, transparent);
+  --k60: color-mix(in oklab, var(--strong) 60%, transparent);
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  color: var(--strong);
+}
+.oa :is(h1, h2, h3, p, ol, ul, li, figure) { margin: 0; padding: 0; }
+.oa :is(ol, ul) { list-style: none; }
+
+/* tone -> colour pair, one meaning each: conflict / gap / covered, ripple accent, neutral */
+.oa [data-tone], .oa[data-tone] { --t: var(--faint); --t-soft: var(--k6); }
+.oa [data-tone="conflict"], .oa[data-tone="conflict"] { --t: var(--conflict); --t-soft: var(--conflict-soft); }
+.oa [data-tone="gap"], .oa[data-tone="gap"] { --t: var(--gap); --t-soft: var(--gap-soft); }
+.oa [data-tone="covered"], .oa[data-tone="covered"] { --t: var(--covered); --t-soft: var(--covered-soft); }
+.oa [data-tone="ripple"], .oa[data-tone="ripple"] { --t: var(--ripple); --t-soft: var(--ripple-soft); }
+
+/* ───────── Tooltips (data-tip, drawn with a pseudo-element) ───────── */
+.oa .oa-has-tip { position: relative; }
+.oa .oa-has-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--page);
+  background: var(--strong);
+  opacity: 0;
+  transform: translate(-50%, 0) scale(0.97);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  transition: opacity 50ms ease-out, transform 50ms ease-out;
+}
+@media (hover: hover) {
+  .oa .oa-has-tip:hover::after { opacity: 1; transform: translate(-50%, 0) scale(1); transition-duration: 150ms; transition-delay: 80ms; }
+}
+
+/* ───────── Card ───────── */
+.oa-card {
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background-color: var(--k4);
+  box-shadow: inset 0 0 0 1px var(--k4);
+}
+.oa-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.oa-card-title { font-size: 15px; font-weight: 600; line-height: 20px; color: var(--body); }
+
+/* ───────── Segmented control (sliding thumb) ───────── */
+.oa-seg {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--k4);
+  box-shadow: inset 0 0 0 1px var(--k6);
+}
+.oa-seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n));
+  border-radius: 7px;
+  background: var(--k10);
+  box-shadow: inset 0 0 0 1px var(--k6);
+  transform: translateX(calc(var(--idx) * 100%));
+  transition: transform 250ms var(--ease-smooth-out);
+  pointer-events: none;
+}
+.oa-seg-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--k50);
+  transition: color 150ms ease;
+}
+.oa-seg-btn[aria-checked="true"] { color: var(--strong); }
+@media (hover: hover) {
+  .oa-seg-btn[aria-checked="false"]:hover { color: var(--body); }
+}
+
+/* ───────── Status pill + dot ───────── */
+.oa-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--t);
+  background: var(--t-soft);
+}
+.oa-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ───────── Avatar ───────── */
+.oa-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  object-fit: cover;
+  outline: 1px solid var(--k10);
+  outline-offset: -1px;
+  background: var(--t-soft);
+  color: var(--t);
+  font-weight: 600;
+}
+.oa-avatar-40 { width: 40px; height: 40px; font-size: 14px; }
+.oa-avatar-32 { width: 32px; height: 32px; font-size: 12px; }
+.oa-avatar-22 { width: 22px; height: 22px; font-size: 10px; }
+
+/* ───────── Number reels ───────── */
+.oa-slot-num { font-variant-numeric: tabular-nums; }
+
+/* ───────── KPI card ───────── */
+.oa-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 13px 15px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background-color: var(--k4);
+  box-shadow: inset 0 0 0 1px var(--k4);
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+@media (hover: hover) {
+  .oa-stat:hover { background-color: var(--k8); box-shadow: inset 0 0 0 1px var(--k6); }
+  .oa-stat:hover .oa-stat-icon { color: var(--body); }
+}
+.oa-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--k60);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.oa-stat-icon { flex: none; display: inline-flex; color: var(--k50); transition: color 150ms ease; }
+.oa-stat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 8px; }
+.oa-stat-value { min-width: 0; font-size: 24px; font-weight: 500; line-height: 30px; letter-spacing: -0.015em; color: var(--strong); font-variant-numeric: tabular-nums; }
+.oa-delta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 21px;
+  padding: 0 7px 0 5px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--t);
+  background: var(--t-soft);
+}
+
+/* ───────── Sparkline ───────── */
+.oa-spark { display: block; width: 100%; height: 34px; overflow: visible; color: var(--t); }
+
+/* ───────── Stacked bar chart ───────── */
+.oa-chart { position: relative; height: 196px; }
+.oa-chart-grid { position: absolute; inset: 0 0 24px 26px; display: flex; flex-direction: column; justify-content: space-between; }
+.oa-chart-grid span { position: relative; height: 0; border-top: 1px dashed var(--k10); }
+.oa-chart-grid span::before {
+  content: attr(data-value);
+  position: absolute;
+  left: -26px;
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.oa-chart-cols { position: absolute; inset: 0 0 0 26px; display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); gap: 12px; }
+.oa-chart-col { display: grid; grid-template-rows: minmax(0, 1fr) 24px; min-width: 0; }
+.oa-bar-wrap { grid-row: 1; align-self: end; justify-self: center; width: min(46px, 100%); }
+.oa-bar {
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  border-radius: 7px 7px 3px 3px;
+  overflow: hidden;
+  transform-origin: 50% 100%;
+  transition: opacity 150ms ease;
+}
+.oa-bar-seg { flex-basis: 0; min-height: 3px; background: var(--t); }
+.oa-chart-label { grid-row: 2; align-self: end; font-size: 11px; line-height: 18px; text-align: center; color: var(--faint); white-space: nowrap; }
+.oa-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; font-size: 12px; color: var(--k50); }
+.oa-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.oa-legend i { width: 8px; height: 8px; border-radius: 2.5px; background: var(--t); }
+@media (hover: hover) {
+  .oa-chart-cols:hover .oa-chart-col:not(:hover) .oa-bar { opacity: 0.4; }
+}
+
+/* ───────── Leaderboard ───────── */
+.oa-leaders { display: flex; flex-direction: column; gap: 15px; }
+.oa-leader { display: flex; align-items: center; gap: 12px; }
+.oa-leader-main { flex: 1; min-width: 0; }
+.oa-leader-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.oa-leader-name { font-size: 14px; color: var(--strong); }
+.oa-leader-count { font-size: 13px; color: var(--k60); font-variant-numeric: tabular-nums; }
+.oa-share { height: 5px; margin: 7px 0 0; border-radius: 999px; background: var(--k6); overflow: hidden; }
+.oa-share-fill { display: block; height: 100%; border-radius: inherit; background: var(--t); transform-origin: 0 50%; }
+.oa-leader-meta { margin-top: 8px; font-size: 12px; color: var(--faint); }
+
+/* ───────── Repo card ───────── */
+.oa-repo { display: flex; flex-direction: column; gap: 10px; padding: 15px 16px 14px 18px; transition: background-color 150ms ease, box-shadow 150ms ease; }
+@media (hover: hover) {
+  .oa-repo:hover { background-color: var(--k8); box-shadow: inset 0 0 0 1px var(--k6); }
+}
+.oa-repo-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.oa-repo-name { min-width: 0; margin-right: auto; font-size: 15px; font-weight: 600; line-height: 22px; color: var(--strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oa-repo-org { font-weight: 450; color: var(--k50); }
+.oa-repo-desc { min-height: 40px; font-size: 13px; line-height: 20px; color: var(--k60); text-wrap: pretty; }
+.oa-tag { flex: none; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 500; line-height: 20px; color: var(--k50); box-shadow: inset 0 0 0 1px var(--k10); }
+.oa-mini-bars { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+.oa-mini-bars span { flex: 1; height: calc(var(--h) * 100%); min-height: 3px; border-radius: 2px; background: color-mix(in oklab, var(--ripple) 50%, transparent); transform-origin: 50% 100%; }
+.oa-mini-bars span:last-child { background: var(--ripple); }
+.oa-repo-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12px; color: var(--k50); }
+.oa-repo-stat { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.oa-repo-updated { margin-left: auto; }
+
+/* ───────── Status bars (rows of segmented strips) ───────── */
+.oa-sbars { display: flex; flex-direction: column; gap: 16px; }
+.oa-sbar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.oa-sbar-label { min-width: 0; font-size: 13px; font-weight: 500; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oa-sbar-value { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.oa-sbar-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t); }
+.oa-sbar-strip { display: flex; height: 32px; gap: 2px; border-radius: 3px; }
+.oa-sbar-cell { flex: 1; min-width: 0; border-radius: 2px; transform-origin: 50% 100%; background: var(--k8); transition: opacity 150ms ease-out; }
+.oa-sbar-cell[data-on] { background: var(--t); }
+.oa-sbar-strip:hover .oa-sbar-cell { opacity: 0.35; }
+.oa-sbar-strip:hover .oa-sbar-cell:hover { opacity: 1; }
+
+/* ───────── Number reels (Obsidian number-animation.module.css, as plain prefixed classes) ───────── */
+.oa-na-root { position: relative; display: inline-block; font-variant-numeric: tabular-nums; line-height: 1.15; white-space: nowrap; vertical-align: bottom; }
+.oa-na-reels { display: inline-flex; height: 1.15em; align-items: flex-start; }
+
+/* Each slot holds one character. Its width follows the character on a spring, so the word never resizes in one frame. */
+.oa-na-slot { position: relative; display: inline-block; height: 1.15em; flex: none; overflow: visible; }
+.oa-na-sizer { display: inline-block; visibility: hidden; white-space: pre; pointer-events: none; }
+
+/* The window reaches a little past the line so glyphs fade at the edges instead of being cut. */
+.oa-na-window {
+  position: absolute;
+  inset: -.22em -.08em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black .24em, black calc(100% - .24em), transparent);
+  mask-image: linear-gradient(to bottom, transparent, black .24em, black calc(100% - .24em), transparent);
+}
+.oa-na-strip { position: absolute; top: calc(.22em - .225em); right: .08em; left: .08em; display: flex; flex-direction: column; align-items: center; will-change: transform; }
+.oa-na-cell { display: block; height: 1.6em; padding-top: .225em; box-sizing: border-box; line-height: 1.15; white-space: pre; }
+
+.oa-na-srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
