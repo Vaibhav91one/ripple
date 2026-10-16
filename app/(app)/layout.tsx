@@ -1,5 +1,8 @@
 import { Suspense } from "react";
 import { TopBar } from "@/components/ripple/TopBar";
+import { AskDrawer } from "@/components/ask/AskDrawer";
+import { SourcePanel } from "@/components/panels/SourcePanel";
+import { ConflictDialog } from "@/components/ripple/ConflictDialog";
 
 // App shell: top bar, left slot for the decision sidebar (empty for now), then the screen.
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +17,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Suspense>{children}</Suspense>
         </main>
       </div>
+      {/* Overlays driven by URL state: ?ask=1, ?src=<artifact>, ?conflict=open */}
+      <Suspense>
+        <AskDrawer />
+        <SourcePanel />
+        <ConflictDialog />
+      </Suspense>
     </div>
   );
 }

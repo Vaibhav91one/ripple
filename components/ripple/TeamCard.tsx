@@ -5,6 +5,8 @@ import { useState } from "react";
 import { ContextCard, ContextChip } from "@/components/kit/beautifului/context-cards";
 import { getSource } from "@/lib/api";
 import type { RippleResult } from "@/lib/schemas";
+import { useSourcePanel } from "@/components/panels/SourcePanel";
+import { parseAsString, useQueryState } from "nuqs";
 
 export type TeamStatus = "conflict" | "gap" | "covered";
 
@@ -19,11 +21,17 @@ const KIND = { doc: "DOC", ticket: "TKT", message: "MSG", pr: "PR" } as const;
 /** Source chip showing the artifact title; the verbatim quote is the tooltip. */
 function SourceChip({ artifactId, quote }: { artifactId: string; quote: string }) {
   const { data } = useQuery({ queryKey: ["source", artifactId], queryFn: () => getSource(artifactId) });
-  return <ContextChip source={data?.title ?? artifactId} badge={data ? KIND[data.kind] : "…"} tone="bg-ripple" title={quote} />;
+  const panel = useSourcePanel();
+  return (
+    <button type="button" onClick={() => panel.open(artifactId, quote)} aria-label={`Open source: ${data?.title ?? artifactId}`} className="rounded-full">
+      <ContextChip source={data?.title ?? artifactId} badge={data ? KIND[data.kind] : "…"} tone="bg-ripple" title={quote} />
+    </button>
+  );
 }
 
 export function TeamCard({ name, status, team, cypher }: { name: string; status: TeamStatus; team: RippleResult["teams"][number]; cypher?: RippleResult["cypher"][number] }) {
   const [open, setOpen] = useState(false);
+  const [, setConflict] = useQueryState("conflict", parseAsString);
   const badge = BADGE[status];
   return (
     <ContextCard title={name} meta={<span className={`inline-flex h-5 items-center rounded-md px-1.5 text-[11.5px] font-medium ${badge.cls}`}>{badge.label}</span>}>
@@ -35,6 +43,13 @@ export function TeamCard({ name, status, team, cypher }: { name: string; status:
           </li>
         ))}
       </ul>
+      {status === "conflict" && (
+        <div className="border-t border-hairline px-3 py-2">
+          <button type="button" onClick={() => setConflict("open")} className="rounded-md bg-conflict-soft px-2.5 py-1 text-xs font-medium text-conflict hover:opacity-90">
+            Resolve conflict
+          </button>
+        </div>
+      )}
       {cypher && (
         <div className="border-t border-hairline px-3 py-1.5">
           <button
