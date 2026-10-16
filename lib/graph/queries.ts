@@ -1,0 +1,237 @@
+// Typed wrappers over lib/graph/queries/*.cypher. Every result carries the Cypher it ran
+// (`cypher: {name, text}[]`) for the UI's "Cypher used" toggle. Dates are epoch seconds; pass `now`.
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { z } from "zod";
+import { query, type Graph } from "./client";
+import {
+  BottleneckRow, Change, Conflict, Decision, WhoKnowsRow,
+  type EdgeType, type RippleResult, type Source,
+} from "../schemas";
+
+const DIR = path.join(process.cwd(), "lib/graph/queries");
+const cache = new Map<string, string>();
+export type Cypher = { name: string; text: string };
+export type Result<T> = { data: T; cypher: Cypher[] };
+
+function load(name: string): Cypher {
+  let text = cache.get(name);
+  if (text === undefined) cache.set(name, (text = readFileSync(path.join(DIR, `${name}.cypher`), "utf8")));
+  return { name, text };
+}
+async function run<T>(g: Graph, name: string, params: Record<string, unknown>, schema: z.ZodType<T>) {
+  const c = load(name);
+  const rows = await query(g, c.text, params);
+  return { rows: z.array(schema).parse(rows), c };
+}
+
+const n = z.coerce.number();
+const DAY = 86400;
+
+// ---------- gap ----------
+const GapRow = z.object({ team: z.string(), name: z.string(), involved: z.boolean(), acked: z.boolean() });
+type GapRow = z.infer<typeof GapRow>;
+
+/** Affected teams with neither INVOLVED_IN nor ACKED on the decision. */
+export async function gap(g: Graph, decisionId: string, affected: string[]): Promise<Result<string[]> & { teams: GapRow[] }> {
+  const { rows, c } = await run(g, "gap", { id: decisionId, affected }, GapRow);
+  return { data: rows.filter((r) => !r.involved && !r.acked).map((r) => r.team), teams: rows, cypher: [c] };
+}
+
+// ---------- conflicts ----------
+const Detected = z.object({
+  systemId: z.string(),
+  contractIds: z.array(z.string()),
+  guaranteeSources: z.array(z.object({ artifactId: z.string().nullable(), quote: z.string().nullable() })),
+  sunsetSrc: z.string().nullable(),
+  sunsetQuote: z.string().nullable(),
+});
+const ConflictRow = z.object({
+  id: z.string(), kind: z.literal("sunset_vs_guarantee"), severity: z.enum(["low", "medium", "high"]),
+  status: z.enum(["open", "resolved"]), decisionId: z.string(), contractIds: z.array(z.string()),
+  detectedAt: n, sources: z.string(),
+});
+
+/** Detect sunset-vs-guarantee conflicts, MERGE them as Conflict nodes, resolve the ones no longer true. */
+export async function conflicts(g: Graph, decisionId: string, now: number): Promise<Result<Conflict[]>> {
+  const det = await run(g, "conflicts-detect", { id: decisionId }, Detected);
+  const keep: string[] = [];
+  const merge = load("conflicts-merge");
+  for (const r of det.rows) {
+    const cid = `conf-${decisionId}-${r.systemId}`;
+    keep.push(cid);
+    const sources: Source[] = [
+      ...(r.sunsetSrc && r.sunsetQuote ? [{ artifactId: r.sunsetSrc, quote: r.sunsetQuote }] : []),
+      ...r.guaranteeSources.flatMap((s) => (s.artifactId && s.quote ? [{ artifactId: s.artifactId, quote: s.quote }] : [])),
+    ];
+    await query(g, merge.text, { cid, id: decisionId, now, contractIds: r.contractIds, sources: JSON.stringify(sources) });
+  }
+  const resolve = await run(g, "conflicts-resolve", { id: decisionId, keep }, z.object({ n }));
+  const list = await run(g, "conflicts-list", { id: decisionId }, ConflictRow);
+  const data = list.rows.map((r) => Conflict.parse({ ...r, sources: JSON.parse(r.sources) }));
+  return { data, cypher: [det.c, merge, resolve.c, list.c] };
+}
+
+// ---------- ripple ----------
+const RippleRow = z.object({
+  kind: z.enum(["system", "ticket", "deal", "contract", "customer", "team"]),
+  ref: z.string(), label: z.string(), sys: z.string().nullable(), hop: n,
+  rel: z.string(), team: z.string().nullable(), reason: z.string().nullable(),
+  src: z.string().nullable(), quote: z.string().nullable(), amount: n,
+});
+const DecisionRow = Decision.extend({
+  src: z.string().nullable(), quote: z.string().nullable(), decidedAt: n,
+});
+
+export async function ripple(g: Graph, decisionId: string, now: number): Promise<RippleResult> {
+  const dec = await run(g, "decision", { id: decisionId }, DecisionRow);
+  if (!dec.rows[0]) throw new Error(`unknown decision ${decisionId}`);
+  const { src, quote, ...decision } = dec.rows[0];
+  const fallback: Source = { artifactId: src ?? decisionId, quote: quote ?? decision.title };
+  const rp = await run(g, "ripple", { id: decisionId, now }, RippleRow);
+
+  const nodes = new Map<string, RippleResult["nodes"][number]>([
+    [decisionId, { id: decisionId, label: decision.title, kind: "decision", hop: 0 }],
+  ]);
+  const edges = new Map<string, RippleResult["edges"][number]>();
+  const addEdge = (from: string, to: string, type: string) => edges.set(`${from}|${to}|${type}`, { from, to, type: type as EdgeType });
+  const whyBy = new Map<string, Map<string, { reason: string; ref: string; source: Source; n: number }>>();
+
+  for (const r of rp.rows) {
+    if (r.kind === "team") {
+      const t = r.team!;
+      const byRel = whyBy.get(t) ?? new Map();
+      const w = byRel.get(r.rel);
+      if (w) w.n++;
+      else byRel.set(r.rel, { reason: r.reason!, ref: r.ref, n: 1, source: r.src && r.quote ? { artifactId: r.src, quote: r.quote } : fallback });
+      whyBy.set(t, byRel);
+      addEdge(...(r.rel === "OWNS" || r.rel === "CARES_ABOUT" ? [t, r.ref] : [r.ref, t]) as [string, string], r.rel);
+      continue;
+    }
+    const prev = nodes.get(r.ref);
+    if (!prev || r.hop < prev.hop) nodes.set(r.ref, { id: r.ref, label: r.label, kind: r.kind, hop: r.hop });
+    if (r.kind === "system") {
+      if (r.hop === 1) addEdge(decisionId, r.ref, "SUNSETS");
+      else if (r.sys) addEdge(r.ref, r.sys, "DEPENDS_ON");
+    } else if (r.sys) addEdge(r.ref, r.sys, r.rel);
+  }
+
+  const maxHop = Math.max(...[...nodes.values()].map((x) => x.hop));
+  const teamIds = [...whyBy.keys()].sort();
+  const gp = await gap(g, decisionId, teamIds);
+  const names = new Map(gp.teams.map((t) => [t.team, t.name]));
+  for (const t of teamIds) nodes.set(t, { id: t, label: names.get(t) ?? t, kind: "team", hop: maxHop + 1 });
+
+  const cf = await conflicts(g, decisionId, now);
+  const open = cf.data.filter((c) => c.status === "open");
+  const contractIds = new Set(open.flatMap((c) => c.contractIds));
+  const rows = (k: string) => new Map(rp.rows.filter((r) => r.kind === k).map((r) => [r.ref, r]));
+
+  return {
+    decision,
+    nodes: [...nodes.values()],
+    edges: [...edges.values()],
+    teams: gp.teams.sort((a, b) => a.team.localeCompare(b.team)).map((t) => ({
+      teamId: t.team,
+      why: [...whyBy.get(t.team)!.values()].map((w) => ({ reason: w.n > 1 ? `${w.reason} (${w.n})` : w.reason, ref: w.ref, source: w.source })),
+      involved: t.involved,
+      acked: t.acked,
+    })),
+    gap: gp.data,
+    conflicts: open,
+    counts: {
+      teamsAffected: teamIds.length,
+      notTold: gp.data.length,
+      conflicts: open.length,
+      customers: rows("customer").size,
+      tickets: rows("ticket").size,
+      deals: rows("deal").size,
+      contracts: rows("contract").size,
+      arrAtRisk: [...rows("contract").values()].filter((r) => contractIds.has(r.ref)).reduce((s, r) => s + r.amount, 0),
+    },
+    cypher: [dec.c, rp.c, ...gp.cypher, ...cf.cypher],
+  };
+}
+
+// ---------- who knows ----------
+const WhoRow = z.object({
+  personId: z.string(), role: z.enum(["authored", "reviewed", "handled"]), id: z.string(), ts: n.nullable(),
+});
+export type WhoKnows = WhoKnowsRow & { evidence: string[]; score: number };
+const WEIGHT = { authored: 3, reviewed: 2, handled: 1 } as const;
+
+/** Top 5 active people by authored (3) + reviewed (2) + handled (1) evidence about the system. */
+export async function whoKnows(g: Graph, systemId: string): Promise<Result<WhoKnows[]>> {
+  const { rows, c } = await run(g, "who-knows", { id: systemId }, WhoRow);
+  const by = new Map<string, WhoKnows>();
+  for (const r of rows) {
+    const w = by.get(r.personId) ?? { personId: r.personId, systemId, authored: 0, reviewed: 0, handled: 0, lastSeen: 0, evidence: [], score: 0 };
+    w[r.role]++;
+    w.score += WEIGHT[r.role];
+    w.lastSeen = Math.max(w.lastSeen, r.ts ?? 0);
+    w.evidence.push(r.id);
+    by.set(r.personId, w);
+  }
+  const data = [...by.values()].sort((x, y) => y.score - x.score || x.personId.localeCompare(y.personId)).slice(0, 5);
+  return { data, cypher: [c] };
+}
+
+// ---------- diff ----------
+const DiffRow = z.object({
+  from: z.string(), to: z.string(), type: z.string(), validFrom: n, validTo: n.nullable(),
+  src: z.string().nullable(), quote: z.string().nullable(),
+});
+
+/** Edges added (valid_from > since) or ended (valid_to > since). */
+export async function diff(g: Graph, since: number): Promise<Result<Change[]>> {
+  const { rows, c } = await run(g, "diff", { since }, DiffRow);
+  const data = rows.flatMap((r) => {
+    const edge = {
+      from: r.from, to: r.to, type: r.type as EdgeType, validFrom: r.validFrom, validTo: r.validTo,
+      ...(r.src && r.quote ? { src: { artifactId: r.src, quote: r.quote } } : {}),
+    };
+    const out: Change[] = [];
+    if (r.validFrom > since) out.push({ kind: "added", at: r.validFrom, edge });
+    if (r.validTo !== null && r.validTo > since) out.push({ kind: "ended", at: r.validTo, edge });
+    return out;
+  }).sort((a, b) => b.at - a.at);
+  return { data: z.array(Change).parse(data), cypher: [c] };
+}
+
+// ---------- bottleneck ----------
+const BnRow = z.object({
+  blockerTeamId: z.string(), openRequests: n, totalWaitSecs: n, oldestSince: n, waitingTeamIds: z.array(z.string()),
+});
+
+export async function bottleneck(g: Graph, now: number): Promise<Result<BottleneckRow[]>> {
+  const { rows, c } = await run(g, "bottleneck", { now }, BnRow);
+  const data = rows.map((r) => BottleneckRow.parse({
+    blockerTeamId: r.blockerTeamId, openRequests: r.openRequests,
+    totalWaitDays: Math.floor(r.totalWaitSecs / DAY), oldestDays: Math.floor((now - r.oldestSince) / DAY),
+    waitingTeamIds: r.waitingTeamIds.sort(),
+  }));
+  return { data, cypher: [c] };
+}
+
+// ---------- search ----------
+const Hit = z.object({ id: z.string(), kind: z.string(), title: z.string(), score: n });
+
+export async function search(g: Graph, text: string): Promise<Result<z.infer<typeof Hit>[]>> {
+  const { rows, c } = await run(g, "search", { text }, Hit);
+  return { data: rows, cypher: [c] };
+}
+
+/** Hybrid vector -> graph search. Needs Artifact.emb (embeddings land in #14). */
+export async function searchVector(g: Graph, vec: number[], k = 10) {
+  const { rows, c } = await run(g, "search-vector", { vec, k }, Hit.extend({ systemIds: z.array(z.string()) }));
+  return { data: rows, cypher: [c] };
+}
+
+// ---------- live change ----------
+/** End the current SUNSETS edge and write a new one with `on = newOn`; re-checks conflicts. */
+export async function changeSunset(g: Graph, decisionId: string, newOn: number, now: number): Promise<Result<Conflict[]>> {
+  const c = load("change-sunset");
+  await query(g, c.text, { id: decisionId, newOn, now });
+  const cf = await conflicts(g, decisionId, now);
+  return { data: cf.data, cypher: [c, ...cf.cypher] };
+}
