@@ -391,11 +391,11 @@ export const rippleResult: RippleResult = {
   cypher: [
     {
       name: "blast radius",
-      text: "// everything within 2 hops of the decision\nMATCH (d:Decision {id:$id})-[:AFFECTS]->(s:System)<-[r:USES|ABOUT|PROMISES|GUARANTEES]-(x)\nWHERE r.validTo IS NULL\nRETURN s, r, x",
+      text: "// everything within 2 hops of the decision\nMATCH (d:Decision {id:$id})-[:SUNSETS]->(s:System)<-[r:USES|ABOUT|PROMISED|GUARANTEES]-(x)\nWHERE r.valid_to IS NULL\nRETURN s, r, x",
     },
     {
       name: "teams not told",
-      text: "// affected teams with no ack for the decision\nMATCH (t:Team)-[:OWNS|WORKS_ON]->(x)-[:USES|ABOUT|PROMISES|GUARANTEES|SERVES]->(:System {id:'api-v1'})\nWHERE NOT (t)-[:ACKED]->(:Decision {id:$id})\nRETURN DISTINCT t",
+      text: "// affected teams with no ack for the decision\nMATCH (t:Team) WHERE t.id IN $affected\n  AND NOT (t)-[:INVOLVED_IN]->(:Decision {id:$id})\n  AND NOT (t)-[:ACKED]->(:Decision {id:$id})\nRETURN t",
     },
   ],
 };
