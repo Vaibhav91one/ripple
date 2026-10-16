@@ -63,7 +63,7 @@ describe("ledgerly seed", () => {
     const got = await ids(`MATCH (x)-[r:USES|ABOUT|PROMISED|GUARANTEES]->(:System {id:'api-v1'})
       WHERE r.valid_to IS NULL RETURN x.id AS id`);
     for (const d of ["art-tkt-closed", "art-tkt-invoice", "deal-lost", "cust-41", "art-msg-lost"]) expect(got).not.toContain(d);
-    expect(got).toHaveLength(40 + 12 + 3 + 2);
+    expect(got).toHaveLength(40 + 12 + 3 + 2 + 9);
   });
   t("every relationship has valid_from and observed_at", async () => {
     expect(await num("MATCH ()-[r]->() WHERE r.valid_from IS NULL OR r.observed_at IS NULL RETURN count(r) AS n")).toBe(0);

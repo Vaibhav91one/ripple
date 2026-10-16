@@ -39,6 +39,7 @@ function buildEdges(): EdgeRow[] {
   for (const e of m.edges) {
     const extra: Record<string, unknown> = {};
     if (e.type === "SUNSETS") extra.on = sunsetOn; // the date from RFC-14
+    if (e.type === "USES") extra.last_seen = day("2026-10-10");
     if (e.type === "GUARANTEES") extra.until = m.contracts.find((c) => c.id === e.from)!.endsAt;
     out.push(edge(e.from, e.to, e.type, e.validFrom, { validTo: e.validTo, src: e.src, extra }));
   }
@@ -64,6 +65,24 @@ function buildEdges(): EdgeRow[] {
     out.push(edge(t.id, t.teamId, "ASSIGNED", t.createdAt));
     if (t.assigneeId) out.push(edge(t.id, t.assigneeId, "ASSIGNED", t.createdAt));
   }
+  // ownership/handling the ripple and bottleneck queries read
+  out.push(edge("security", "auth-service", "OWNS", day("2026-01-01"), { src: { artifactId: "art-auth-design", quote: "auth-service verifies v1 tokens" } }));
+  out.push(edge("devrel", "api-v1", "CARES_ABOUT", day("2026-01-01"), { src: { artifactId: "art-sdk-docs", quote: "still point at api.ledgerly.test/v1" } }));
+  for (const c of m.contracts) out.push(edge(c.id, "legal", "MANAGED_BY", day("2025-07-01")));
+  for (const d of m.deals) out.push(edge(d.id, "sales", "OWNED_BY", day("2026-01-01")));
+  // PRs: Priya authored nine about api-v1, Sam reviewed six of them
+  for (let i = 1; i <= 9; i++) {
+    out.push(edge("p-priya", `pr-v1-${i}`, "AUTHORED", day("2026-09-01")));
+    out.push(edge(`pr-v1-${i}`, "api-v1", "ABOUT", day("2026-09-01")));
+    if (i <= 6) out.push(edge("p-sam", `pr-v1-${i}`, "REVIEWED", day("2026-09-02")));
+  }
+  // open requests between teams: [waiting, blocker, age in days at 2026-10-17]
+  const waits: [string, string, number][] = [
+    ["sales", "legal", 17], ["eng", "legal", 10], ["finance", "legal", 7], ["product", "legal", 4],
+    ["eng", "security", 11], ["devrel", "security", 6], ["data", "security", 4],
+    ["support", "eng", 6], ["product", "eng", 3],
+  ];
+  for (const [w, b, age] of waits) out.push(edge(w, b, "WAITING_ON", day("2026-10-17") - age * 86400));
   // decoys (seed-only; the mock has no edges for them): ended or pointing elsewhere
   const closed = art("art-tkt-closed"), invoice = art("art-tkt-invoice"), lost = art("art-msg-lost");
   out.push(edge(closed.id, "api-v1", "ABOUT", closed.ts, { validTo: closed.ts + 86400, src: { artifactId: closed.id, quote: "timeout from API v1" } }));
@@ -89,6 +108,11 @@ export async function seed(graphName: string): Promise<void> {
       .map((a) => ({ id: a.id, props: clean({ ...a, author: a.authorId, authorId: undefined }) }));
     if (rows.length) await writeNodes(g, `${kindLabel[kind]}:Artifact`, rows);
   }
+
+  await writeNodes(g, "PR:Artifact", Array.from({ length: 9 }, (_, i) => ({
+    id: `pr-v1-${i + 1}`,
+    props: { id: `pr-v1-${i + 1}`, kind: "pr", title: `API v1 auth fix ${i + 1}`, text: `Fixes v1 auth handler bug ${i + 1}`, ts: day("2026-09-01"), uri: `https://git.ledgerly.test/pr/${i + 1}`, author: "p-priya" },
+  })));
 
   const byType = new Map<string, EdgeRow[]>();
   for (const e of buildEdges()) byType.set(e.type, [...(byType.get(e.type) ?? []), e]);
