@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-msa-northwind",
+  "sha256": "b7a282d75849e7571532c5b592305022f797f3f74d07d5efe1814b702e783b85",
+  "edges": [
+    {
+      "from": "ctr-1",
+      "type": "GUARANTEES",
+      "to": "api-v1",
+      "quote": "guarantees availability of API v1 until 2027-06-30"
+    }
+  ],
+  "dropped": []
+}

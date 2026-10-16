@@ -90,11 +90,12 @@ describe("queries on the ledgerly seed (in order: later tests mutate the graph)"
     expect(data.length).toBeGreaterThan(0);
   });
 
-  t("vector search (needs embeddings from #14)", async () => {
+  t("vector search", async () => {
     const dim = 384;
     const { data } = await searchVector(g, Array.from({ length: dim }, () => 0.1), 3);
     expect(data.length).toBeGreaterThan(0);
-  }, hasEmb);
+    expect(hasEmb).toBe(true);
+  });
 
   t("gap shrinks after Legal acks", async () => {
     const before = await gap(g, "d-1", ["support", "sales", "legal", "security", "devrel"]);

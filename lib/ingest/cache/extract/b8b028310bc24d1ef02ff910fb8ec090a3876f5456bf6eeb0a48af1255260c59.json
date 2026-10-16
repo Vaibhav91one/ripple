@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-pr-auth",
+  "sha256": "b8b028310bc24d1ef02ff910fb8ec090a3876f5456bf6eeb0a48af1255260c59",
+  "edges": [
+    {
+      "from": "p-priya",
+      "type": "AUTHORED",
+      "to": "api-v1",
+      "quote": "wrote most of the original v1 auth handlers"
+    }
+  ],
+  "dropped": []
+}

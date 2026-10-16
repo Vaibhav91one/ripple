@@ -1,0 +1,14 @@
+{
+  "origin": "seeded-from-mock",
+  "artifactId": "art-msg-deal-2",
+  "sha256": "091242189173ed9063d4b95d009f43c628516f8379a530519938d1b901be5104",
+  "edges": [
+    {
+      "from": "deal-2",
+      "type": "PROMISED",
+      "to": "api-v1",
+      "quote": "API v1 stays available through 2027"
+    }
+  ],
+  "dropped": []
+}
