@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "seed": "tsx lib/ingest/seed.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
