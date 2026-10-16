@@ -4,8 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog } from "radix-ui";
 import { parseAsString, useQueryStates } from "nuqs";
 import { ExternalLink, X } from "lucide-react";
-import { getRipple, getSource } from "@/lib/api";
-import { people } from "@/lib/mock/ledgerly"; // ponytail: no getPerson in lib/api yet; swap when Phase 3 adds it
+import { getPeople, getRipple, getSource } from "@/lib/api";
 import RecordsTable, { type RecordRow } from "@/components/kit/beautifului/records-table";
 import { fmtDate } from "./format";
 import { highlightQuote } from "./highlight";
@@ -27,6 +26,7 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
   const { src, quote, close } = useSourcePanel();
   const artifact = useQuery({ queryKey: ["source", src], queryFn: () => getSource(src!), enabled: !!src });
   const ripple = useQuery({ queryKey: ["ripple", decisionId], queryFn: () => getRipple(decisionId), enabled: !!src });
+  const people = useQuery({ queryKey: ["people"], queryFn: getPeople, enabled: !!src });
   const a = artifact.data;
   const claims: RecordRow[] = (ripple.data?.teams ?? []).flatMap((t) =>
     t.why
@@ -54,7 +54,7 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
               <Dialog.Title className="text-lg text-strong">{a?.title ?? "Loading source…"}</Dialog.Title>
               {a && (
                 <p className="text-sm text-faint">
-                  {people.find((p) => p.id === a.authorId)?.name ?? a.authorId} · {fmtDate(a.ts)}
+                  {people.data?.find((p) => p.id === a.authorId)?.name ?? a.authorId} · {fmtDate(a.ts)}
                 </p>
               )}
             </div>

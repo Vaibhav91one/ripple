@@ -1,5 +1,4 @@
 import type { Change, EdgeType } from "@/lib/schemas";
-import * as m from "@/lib/mock/ledgerly";
 
 export const DAY = 86_400;
 
@@ -23,10 +22,5 @@ export function filterChanges(changes: Change[], types: EdgeType[]): Change[] {
     .sort((a, b) => b.at - a.at);
 }
 
-// ponytail: names come straight from the mock until Phase 3 ships a lookup in lib/api.ts.
-const names = new Map<string, string>(
-  [m.teams, m.people, m.systems, m.customers, m.decisions, m.deals, m.contracts]
-    .flat()
-    .map((x) => [x.id, "name" in x ? x.name : x.title] as [string, string]),
-);
-export const nameOf = (id: string) => names.get(id) ?? id;
+/** Display name for an id from the /api/names map; falls back to the id. */
+export const nameOf = (names: Record<string, string>) => (id: string) => names[id] ?? id;

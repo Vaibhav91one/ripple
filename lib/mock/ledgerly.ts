@@ -305,6 +305,8 @@ export const edges: Edge[] = [
   { from: "auth-service", to: "api-v1", type: "DEPENDS_ON", validFrom: FROM, validTo: null, src: src("art-auth-design", "auth-service verifies v1 tokens") },
   { from: "p-priya", to: "api-v1", type: "AUTHORED", validFrom: FROM, validTo: null, src: src("art-pr-auth", "wrote most of the original v1 auth handlers") },
   { from: "cust-41", to: "api-v2", type: "USES", validFrom: FROM, validTo: null },
+  // cust-30 started on v2 while still on v1, so its v1 edge stays current (#23)
+  { from: "cust-30", to: "api-v2", type: "USES", validFrom: t("2026-10-10"), validTo: null },
   ...usesV1,
   ...ticketEdges,
   ...dealEdges,
@@ -431,8 +433,7 @@ export const briefs: Brief[] = [
 export const changes: Change[] = [
   { kind: "added", at: t("2026-10-06"), edge: guaranteeEdges[0] },
   { kind: "added", at: t("2026-10-05"), edge: dealEdges[0] },
-  // customer migrated off v1 (ended edge)
-  { kind: "ended", at: t("2026-10-10"), edge: { from: "cust-30", to: "api-v1", type: "USES", validFrom: FROM, validTo: t("2026-10-10") } },
+  // customer started on v2 (same edge as in `edges`; its v1 edge is still current)
   { kind: "added", at: t("2026-10-10"), edge: { from: "cust-30", to: "api-v2", type: "USES", validFrom: t("2026-10-10"), validTo: null } },
 ];
 

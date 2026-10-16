@@ -9,7 +9,7 @@ export default function LiveStyleguide() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 bg-page px-6 py-12">
       <h1 className="text-2xl font-semibold text-strong">Live change</h1>
-      {data && <LiveChange result={data} autoRun />}
+      {data && <LiveChange result={data} autoRun online={false} />}
     </main>
   );
 }

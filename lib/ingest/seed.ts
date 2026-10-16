@@ -64,7 +64,8 @@ function buildEdges(): EdgeRow[] {
   for (const i of m.incidents) out.push(edge(i.id, i.systemId, "AFFECTED", i.startedAt));
   for (const t of m.tasks) {
     out.push(edge(t.id, t.teamId, "ASSIGNED", t.createdAt));
-    if (t.assigneeId) out.push(edge(t.id, t.assigneeId, "ASSIGNED", t.createdAt));
+    // `by` = who asked for the review (the inbox's "from"); mock tasks don't carry it
+    if (t.assigneeId) out.push(edge(t.id, t.assigneeId, "ASSIGNED", t.createdAt, t.id === "task-2" ? { extra: { by: "p-prod" } } : {}));
   }
   // ownership/handling the ripple and bottleneck queries read
   out.push(edge("security", "auth-service", "OWNS", day("2026-01-01"), { src: { artifactId: "art-auth-design", quote: "auth-service verifies v1 tokens" } }));

@@ -7,7 +7,8 @@ import LoadingState from "@/components/kit/beautifului/loading-state";
 import { AnimatedCount } from "@/components/motion/AnimatedCount";
 import { CardEnter } from "@/components/motion/CardEnter";
 import { GapChips } from "@/components/motion/GapChips";
-import { getRipple } from "@/lib/api";
+import { getRipple, isGraphDown } from "@/lib/api";
+import { GraphDownBanner } from "@/components/states/States";
 import { RippleGraph } from "./RippleGraph";
 import { TeamCard, type TeamStatus } from "./TeamCard";
 import { useDecisionId } from "./useDecisionId";
@@ -18,7 +19,7 @@ const ORDER: Record<TeamStatus, number> = { conflict: 0, gap: 1, covered: 2 };
 
 export function RippleHome() {
   const [d] = useDecisionId();
-  const { data, isPending, error } = useQuery({ queryKey: ["ripple", d], queryFn: () => getRipple(d) });
+  const { data, isPending, error, refetch } = useQuery({ queryKey: ["ripple", d], queryFn: () => getRipple(d) });
   const [team] = useTeam();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [busy, setBusy] = useState(false);
@@ -45,6 +46,8 @@ export function RippleHome() {
 
   if (isPending)
     return <div className="grid h-full place-items-center"><LoadingState /></div>;
+  if (isGraphDown(error))
+    return <div className="p-8"><GraphDownBanner onRetry={() => void refetch()} /></div>;
   if (error)
     return <p className="p-8 text-conflict">{error.message}</p>;
 

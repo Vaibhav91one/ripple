@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as m from "@/lib/mock/ledgerly";
 import * as s from "@/lib/schemas";
-import { askStream, getChanges, getInbox, getWhoKnows, getRipple, getSource } from "@/lib/api";
+import { askStream, getChanges, getInbox, getWhoKnows, getRipple, getSource } from "@/lib/mock/api";
 
 const parseAll = (schema: { parse: (x: unknown) => unknown }, xs: unknown[]) =>
   xs.forEach((x) => schema.parse(x));

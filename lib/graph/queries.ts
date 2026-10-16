@@ -5,12 +5,13 @@ import path from "node:path";
 import { z } from "zod";
 import { query, type Graph } from "./client";
 import {
-  BottleneckRow, Change, Conflict, Decision, WhoKnowsRow,
-  type EdgeType, type RippleResult, type Source,
+  Artifact, BottleneckRow, Change, Conflict, Decision, Person, WhoKnowsRow,
+  type EdgeType, type InboxItem, type RippleResult, type Source,
 } from "../schemas";
 
 const DIR = path.join(process.cwd(), "lib/graph/queries");
 const cache = new Map<string, string>();
+export class NotFound extends Error {}
 export type Cypher = { name: string; text: string };
 export type Result<T> = { data: T; cypher: Cypher[] };
 
@@ -85,7 +86,7 @@ const DecisionRow = Decision.extend({
 
 export async function ripple(g: Graph, decisionId: string, now: number): Promise<RippleResult> {
   const dec = await run(g, "decision", { id: decisionId }, DecisionRow);
-  if (!dec.rows[0]) throw new Error(`unknown decision ${decisionId}`);
+  if (!dec.rows[0]) throw new NotFound(`unknown decision ${decisionId}`);
   const { src, quote, ...decision } = dec.rows[0];
   const fallback: Source = { artifactId: src ?? decisionId, quote: quote ?? decision.title };
   const rp = await run(g, "ripple", { id: decisionId, now }, RippleRow);
@@ -234,4 +235,60 @@ export async function changeSunset(g: Graph, decisionId: string, newOn: number, 
   await query(g, c.text, { id: decisionId, newOn, now });
   const cf = await conflicts(g, decisionId, now);
   return { data: cf.data, cypher: [c, ...cf.cypher] };
+}
+
+// ---------- lookups ----------
+export async function decisions(g: Graph): Promise<Result<Decision[]>> {
+  const { rows, c } = await run(g, "decisions", {}, Decision);
+  return { data: rows, cypher: [c] };
+}
+
+export async function people(g: Graph): Promise<Result<Person[]>> {
+  const { rows, c } = await run(g, "people", {}, Person);
+  return { data: rows, cypher: [c] };
+}
+
+/** id -> display name for teams, people, systems, customers, decisions, deals and contracts. */
+export async function names(g: Graph): Promise<Result<Record<string, string>>> {
+  const { rows, c } = await run(g, "names", {}, z.object({ id: z.string(), name: z.string() }));
+  return { data: Object.fromEntries(rows.map((r) => [r.id, r.name])), cypher: [c] };
+}
+
+export async function source(g: Graph, id: string): Promise<Result<Artifact>> {
+  const { rows, c } = await run(g, "source", { id }, z.record(z.string(), z.unknown()));
+  if (!rows[0]) throw new NotFound(`unknown artifact ${id}`);
+  const clean = Object.fromEntries(Object.entries(rows[0]).filter(([, v]) => v !== null));
+  return { data: Artifact.parse(clean), cypher: [c] };
+}
+
+// ---------- inbox ----------
+const Who = z.object({ team: z.string(), decisions: z.array(z.string()) });
+const ReviewRow = z.object({ id: z.string(), title: z.string(), at: n, fromId: z.string().nullable() });
+const WaitRow = z.object({ id: z.string(), name: z.string(), at: n });
+
+/**
+ * brief: one per team the person's team has not told, for each decision it sunsets
+ * review: tasks in review assigned to the person; waiting: teams with an open request on the person's team.
+ */
+export async function inbox(g: Graph, personId: string, now: number): Promise<Result<InboxItem[]>> {
+  const who = await run(g, "inbox-person", { id: personId }, Who);
+  if (!who.rows[0]) return { data: [], cypher: [who.c] };
+  const { team, decisions: owned } = who.rows[0];
+  const rv = await run(g, "inbox-reviews", { id: personId }, ReviewRow);
+  const wt = await run(g, "inbox-waiting", { team }, WaitRow);
+  const items: InboxItem[] = [];
+  const cypher = [who.c, rv.c, wt.c];
+  for (const d of owned) {
+    const r = await ripple(g, d, now);
+    cypher.push(...r.cypher);
+    for (const t of r.gap) {
+      const name = r.nodes.find((x) => x.id === t)?.label ?? t;
+      items.push({ id: `brief-${d}-${t}`, kind: "brief", title: `Brief: ${name} on "${r.decision.title}"`, at: r.decision.decidedAt, teamId: t, decisionId: d });
+    }
+  }
+  for (const k of rv.rows)
+    items.push({ id: `review-${k.id}`, kind: "review", title: k.title, at: k.at, taskId: k.id, from: k.fromId ?? personId });
+  for (const w of wt.rows)
+    items.push({ id: `wait-${w.id}-${team}`, kind: "waiting", title: `${w.name} is waiting on you`, at: w.at, waitingOn: w.id });
+  return { data: items, cypher };
 }
