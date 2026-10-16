@@ -15,7 +15,7 @@ Ripple is a company brain on FalkorDB for the WeMakeDevs x FalkorDB Graph Hacks 
 ## Rules
 - **One issue = one branch = one PR.** Branch `issue-<n>-<slug>`. PR title `<type>: <summary> (#<n>)`, body sections: Context / Description / Changes in the codebase / Changes outside the codebase / How to test / Additional information. End the body with `Closes #<n>`. No "Generated with" footer.
 - **Commit identity is set in the repo config** (`Vaibhav91one` noreply). Don't change it. End commit messages with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- **pnpm in this sandbox:** pass `--config.cache-dir=$TMPDIR/pnpm-cache` (the default cache dir is not writable). Don't add dependencies unless the issue needs one; most are already installed.
+- **pnpm in this sandbox:** pass `--config.cache-dir=/private/tmp/claude-501/pnpm-cache` (the default cache dir is not writable; `$TMPDIR` is blocked too). Don't add dependencies unless the issue needs one; most are already installed.
 - **Before opening a PR:** `pnpm typecheck`, `pnpm lint`, `pnpm test` all pass. For UI work, attach a 1440×900 screenshot (headless Chrome) to the PR.
 - **Design system:** only the tokens in `app/globals.css` (`bg-page/surface/raised/overlay`, `text-strong/body/faint`, `border-hairline`, status `conflict/gap/covered`, accent `ripple`, each with a `-soft` variant). Never hard-code colours. Status colours have one meaning each. Dark first.
 - **Motion:** `motion/react` only, through `lib/motion.ts`. Transform and opacity only. Respect reduced motion.
