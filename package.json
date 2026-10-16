@@ -11,6 +11,7 @@
     "seed": "tsx lib/ingest/seed.ts",
     "extract": "tsx lib/ingest/extract.ts",
     "embed": "tsx lib/ingest/embed.ts",
+    "eval": "tsx lib/eval/run.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
