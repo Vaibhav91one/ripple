@@ -1,14 +1,14 @@
 "use client";
 
 import { AnimatePresence, m } from "motion/react";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import CodeBlock from "@/components/kit/beautifului/code-block";
 import PromptBar from "@/components/kit/beautifului/prompt-bar";
 import StreamingText, { type SourceRef, type Token } from "@/components/kit/beautifului/streaming-text";
 import { ThinkingLive } from "@/components/kit/beautifului/thinking";
 import ToolChips, { type ToolRowData } from "@/components/kit/beautifului/tool-chips";
-import { askStream } from "@/lib/api";
+import { askStream, getSource } from "@/lib/api";
 import { duration, ease, sec } from "@/lib/motion";
 import { parseStream } from "./parseStream";
 
@@ -36,7 +36,10 @@ const toolRow = (t: Tool): ToolRowData => ({
 
 function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
   const [ask, setAsk] = useQueryState("ask", parseAsStringLiteral(["1"] as const));
-  const open = ask === "1";
+  const [, setSrc] = useQueryState("src", parseAsString);
+  // false during SSR/hydration so the drawer never mismatches server HTML when ?ask=1 lands mid-hydration.
+  const hydrated = useSyncExternalStore(() => () => {}, () => true, () => false);
+  const open = hydrated && ask === "1";
   const close = useCallback(() => void setAsk(null), [setAsk]);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
@@ -57,6 +60,12 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
     try {
       for await (const e of parseStream(askStream(q))) {
         await sleep(160);
+        const refs = e.type === "citation"
+          ? await Promise.all(e.sources.map(async (s): Promise<SourceRef> => {
+              const title = await getSource(s.artifactId).then((a) => a.title, () => s.artifactId);
+              return { name: title, domain: title, title: `${title} (${s.artifactId})`, onClick: () => void setSrc(s.artifactId) };
+            }))
+          : [];
         setTurns((ts) => {
           const t = ts[ts.length - 1];
           let next = t;
@@ -66,11 +75,6 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
           else if (e.type === "text_delta")
             next = { ...t, tokens: [...t.tokens, ...e.text.split(" ").filter(Boolean).map((text) => ({ text }))] };
           else if (e.type === "citation") {
-            const refs = e.sources.map((s): SourceRef => ({
-              name: s.quote,
-              domain: s.artifactId,
-              onClick: () => console.log("open source", s.artifactId),
-            }));
             next = { ...t, tokens: [...t.tokens, ...refs.map((cite) => ({ text: "", cite }))], sources: [...t.sources, ...refs] };
           } else if (e.type === "done") next = { ...t, done: true };
           return [...ts.slice(0, -1), next];
@@ -82,7 +86,7 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
       update((t) => ({ ...t, done: true }));
       setBusy(false);
     }
-  }, [busy]);
+  }, [busy, setSrc]);
 
   // Demo only: auto-submit once the drawer is open.
   useEffect(() => {

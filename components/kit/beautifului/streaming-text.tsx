@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 const WORD_MS = 55;
 const HOLD_MS = 3400;
 
-export type SourceRef = { name: string; domain: string; href?: string; onClick?: () => void };
+export type SourceRef = { name: string; domain: string; /** Full label for title/aria when `domain` is a short display form. */ title?: string; href?: string; onClick?: () => void };
 export type Token = { text: string; cite?: SourceRef };
 
 const SOURCES = [
@@ -45,6 +45,8 @@ function SourceChip({ source }: { source: SourceRef }) {
       href={source.href ?? "#"}
       target="_blank"
       rel="noreferrer"
+      title={source.title}
+      aria-label={source.title}
       onClick={(e) => {
         if (source.onClick) {
           e.preventDefault();
@@ -57,7 +59,7 @@ function SourceChip({ source }: { source: SourceRef }) {
       style={{ animation: "pop-in 250ms cubic-bezier(0.23,1,0.32,1) both" }}
     >
       <span aria-hidden className="grid size-3 place-items-center rounded-[3px] bg-ripple-soft text-[8px] font-bold text-ripple">{source.name[0]}</span>
-      <span>{source.domain}</span>
+      <span className="max-w-48 truncate">{source.domain}</span>
     </a>
   );
 }
