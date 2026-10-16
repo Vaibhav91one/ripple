@@ -68,10 +68,16 @@ export function SlideConfirm({
      arrow's — is a fraction of the travel rather than a fixed
      number of pixels, so all of it follows this. */
   width = SPAN,
+  label = "Slide to notify Legal",
+  doneLabel = "Notified",
+  onConfirm,
 }: {
   corner?: number;
   speed?: number;
   width?: number;
+  label?: string;
+  doneLabel?: string;
+  onConfirm?: () => void;
 } = {}) {
   const [done, setDone] = useState(false);
   const [held, setHeld] = useState(false);
@@ -317,6 +323,7 @@ export function SlideConfirm({
 
   const finish = () => {
     setDone(true);
+    onConfirm?.();
     /* ── x goes to ZERO, and that is the whole morph ────────
        The handle is placed by `x` and sized by `width`, and on
        commit they move by the same amount in opposite
@@ -429,7 +436,7 @@ export function SlideConfirm({
         />
 
         <m.span className="sld-say" style={{ opacity: say }}>
-          Slide to notify Legal
+          {label}
         </m.span>
 
         <m.button
@@ -452,7 +459,7 @@ export function SlideConfirm({
             borderRadius: gripR,
           }}
           transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.7 }}
-          aria-label={done ? "Notified" : "Slide to notify Legal"}
+          aria-label={done ? doneLabel : label}
         >
           <m.span className="sld-arrow" style={{ opacity: arrow }} aria-hidden="true">
             <ArrowRight size={20} strokeWidth={2} />

@@ -12,7 +12,7 @@ import { useMemo, useState } from "react";
  * selection, sorting, import/export actions, and calculations.
  * ───────────────────────────────────────────────────────── */
 
-type Strength = "strong" | "weak" | "veryweak" | "none";
+export type Strength = "strong" | "weak" | "veryweak" | "none";
 type SortKey = "name" | "last" | "strength";
 
 const STRENGTH: Record<Strength, { label: string; color: string; rank: number }> = {
@@ -31,7 +31,7 @@ const TAG_COLORS: Record<string, string> = {
   Email: "var(--covered)",
 };
 
-type Row = {
+export type RecordRow = {
   id: string;
   name: string;
   tags: string[];
@@ -40,7 +40,7 @@ type Row = {
   website?: string;
 };
 
-const INITIAL_ROWS: Row[] = [
+const SAMPLE_ROWS: RecordRow[] = [
   { id: "rfc-14", name: "RFC-14 · Launch moves to Nov 3", tags: ["RFC", "Plan"], last: "9 days ago", strength: "strong", website: "docs.acme.com/rfc-14" },
   { id: "msa-v3", name: "Acme MSA v3 · clause 7.2", tags: ["Contract"], last: "3 weeks ago", strength: "veryweak", website: "legal.acme.com/msa-v3" },
   { id: "launch-thread", name: "#launch-plan thread", tags: ["Slack"], last: "2 days ago", strength: "weak" },
@@ -72,7 +72,6 @@ function Checkbox({ checked, mixed = false, onChange, label }: { checked: boolea
   );
 }
 
-const rows = INITIAL_ROWS;
 
 function Tag({ name }: { name: string }) {
   const color = TAG_COLORS[name] ?? "var(--faint)";
@@ -96,7 +95,16 @@ function HeaderCell({ label, icon, sortKey, sort, onSort, className = "" }: { la
   );
 }
 
-export default function RecordsTable() {
+const SAMPLE_LABELS = ["Company", "Kind", "Last touched", "Coverage", "Links"] as const;
+
+export default function RecordsTable({
+  rows = SAMPLE_ROWS,
+  labels = SAMPLE_LABELS,
+}: {
+  rows?: RecordRow[];
+  /** Column headers: name, tags, last, strength, links. */
+  labels?: readonly string[];
+} = {}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "name", dir: 1 });
 
@@ -109,7 +117,7 @@ export default function RecordsTable() {
           : STRENGTH[a.strength].rank - STRENGTH[b.strength].rank;
       return value * sort.dir;
     });
-  }, [sort]);
+  }, [rows, sort]);
 
   const allSelected = visibleRows.length > 0 && visibleRows.every((row) => selected.has(row.id));
   const partiallySelected = !allSelected && visibleRows.some((row) => selected.has(row.id));
@@ -134,11 +142,11 @@ export default function RecordsTable() {
           <colgroup><col className="records-company-col" /><col className="records-category-col" /><col className="records-last-col" /><col className="records-strength-col" /><col className="records-link-col" /></colgroup>
           <thead>
             <tr>
-              <th className="records-header-cell records-sticky-cell"><div className="records-company-header"><Checkbox checked={allSelected} mixed={partiallySelected} onChange={toggleAll} label="Select all companies" /><span>Company</span></div></th>
-              <HeaderCell label="Kind" sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="m20.6 13.4-8.6 8.6-8-8V4h10l6.6 6.6a2 2 0 0 1 0 2.8zM7 7h.01" /></Icon>} />
-              <HeaderCell label="Last touched" sortKey="last" sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="M3 5h18M3 12h12M3 19h7M18 15v6m-3-3h6" /></Icon>} />
-              <HeaderCell label="Coverage" sortKey="strength" sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.9z" /></Icon>} />
-              <HeaderCell label="Links" sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1" /></Icon>} />
+              <th className="records-header-cell records-sticky-cell"><div className="records-company-header"><Checkbox checked={allSelected} mixed={partiallySelected} onChange={toggleAll} label="Select all rows" /><span>{labels[0]}</span></div></th>
+              <HeaderCell label={labels[1]} sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="m20.6 13.4-8.6 8.6-8-8V4h10l6.6 6.6a2 2 0 0 1 0 2.8zM7 7h.01" /></Icon>} />
+              <HeaderCell label={labels[2]} sortKey="last" sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="M3 5h18M3 12h12M3 19h7M18 15v6m-3-3h6" /></Icon>} />
+              <HeaderCell label={labels[3]} sortKey="strength" sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.9z" /></Icon>} />
+              <HeaderCell label={labels[4]} sort={sort} onSort={toggleSort} icon={<Icon size={15}><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1" /></Icon>} />
             </tr>
           </thead>
           <tbody>
