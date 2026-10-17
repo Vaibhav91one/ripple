@@ -2,7 +2,7 @@ import { query, type Graph } from "./client";
 
 /** Every node label gets a lookup index on `id`. `Artifact` is the shared second label. */
 export const LABELS = [
-  "Team", "Person", "System", "Customer", "Deal", "Contract", "Decision",
+  "Team", "Person", "System", "Customer", "Deal", "Contract", "Decision", "Change",
   "Incident", "Task", "Artifact", "Doc", "Ticket", "Message", "PR",
   "Clause", "Control", "Framework", "Vendor", "Finding", "Risk", "Page", "DocsStats", "Goal",
 ] as const;

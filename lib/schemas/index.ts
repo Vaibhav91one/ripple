@@ -4,3 +4,4 @@ export * from "./inbox";
 export * from "./stream";
 export * from "./teams";
 export * from "./overview";
+export * from "./change";
