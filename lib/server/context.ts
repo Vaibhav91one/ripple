@@ -14,7 +14,7 @@ export const DEMO_GRAPH = "demo";
 export type Org = { id: string; graphName: string; isDemo: boolean };
 export type Viewer =
   | { kind: "anon"; orgId: string; teamIds: string[]; role: "member" }
-  | { kind: "user"; userId: string; orgId: string; teamIds: string[]; role: "member" | "admin" };
+  | { kind: "user"; userId: string; orgId: string; teamIds: string[]; role: "member" | "lead" | "admin" | "change_owner"; personId?: string };
 export type Context = {
   viewer: Viewer;
   org: Org;
@@ -45,12 +45,25 @@ async function lensTeam(): Promise<string> {
 const ready = new Set<string>(); // org graphs whose schema this process has already created
 const knownOrgs = new Set<string>(); // orgs already upserted into Postgres by this process
 
+/** Fill teams, role and person link from Postgres memberships; Clerk's org:admin always wins. No DB or a lookup failure keeps the session as is. */
+async function withMembership<V extends Extract<Viewer, { kind: "user" }>>(v: V): Promise<V> {
+  if (!env().DATABASE_URL) return v;
+  try {
+    const { getMember } = await import("../members");
+    const m = await getMember(v.orgId, v.userId);
+    return m ? { ...v, teamIds: m.teamIds, role: v.role === "admin" ? "admin" : m.role, personId: m.personId ?? undefined } : v;
+  } catch (err) {
+    console.error("membership lookup failed:", err instanceof Error ? err.message : err);
+    return v;
+  }
+}
+
 /** Signed in with an active Clerk org -> that org's graph; anyone else -> the demo. RIPPLE_GRAPH is a test-only graph override. */
 export async function getContext(req?: Request): Promise<Context> {
   void req;
   const e = env();
   const session = await sessionViewer();
-  const viewer: Viewer = session ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: [await lensTeam()], role: "member" };
+  const viewer: Viewer = (session && (await withMembership(session))) ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: [await lensTeam()], role: "member" };
   const graphName = e.RIPPLE_GRAPH || (session ? graphNameFor(session.orgId) : DEMO_GRAPH);
   const raw = await graphFor(graphName);
   if (session && !e.RIPPLE_GRAPH) {
