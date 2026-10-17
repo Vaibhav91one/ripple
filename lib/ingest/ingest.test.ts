@@ -79,7 +79,9 @@ describe("embeddings", () => {
     expect(embedInput(artifacts[0]).split(/\s+/).length).toBeLessThanOrEqual(200);
   });
 
+  // Loads the real MiniLM model (~100s cold on a busy laptop). Runs in CI; locally only with RUN_MODEL_TESTS=1.
   it("'login problems' is closer to the auth ticket than to an unrelated artifact", async (ctx) => {
+    if (!process.env.CI && !process.env.RUN_MODEL_TESTS) return ctx.skip();
     let q: number[];
     try {
       [q] = await embedTexts(["login problems"]);
