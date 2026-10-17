@@ -67,9 +67,9 @@ export function redact<T>(value: T, viewer: PermViewer | undefined, idx: Index):
     const artOwner = typeof x.id === "string" ? idx.artifacts.get(x.id) : undefined;
     if (artOwner && !owns(v, artOwner) && !("label" in x && "hop" in x)) {
       note("source", artOwner, x.id as string);
-      const out: Record<string, unknown> = { ...x, restricted: artOwner };
+      const out: Record<string, unknown> = { ...(walk({ ...x, id: "" }) as Record<string, unknown>), id: x.id, restricted: artOwner }; // children (neighbour lists) still get walked
       for (const f of ["title", "name"]) if (f in out) out[f] = RESTRICTED_TITLE;
-      for (const f of ["text", "uri", "quote"]) if (f in out) out[f] = f === "quote" ? RESTRICTED_QUOTE : "";
+      for (const f of ["text", "uri", "sourceUrl", "quote"]) if (f in out) out[f] = f === "quote" ? RESTRICTED_QUOTE : "";
       return out;
     }
     // 3. a cited quote
@@ -77,7 +77,7 @@ export function redact<T>(value: T, viewer: PermViewer | undefined, idx: Index):
     const own = cited && typeof x.quote === "string" ? idx.artifacts.get(cited) : undefined;
     if (own && !owns(v, own)) {
       note("source", own, cited!);
-      return { ...x, quote: RESTRICTED_QUOTE, restricted: own };
+      return { ...(walk({ ...x, quote: null }) as Record<string, unknown>), quote: RESTRICTED_QUOTE, restricted: own }; // children still get walked
     }
 
     const out: Record<string, unknown> = {};

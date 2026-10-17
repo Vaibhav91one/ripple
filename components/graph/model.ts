@@ -3,6 +3,7 @@
 import type { FlowEdge, FlowNode, FlowTone } from "@/components/kit/beautifului/flowchart";
 import type { Source } from "@/lib/schemas";
 import type { GraphItem, GraphNode, GraphStatus, GraphView } from "@/lib/graph/view";
+import { neighboursOf } from "@/lib/graph/neighbours";
 import { layoutLanes } from "./layout";
 
 export const ITEM_CAP = 10; // items shown per expanded cluster
@@ -95,10 +96,7 @@ export function inspect(view: GraphView, id: string, fmt: (ts: number) => string
         ...(node.items.length ? ([["Items", String(node.items.length)]] as [string, string][]) : []),
         ["First linked", fmt(node.validFrom)],
       ],
-      neighbours: mine.map((e) => {
-        const other = e.from === id ? e.to : e.from;
-        return { id: other, title: titles.get(other) ?? other, type: e.type };
-      }),
+      neighbours: neighboursOf(id, mine, titles),
       sourced: mine.filter((e) => e.sources.length).map((e) => ({ edge: `${titles.get(e.from)} → ${titles.get(e.to)}`, type: e.label, sources: e.sources })),
     };
   }
