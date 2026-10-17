@@ -27,6 +27,22 @@ services:
 
 `LLM_API_KEY` is optional. Unset, `/api/health` reports `llm: fallback` and Ask uses cached answers. Set it in the project's environment variables to enable the model.
 
+## Postgres (`db`)
+
+Orgs, memberships, API keys and the audit log live in Postgres (FalkorDB stays the graph). The app still boots and serves the demo with `DATABASE_URL` unset.
+
+Add to the import yaml (the orchestrator creates it after owner approval; it is not in the yaml above yet):
+
+```yaml
+  - hostname: db
+    type: postgresql:single@17
+    priority: 10
+```
+
+Zerops exposes `${db_connectionString}`, `${db_hostname}`, `${db_port}` (5432), `${db_user}`, `${db_password}`, `${db_dbName}` (user and database are both `db`). `zerops.yaml` wires `DATABASE_URL: ${db_connectionString}` into `web`. Use the direct 5432 connection (pgBouncer on 6432 needs TLS and would break pg-boss later).
+
+Migrations run once per deploy: `web`'s `run.initCommands` runs `zsc execOnce ${ZEROPS_appVersionId} -- node scripts/migrate.mjs`. The script and `lib/db/migrations/` are copied into the standalone folder at build. The first migration also seeds the `demo` org idempotently. Locally: `DATABASE_URL=... pnpm db:migrate`; after a schema change run `pnpm db:generate` and commit the new SQL.
+
 ## 2. Gotchas that bit us (all fixed in `zerops.yaml`)
 
 - Port protocol is lowercase `tcp`.
