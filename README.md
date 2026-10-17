@@ -7,6 +7,10 @@
 - **Pitch:** before you ship a breaking change, ask the graph who it hits and who was never told.
 - **Modelling:** Telling a team is an edge (INVOLVED_IN / ACKED), so a missing edge is the finding.
 
+**Tools are not context.** Connecting an agent to Jira, Zendesk and the CRM gives it lookups, not an understanding of how a decision travels through a company. Ripple is that missing layer: one graph where a decision, the systems that depend on it, the customers, deals and contracts on those systems, and the teams that own them are connected, so "what does this touch, and who hasn't heard?" is a single traversal instead of a hundred API calls.
+
+**Every answer is traceable.** Every edge carries the artifact it came from and a verbatim quote, every tool returns the Cypher it ran and the path it walked (`why_affected` shows the hops), and when nothing in the graph connects, Ripple says so instead of guessing.
+
 ![Ripple overview: the v1 sunset across every team](docs/screens/v2-final-overview.png)
 
 Built for the WeMakeDevs x FalkorDB Graph Hacks, Track 03. Live demo data is a synthetic company, **Ledgerly**, that has just decided to sunset its API v1.
