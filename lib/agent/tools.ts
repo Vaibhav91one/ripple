@@ -31,6 +31,11 @@ const unknownDecision = async (g: Graph, id: string): Promise<Row[]> => {
   const known = (await decisions(g)).data.map((d) => ({ id: d.id, title: d.title }));
   return [{ ...notInGraph(`decision ${id}`)[0], knownDecisions: known, hint: "Retry with one of knownDecisions[].id if it matches." }];
 };
+/** An unknown system id: say so, and list the real ids (artifact ids like art-* are not systems). */
+const unknownSystem = async (g: Graph, id: string): Promise<Row[]> => {
+  const known = await roQuery<{ id: string; name: string | null }>(g, load("systems").text);
+  return [{ ...notInGraph(id)[0], knownSystems: known, hint: "who_knows takes a system id, not an artifact id. Retry with the knownSystems[].id the question is about." }];
+};
 const dedupe = (xs: Source[]) => [...new Map(xs.map((s) => [s.artifactId, s])).values()];
 
 export const TOOLS = {
@@ -69,7 +74,7 @@ export const TOOLS = {
     templates: ["who-knows", "artifact-text"],
     run: async ({ g }, { systemId }) => {
       const w = await whoKnows(g, systemId);
-      if (!w.data.length) return { rows: notInGraph(systemId), sources: [], cypher: w.cypher };
+      if (!w.data.length) return { rows: await unknownSystem(g, systemId), sources: [], cypher: [...w.cypher, load("systems")] };
       const s = await sourcesFor(g, w.data.flatMap((p) => p.evidence).slice(0, 25));
       return { rows: w.data, sources: s.sources, cypher: [...w.cypher, s.cypher] };
     },
