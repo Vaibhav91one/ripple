@@ -1,4 +1,4 @@
-import { BookOpen, Bot, Code2, Handshake, Headset, History, Home, KeyRound, LayoutDashboard, Network, Plug, Scale, Settings, ShieldCheck, Target } from "lucide-react";
+import { BookOpen, Bot, Code2, GitBranch, Handshake, Headset, History, Home, KeyRound, LayoutDashboard, Network, Plug, Scale, Settings, ShieldCheck, Target } from "lucide-react";
 import type { DashboardShellNavItem, DashboardShellNavSection } from "@/components/kit/obsidian/dashboard-shell/dashboard-shell";
 
 export const TEAMS = [
@@ -21,6 +21,8 @@ export const NAV: DashboardShellNavSection[] = [
     title: "Work",
     items: [
       { id: "/home", label: "Home", icon: Home, href: "/home" },
+      // Decisions stays until /changes absorbs the decision page (P5-8); it's the core ripple screen.
+      { id: "/decisions", label: "Decisions", icon: GitBranch, href: "/decisions" },
       { id: "/changes", label: "Changes", icon: History, href: "/changes" },
       { id: "/agents", label: "Agents", icon: Bot, href: "/agents" },
       { id: "/it", label: "IT", icon: KeyRound, href: "/it" },
@@ -43,7 +45,6 @@ export const NAV_FOOTER: DashboardShellNavItem[] = [{ id: "/settings", label: "S
 /** Routes with a page but no sidebar entry (reached from Home, TeamSwitcher, links): they keep a title, not an active item. */
 const UNLISTED = [
   { prefix: "/inbox", title: "Inbox" },
-  { prefix: "/decisions", title: "Decisions" },
   ...TEAMS.map((t) => ({ prefix: `/teams/${t.id}`, title: t.label })),
 ];
 
