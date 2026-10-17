@@ -62,7 +62,8 @@ export async function notifyGaps(
   const now = o.now ?? Math.floor(Date.now() / 1000);
   const env = o.env ?? readEnv();
   const baseUrl = o.baseUrl ?? "";
-  await detectConflicts(g, now, decisionId); // ripple() only reads stored conflicts
+  const detected = await detectConflicts(g, now, decisionId); // ripple() only reads stored conflicts
+  if (o.orgId) await (await import("./events/conflicts")).emitConflictsFound(o.orgId, detected);
   const r = await ripple(g, decisionId, now);
   const teamName = (id: string) => r.nodes.find((n) => n.id === id)?.label ?? id;
   const results: NotifyResult[] = [];
