@@ -20,7 +20,26 @@ export const GraphMerge = z.object({
   props: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).refine((p) => !("id" in p), "props.id is not allowed").default({}),
 });
 
-export const DraftDoc = z.object({ kind: z.enum(["notice", "amendment"]), contractId: z.string().min(1), decisionId: z.string().min(1), title: z.string().min(1), body: z.string().min(1) });
+// notice/amendment answer a contract (Legal); email/talk_track answer a customer (Sales and CS, Customer Exposure).
+export const DraftDoc = z.object({
+  kind: z.enum(["notice", "amendment", "email", "talk_track"]), contractId: z.string().min(1).optional(), customerId: z.string().min(1).optional(),
+  decisionId: z.string().min(1), title: z.string().min(1), body: z.string().min(1),
+}).refine((d) => (d.kind === "email" || d.kind === "talk_track" ? !!d.customerId : !!d.contractId), "a contract draft needs contractId, a customer draft needs customerId");
+
+export const AccessRequest = z.object({
+  id: z.string().min(1), personId: z.string().min(1), teamId: z.string().nullable(), resourceId: z.string().min(1), resourceKind: z.enum(["group", "software"]),
+  decisionId: z.string().min(1), justification: z.string().min(1), src: z.string().nullable(), quote: z.string().nullable(),
+  expiresAt: z.number().int(), approvers: z.array(z.string().min(1)).min(1),
+});
+
+/** Approved access_request -> an open AccessRequest node for the /it queue + access.needed. Ripple never grants access: IT does, elsewhere, then marks it on /it. */
+async function openAccessRequest(payload: unknown, { org, writer, now }: ActionCtx) {
+  const p = AccessRequest.parse(payload);
+  await query(writer(), load("access-request-create").text, { ...p, now });
+  const [{ db }, { emit }] = await Promise.all([import("../db"), import("../events/emit")]); // lazy: lib/db is server-only
+  await emit(db(), { type: "access.needed", orgId: org.id, subject: { kind: "access_request", id: p.id }, payload: { userId: p.personId, resource: p.resourceId }, dedupeKey: `access.needed:${p.id}` });
+  return { accessRequestId: p.id, personId: p.personId, resourceId: p.resourceId };
+}
 
 /** Approved draft -> `document` row (deduped by content per org) + a Doc:Artifact node ABOUT the contract and the decision. Legal-only on read (restrictedTo). Returns the document id. */
 async function saveDraft(payload: unknown, { org, writer, now, approver, runId }: ActionCtx) {
@@ -31,18 +50,20 @@ async function saveDraft(payload: unknown, { org, writer, now, approver, runId }
   const { createHash } = await import("node:crypto");
   const sha256 = createHash("sha256").update(p.body).digest("hex");
   const run = runId ? (await db().select({ agent: agentRuns.agent }).from(agentRuns).where(eq(agentRuns.id, runId)))[0] : undefined;
-  const [ins] = await db().insert(documents).values({ orgId: org.id, sourceKind: "doc", sourceRef: `draft:${p.kind}:${p.contractId}`, title: p.title, text: p.body, sha256 })
+  const [ins] = await db().insert(documents).values({ orgId: org.id, sourceKind: "doc", sourceRef: `draft:${p.kind}:${p.contractId ?? p.customerId}`, title: p.title, text: p.body, sha256 })
     .onConflictDoNothing({ target: [documents.orgId, documents.sha256] }).returning({ id: documents.id });
   const id = ins?.id ?? (await db().select({ id: documents.id }).from(documents).where(and(eq(documents.orgId, org.id), eq(documents.sha256, sha256))))[0].id;
   await query(writer(), `MERGE (a:Doc:Artifact {id: $id})
-    SET a.kind = 'doc', a.title = $title, a.text = $text, a.ts = $now, a.uri = '', a.author = $author, a.approvedBy = $approvedBy, a.draftKind = $draftKind, a.restrictedTo = 'legal'
+    SET a.kind = 'doc', a.title = $title, a.text = $text, a.ts = $now, a.uri = '', a.author = $author, a.approvedBy = $approvedBy, a.draftKind = $draftKind, a.restrictedTo = $owner
     WITH a
     OPTIONAL MATCH (c:Contract {id: $contractId})
+    OPTIONAL MATCH (cu:Customer {id: $customerId})
     OPTIONAL MATCH (d:Decision {id: $decisionId})
+    FOREACH (_ IN CASE WHEN cu IS NULL THEN [] ELSE [1] END | MERGE (a)-[r:ABOUT]->(cu) SET r.valid_from = $now, r.valid_to = null, r.observed_at = $now)
     FOREACH (_ IN CASE WHEN c IS NULL THEN [] ELSE [1] END | MERGE (a)-[r:ABOUT]->(c) SET r.valid_from = $now, r.valid_to = null, r.observed_at = $now)
     FOREACH (_ IN CASE WHEN d IS NULL THEN [] ELSE [1] END | MERGE (a)-[r:ABOUT]->(d) SET r.valid_from = $now, r.valid_to = null, r.observed_at = $now)`,
-  { id, title: p.title, text: p.body, now, author: `agent:${run?.agent ?? "unknown"}`, approvedBy: approver ?? "unknown", draftKind: p.kind, contractId: p.contractId, decisionId: p.decisionId });
-  return { documentId: id, kind: p.kind, contractId: p.contractId, decisionId: p.decisionId };
+  { id, title: p.title, text: p.body, now, author: `agent:${run?.agent ?? "unknown"}`, approvedBy: approver ?? "unknown", draftKind: p.kind, contractId: p.contractId ?? null, customerId: p.customerId ?? null, decisionId: p.decisionId, owner: p.customerId ? "sales" : "legal" });
+  return { documentId: id, kind: p.kind, contractId: p.contractId ?? null, customerId: p.customerId ?? null, decisionId: p.decisionId };
 }
 
 export const SuggestMerge = z.object({
@@ -71,6 +92,7 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
   create_task: async (payload, { writer, now }) =>
     query(writer(), load("create-tasks").text, { rows: [CreateTask.parse(payload)], now }),
   draft_doc: async (payload, ctx) => saveDraft(payload, ctx),
+  access_request: async (payload, ctx) => openAccessRequest(payload, ctx),
   create_issue: async (payload) => {
     const { title, body } = CreateIssue.parse(payload);
     const r = await createIssue(env(), title, body);

@@ -17,7 +17,11 @@ export type Trace = { calls: { tool: string; input: object }[][]; output: unknow
 export type Scenario = {
   name: string;
   /** Patch applied to the seeded graph before the run (documents the agent can find). */
-  graphFixture?: { artifacts?: { id: string; title: string; text: string }[] };
+  graphFixture?: {
+    artifacts?: { id: string; title: string; text: string }[];
+    /** Cypher run after the artifacts. Mark every node it creates `fixture: true`: the next fixture with statements deletes them first, so scenarios do not leak into each other. */
+    statements?: string[];
+  };
   input: unknown;
   expect: {
     mustCite: string[];
@@ -26,6 +30,8 @@ export type Scenario = {
     /** Team ids the proposals must target (exact set). */
     recipients?: string[];
     maxSteps: number;
+    /** Exactly this many proposals (any kind). */
+    proposalCount?: number;
     /** Strings that must not appear in the output (injection canaries). */
     mustNotSay?: string[];
   };
@@ -49,8 +55,8 @@ export type EvalOpts = { model: LanguageModel; g: Graph; now: number; viewer?: V
  *  Lazy import: executors pull in octokit, which tsx under Node 26 cannot resolve. ponytail: there the check degrades to "is an object"; vitest and CI (Node 22) validate fully. */
 async function payloadSchemas(): Promise<Partial<Record<ActionKind, z.ZodType>>> {
   try {
-    const { CreateIssue, CreateTask, GraphMerge } = await import("../../actions/executors");
-    return { create_task: CreateTask, graph_merge: GraphMerge, create_issue: CreateIssue };
+    const { AccessRequest, CreateIssue, CreateTask, DraftDoc, GraphMerge } = await import("../../actions/executors");
+    return { create_task: CreateTask, graph_merge: GraphMerge, create_issue: CreateIssue, draft_doc: DraftDoc, access_request: AccessRequest };
   } catch {
     return {};
   }
@@ -78,8 +84,10 @@ export function replayModel(t: Trace): MockLanguageModelV4 {
 }
 
 export async function applyFixture(g: Graph, f: Scenario["graphFixture"]): Promise<void> {
+  if (f?.statements) await query(g, "MATCH (n) WHERE n.fixture = true DETACH DELETE n");
   for (const a of f?.artifacts ?? [])
     await query(g, "MERGE (n:Doc:Artifact {id: $id}) SET n.kind = 'doc', n.title = $title, n.text = $text", a);
+  for (const st of f?.statements ?? []) await query(g, st);
 }
 
 export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promise<EvalResult> {
@@ -142,6 +150,7 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
     if (!ok) failures.push(`invalid ${p.kind} payload`);
     if (s.expect.mustNotPropose.includes(p.kind)) failures.push(`forbidden proposal: ${p.kind}`);
   }
+  if (s.expect.proposalCount !== undefined && proposals.length !== s.expect.proposalCount) failures.push(`${proposals.length} proposals != ${s.expect.proposalCount}`);
   const proposalHits = s.expect.mustPropose.filter((m) => proposals.some((p) => p.kind === m.kind && isSubset(m.match, p.payload)));
   for (const m of s.expect.mustPropose) if (!proposalHits.includes(m)) failures.push(`missing proposal ${m.kind} ${JSON.stringify(m.match)}`);
   const teams = [...new Set(proposals.map((p) => (p.payload as { teamId?: string })?.teamId).filter((t): t is string => !!t))];

@@ -3,8 +3,10 @@ import { z } from "zod";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "../../graph/client";
 import { seed } from "../../ingest/seed";
+import { access } from "../agents/access";
 import { ask } from "../agents/ask";
 import { contract } from "../agents/contract";
+import { exposure } from "../agents/exposure";
 import { impact } from "../agents/impact";
 import { detectConflicts } from "../../graph/queries";
 import { defineAgent } from "../define";
@@ -156,5 +158,40 @@ describe("Impact Analyst and Contract Sentinel eval sets, offline", () => {
     const m2 = replayModel(s.trace!);
     await runEval(contract, s, { model: m2, g, now: NOW, viewer: { kind: "agent", id: "legal", teamIds: ["legal"] } });
     expect(JSON.stringify(m2.doGenerateCalls[1].prompt)).toContain("Ledgerly guarantees availability");
+  });
+});
+
+describe("Customer Exposure and Access Planner eval sets, offline", () => {
+  for (const [agent, def] of [["exposure", exposure], ["access", access]] as const)
+    for (const s of EVAL_SETS[agent])
+      t(`${agent}: ${s.name}`, async () => {
+        const r = await run(def, s);
+        expect(r.failures).toEqual([]);
+        expect(r.metrics).toMatchObject({ citeRecall: 1, citePrecision: 1, proposalRecall: 1, quoteRate: 1 });
+      });
+  it("each covers the three injection documents", () => {
+    for (const a of ["exposure", "access"]) expect(EVAL_SETS[a].filter((s) => s.name.startsWith("injection:"))).toHaveLength(3);
+  });
+
+  it("neither can send or grant: exposure drafts only, access proposes access_request only, no write tool outside propose_*", () => {
+    expect(exposure.writes).toEqual(["draft_doc"]);
+    expect(access.writes).toEqual(["access_request"]);
+    for (const a of [exposure, access]) expect(a.tools.filter((x) => /send|email|slack|comment|grant|revoke/.test(x))).toEqual([]);
+  });
+
+  t("a viewer without Sales rights never sees ARR in the usage ranking; Sales does", async () => {
+    const s = EVAL_SETS.exposure[0];
+    for (const [teamIds, role, sees] of [[["support"], undefined, false], [["eng"], undefined, false], [["leadership"], undefined, false], [["sales"], undefined, true]] as const) {
+      const model = replayModel(s.trace!);
+      await runEval(exposure, s, { model, g, now: NOW, viewer: { kind: "agent", id: "v", teamIds: [...teamIds], role } });
+      const prompt = JSON.stringify(model.doGenerateCalls[2].prompt); // after ripple and customer_usage
+      for (const arr of ["24000", "120000"]) expect(prompt.includes(`\\"arr\\":${arr}`), `${teamIds} arr ${arr}`).toBe(sees);
+    }
+  });
+});
+
+describe("cleanup", () => {
+  t("fixture nodes can be removed", async () => {
+    await query(g, "MATCH (n) WHERE n.fixture = true DETACH DELETE n");
   });
 });
