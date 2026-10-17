@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Bell, Users } from "lucide-react";
+import { Bell, KeyRound, Users } from "lucide-react";
 
 const LINKS = [
   { href: "/settings/members", label: "Members", note: "Roles, teams and who is linked to which person.", Icon: Users },
   { href: "/settings/notifications", label: "Notifications", note: "How you hear about changes, quiet hours and the weekly digest.", Icon: Bell },
+  { href: "/settings/api-keys", label: "API keys", note: "Let Claude Code or Cursor read the graph over MCP as you.", Icon: KeyRound },
 ];
 
 export default function SettingsPage() {
