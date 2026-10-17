@@ -47,8 +47,15 @@ export async function roQuery<T = Record<string, unknown>>(
   cypher: string,
   params: Params = {},
 ): Promise<T[]> {
-  const res = await graph.roQuery<T>(cypher, { params: params as never });
-  return res.data ?? [];
+  try {
+    const res = await graph.roQuery<T>(cypher, { params: params as never });
+    return res.data ?? [];
+  } catch (e) {
+    // A graph that was never written (new org, fresh volume) has no key; RO_QUERY then errors instead of
+    // returning nothing. A missing graph is an empty graph.
+    if (/empty key/i.test(String(e))) return [];
+    throw e;
+  }
 }
 
 export class ReadOnlyGraphError extends Error {
