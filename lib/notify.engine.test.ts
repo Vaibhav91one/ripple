@@ -56,11 +56,11 @@ describe("notifyGaps through the engine", () => {
   });
 });
 
-// Only channel adapters and executors may talk to Resend or GitHub.
+// Only the email adapter and the GitHub App client (lib/connectors/github/client.ts, used by the executors) may talk to Resend or GitHub.
 describe("direct sends", () => {
-  it("live only in the email adapter and the executors", () => {
-    const out = execSync(`grep -rlE 'from "resend"|api\\.github\\.com' lib app worker components --include=*.ts --include=*.tsx || true`, { encoding: "utf8" });
+  it("live only in the email adapter and the GitHub App client", () => {
+    const out = execSync(`grep -rlE 'from "resend"|from "@octokit/app"|api\\.github\\.com' lib app worker components --include=*.ts --include=*.tsx || true`, { encoding: "utf8" });
     const hits = out.split("\n").filter((f) => f && !f.endsWith(".test.ts"));
-    expect(hits.sort()).toEqual(["lib/actions/executors.ts", "lib/notify/email.ts"]);
+    expect(hits.sort()).toEqual(["lib/connectors/github/client.ts", "lib/notify/email.ts"]);
   });
 });

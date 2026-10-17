@@ -1,0 +1,22 @@
+{
+  "name": "Ripple Company Brain",
+  "url": "https://ripple.vaibhav.quest",
+  "description": "Ripple reads repositories, CODEOWNERS and pull requests to learn which systems exist and who owns them, and comments on pull requests that touch a changed decision.",
+  "hook_attributes": {
+    "url": "https://ripple.vaibhav.quest/api/connectors/github/webhook",
+    "active": true
+  },
+  "redirect_url": "https://ripple.vaibhav.quest/connectors/github",
+  "callback_urls": ["https://ripple.vaibhav.quest/api/connectors/github/setup"],
+  "setup_url": "https://ripple.vaibhav.quest/api/connectors/github/setup",
+  "setup_on_update": true,
+  "public": false,
+  "default_permissions": {
+    "contents": "read",
+    "metadata": "read",
+    "pull_requests": "write",
+    "checks": "write",
+    "issues": "write"
+  },
+  "default_events": ["pull_request", "push"]
+}

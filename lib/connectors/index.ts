@@ -1,8 +1,10 @@
 // Registry. A connector issue adds its file here; the catalog is what /connectors offers.
 import type { Connector } from "./define";
+import { github } from "./github";
 
 export const CONNECTORS: Record<string, Connector> = {};
 export const register = (c: Connector) => (CONNECTORS[c.kind] = c);
+register(github);
 
 export type CatalogEntry = { kind: string; name: string; blurb: string; auth: Connector["auth"] };
 export const CATALOG: CatalogEntry[] = [

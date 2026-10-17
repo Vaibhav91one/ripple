@@ -107,6 +107,8 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
   "search": [{ url: "/api/search?q=SENTINEL_SRC" }],
   "mcp": [{ url: "/api/mcp" }],
+  "connectors/github/install": [{ url: "/api/connectors/github/install" }], // admin only: 403 for the demo viewers
+  "connectors/github/setup": [{ url: "/api/connectors/github/setup" }], // admin only: 403 for the demo viewers
   "org/keys": [{ url: "/api/org/keys" }], // admin only: 403 for the demo viewers
   "teams/[team]": TEAMS.map((x) => ({ url: `/api/teams/${x}`, params: { team: x } })),
   "slack/install": [{ url: "/api/slack/install" }], // admin only: 403 for the demo viewers

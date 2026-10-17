@@ -1,12 +1,13 @@
 // Action executors: the only code that performs a side effect on behalf of an agent. kind -> (payload, ctx) => result.
 // Later connector issues add send_slack, send_email, pr_comment, ...
-import { createSign } from "node:crypto";
 import { z } from "zod";
 import { env, type Env } from "../env";
 import { query, type Graph } from "../graph/client";
 import { load } from "../graph/queries";
 import type { ActionKind } from "../agent/define";
 import { applyProposal } from "../connectors/apply";
+import { githubApp } from "../connectors/github/client";
+import { safeMessage } from "../log";
 
 export type ActionCtx = { org: { id: string }; now: number; writer: () => Graph };
 
@@ -23,29 +24,20 @@ export const SuggestMerge = z.object({
   mention: z.string(), score: z.number(), newId: z.string(), src: z.string().optional(), quote: z.string().optional(),
 });
 
-export type GithubEnv = Partial<Pick<Env, "GITHUB_APP_ID" | "GITHUB_APP_INSTALLATION_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_REPO">>;
+export type GithubEnv = Partial<Pick<Env, "GITHUB_APP_ID" | "GITHUB_APP_INSTALLATION_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_APP_WEBHOOK_SECRET" | "GITHUB_REPO">>;
 export const CreateIssue = z.object({ title: z.string().min(1), body: z.string() });
 
-/** GitHub App: RS256 JWT -> installation token -> create issue in GITHUB_REPO (owner/name). The only GitHub caller. */
+/** GitHub App installation client (@octokit/app caches the installation token) -> create issue in GITHUB_REPO (owner/name). */
 export async function createIssue(e: GithubEnv, title: string, body: string): Promise<{ status: "created" | "skipped" | "failed"; url?: string; error?: string }> {
-  const { GITHUB_APP_ID: app, GITHUB_APP_INSTALLATION_ID: inst, GITHUB_APP_PRIVATE_KEY: pem, GITHUB_REPO: repo } = e;
-  if (!app || !inst || !pem || !repo) return { status: "skipped" };
+  const app = githubApp(e);
+  const [owner, name] = (e.GITHUB_REPO ?? "").split("/");
+  if (!app || !e.GITHUB_APP_INSTALLATION_ID || !owner || !name) return { status: "skipped" };
   try {
-    const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
-    const iat = Math.floor(Date.now() / 1000);
-    const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64({ iat: iat - 60, exp: iat + 540, iss: app })}`;
-    const jwt = `${unsigned}.${createSign("RSA-SHA256").update(unsigned).sign(pem.replaceAll("\\n", "\n"), "base64url")}`;
-    const h = (t: string) => ({ authorization: `Bearer ${t}`, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28" });
-    const tok = await fetch(`https://api.github.com/app/installations/${inst}/access_tokens`, { method: "POST", headers: h(jwt) });
-    if (!tok.ok) return { status: "failed", error: `installation token: ${tok.status}` };
-    const { token } = (await tok.json()) as { token: string };
-    const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-      method: "POST", headers: { ...h(token), "content-type": "application/json" }, body: JSON.stringify({ title, body }),
-    });
-    if (!res.ok) return { status: "failed", error: `create issue: ${res.status}` };
-    return { status: "created", url: ((await res.json()) as { html_url: string }).html_url };
+    const o = await app.getInstallationOctokit(Number(e.GITHUB_APP_INSTALLATION_ID));
+    const res = await o.request("POST /repos/{owner}/{repo}/issues", { owner, repo: name, title, body });
+    return { status: "created", url: res.data.html_url };
   } catch (err) {
-    return { status: "failed", error: String(err) };
+    return { status: "failed", error: safeMessage(err) };
   }
 }
 
