@@ -1,0 +1,171 @@
+/* Reference skins for /styleguide/refs. Each skin redefines Ripple's tokens with one reference's look, so the
+   same component renders as a faithful replica inside .skin-* and as Ripple outside it.
+   Extra tokens the reference components use: --hatch (loss/fail stripes), --chart (primary bars), --chart-2,
+   --accent-ink (text on accent), --ref-radius (card radius). Ripple defaults are on .skin-ripple.
+   This file is the only place hex colours are allowed in components/kit/refs. */
+
+.skin-ripple {
+  --hatch: var(--conflict);
+  --chart: var(--ripple);
+  --chart-2: var(--gap);
+  --accent-ink: var(--page);
+  --ref-radius: 10px;
+}
+
+/* Nizam (fivecorner, margin, Clearbill): light, white cards on a cool grey ground, one blue, pink loss hatch. */
+.skin-nizam {
+  color-scheme: light;
+  --page: #EEEEF0;
+  --surface: #FFFFFF;
+  --raised: #F6F6F7;
+  --overlay: #FFFFFF;
+  --hairline: #E4E4E7;
+  --strong: #111113;
+  --body: #3F3F46;
+  --faint: #8A8A93;
+  --ripple: #2F54EB;
+  --ripple-soft: #EBF0FF;
+  --conflict: #E0245E;
+  --conflict-soft: #FDE8EF;
+  --gap: #E08A00;
+  --gap-soft: #FFF4E0;
+  --covered: #16A34A;
+  --covered-soft: #E7F7EC;
+  --hatch: #E0218A;
+  --chart: #2F54EB;
+  --chart-2: #9DB0F5;
+  --accent-ink: #FFFFFF;
+  --ref-radius: 16px;
+}
+
+/* SakaniUI CRM: near-black, white text, orange active underline, green/red delta pills. */
+.skin-sakani {
+  color-scheme: dark;
+  --page: #111111;
+  --surface: #161616;
+  --raised: #1E1E1E;
+  --overlay: #222222;
+  --hairline: #2A2A2A;
+  --strong: #FAFAFA;
+  --body: #C9C9C9;
+  --faint: #8C8C8C;
+  --ripple: #F26B3A;
+  --ripple-soft: rgb(242 107 58 / 14%);
+  --conflict: #F25F5C;
+  --conflict-soft: rgb(242 95 92 / 16%);
+  --gap: #F5A524;
+  --gap-soft: rgb(245 165 36 / 15%);
+  --covered: #3FCF8E;
+  --covered-soft: rgb(63 207 142 / 16%);
+  --hatch: #F25F5C;
+  --chart: #F26B3A;
+  --chart-2: #3B6FD8;
+  --accent-ink: #FFFFFF;
+  --ref-radius: 12px;
+}
+
+/* Gr8r task app: dark with a violet accent and per-task colours. */
+.skin-gr8r {
+  color-scheme: dark;
+  --page: #17171C;
+  --surface: #1C1C22;
+  --raised: #24242B;
+  --overlay: #2A2A32;
+  --hairline: #2E2E36;
+  --strong: #EDEDF0;
+  --body: #C4C4CC;
+  --faint: #85858F;
+  --ripple: #8B7CF6;
+  --ripple-soft: rgb(139 124 246 / 16%);
+  --conflict: #E5484D;
+  --conflict-soft: rgb(229 72 77 / 16%);
+  --gap: #E2A336;
+  --gap-soft: rgb(226 163 54 / 16%);
+  --covered: #46A758;
+  --covered-soft: rgb(70 167 88 / 16%);
+  --hatch: #E5484D;
+  --chart: #8B7CF6;
+  --chart-2: #46A758;
+  --accent-ink: #FFFFFF;
+  --ref-radius: 6px;
+}
+
+/* Proton: light dotted ground, black type, green money, red timer, mono details. */
+.skin-proton {
+  color-scheme: light;
+  --page: #F4F4F2;
+  --surface: #FFFFFF;
+  --raised: #F7F7F5;
+  --overlay: #232325;
+  --hairline: #D9D9D6;
+  --strong: #161616;
+  --body: #3A3A3A;
+  --faint: #6B6B6B;
+  --ripple: #16A34A;
+  --ripple-soft: rgb(22 163 74 / 12%);
+  --conflict: #E5372B;
+  --conflict-soft: rgb(229 55 43 / 12%);
+  --gap: #D97706;
+  --gap-soft: rgb(217 119 6 / 12%);
+  --covered: #16A34A;
+  --covered-soft: rgb(22 163 74 / 12%);
+  --hatch: #E5372B;
+  --chart: #16A34A;
+  --chart-2: #161616;
+  --accent-ink: #FFFFFF;
+  --ref-radius: 18px;
+  background-image: radial-gradient(rgb(0 0 0 / 9%) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* Isometric (Simulithic, ISO-GLOW): white, hairline greys, one blue tile. */
+.skin-iso {
+  color-scheme: light;
+  --page: #FFFFFF;
+  --surface: #F7F8FA;
+  --raised: #EEF0F4;
+  --overlay: #111317;
+  --hairline: #DADDE3;
+  --strong: #111317;
+  --body: #4A4F57;
+  --faint: #9AA0A9;
+  --ripple: #1E88E5;
+  --ripple-soft: rgb(30 136 229 / 12%);
+  --conflict: #E5484D;
+  --conflict-soft: rgb(229 72 77 / 12%);
+  --gap: #E08A00;
+  --gap-soft: rgb(224 138 0 / 12%);
+  --covered: #16A34A;
+  --covered-soft: rgb(22 163 74 / 12%);
+  --hatch: #C9CDD4;
+  --chart: #1E88E5;
+  --chart-2: #111317;
+  --accent-ink: #FFFFFF;
+  --ref-radius: 10px;
+}
+
+/* Push: pure black, white pill, muscle-map greens and yellows. CollectUI search shares it. */
+.skin-push {
+  color-scheme: dark;
+  --page: #000000;
+  --surface: #121212;
+  --raised: #1C1C1E;
+  --overlay: #1C1C1E;
+  --hairline: #2C2C2E;
+  --strong: #FFFFFF;
+  --body: #D1D1D6;
+  --faint: #8E8E93;
+  --ripple: #4CD964;
+  --ripple-soft: rgb(76 217 100 / 18%);
+  --conflict: #FF453A;
+  --conflict-soft: rgb(255 69 58 / 16%);
+  --gap: #FFD60A;
+  --gap-soft: rgb(255 214 10 / 16%);
+  --covered: #4CD964;
+  --covered-soft: rgb(76 217 100 / 16%);
+  --hatch: #2C2C2E;
+  --chart: #2F7BF6;
+  --chart-2: #FFD60A;
+  --accent-ink: #000000;
+  --ref-radius: 22px;
+}

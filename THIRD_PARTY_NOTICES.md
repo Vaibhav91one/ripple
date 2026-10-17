@@ -23,3 +23,14 @@ Free blocks only (Slide to confirm, Toast stack, Time scrubber, Magnetic Select,
 
 Copyright (c) 2026 ObsidianUI. https://www.obsidianui.dev. MIT, see `components/kit/obsidian/LICENSE`.
 Dashboard Shell (`dashboard-shell/`) and the analytics components (`analytics/`: KPI card, sparkline, activity chart, leaderboard, status bars and pills, segmented control and others), remapped to Ripple tokens.
+
+## SakaniUI: `components/kit/refs/sakani/`
+
+Copyright (c) 2026 Samuel Okpere. https://sakaniui.com. MIT, see `components/kit/refs/sakani/LICENSE`.
+Stat card, sidebar, tabs and the summary line are ported from https://github.com/samzydd/Sakani-design-system and restyled to Ripple tokens.
+
+## Design references (no code copied): `components/kit/refs/`
+
+The other components on `/styleguide/refs` are recreated by us from public images or a written spec. No source code was copied:
+Nizam (@nizamdesign: fivecorner, margin, Clearbill), Gr8r (its repo has no licence, so only its behaviour was described and rebuilt),
+Proton, Simulithic, ISO-GLOW (MIT, style only), Push and CollectUI (Jordan Amblin). Reference screenshots stay local and are never committed.
