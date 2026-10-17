@@ -125,11 +125,14 @@ describe("tools on a seeded temp graph", () => {
     expect(o.rows[0].gap as string[]).toContain("data");
   });
 
-  t("create_tasks writes a Task + NOTIFIES per gap team, demo only", async () => {
-    await expect(TOOLS.create_tasks.run({ ...ctx(), demo: false }, { decisionId: "d-1" })).rejects.toThrow(/demo/);
+  t("create_tasks without an approver writes nothing and reports wouldCreate", async () => {
     const o = await TOOLS.create_tasks.run(ctx(), { decisionId: "d-1" });
-    expect(o.rows.map((r) => r.teamId).sort()).toEqual(["devrel", "legal", "security"]);
-    const n = await query<{ n: number }>(g, "MATCH (:Task)-[:NOTIFIES]->(t:Team) WHERE t.id IN ['legal','security','devrel'] RETURN count(t) AS n");
-    expect(Number(n[0].n)).toBe(3);
+    expect(o.rows).toHaveLength(1);
+    const row = o.rows[0] as { proposed: boolean; reason: string; wouldCreate: { teamId: string; title: string; owner: string | null; dueAt: number }[] };
+    expect(row).toMatchObject({ proposed: false, reason: "approvals_unavailable" });
+    expect(row.wouldCreate.map((w) => w.teamId).sort()).toEqual(["devrel", "legal", "security"]);
+    expect(row.wouldCreate.every((w) => w.title && w.owner && w.dueAt > 0)).toBe(true);
+    const n = await query<{ n: number }>(g, "MATCH (k:Task) WHERE k.id STARTS WITH 'task-d-1' RETURN count(k) AS n");
+    expect(Number(n[0].n)).toBe(0);
   });
 });

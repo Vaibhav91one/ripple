@@ -36,6 +36,13 @@
       "when": 1792250145727,
       "tag": "0004_notify_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792250597284,
+      "tag": "0005_actions",
+      "breakpoints": true
     }
   ]
 }

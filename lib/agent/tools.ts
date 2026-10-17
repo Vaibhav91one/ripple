@@ -1,8 +1,9 @@
 // Agent tools = the Cypher templates. The model picks a tool and fills params; it never writes Cypher.
 import { z } from "zod";
-import { query, roQuery, type Graph } from "../graph/client";
+import { roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import { claimsBody, claimsFor } from "../briefs";
+import type { ActionKind } from "./define";
 import type { Source } from "../schemas";
 import type { RestrictedSummary } from "../schemas/common";
 import type { PermViewer } from "../permissions/redact";
@@ -16,8 +17,8 @@ export type RunCtx = {
   viewer: Viewer;
   org: { id: string };
   runId: string;
-  /** TODO(approvals issue): stub until proposals land. */
-  propose: (kind: string, payload: unknown) => Promise<never>;
+  /** Records a pending action for a person to approve (lib/actions/propose). Agents never write directly. */
+  propose: (kind: ActionKind, payload: unknown, evidence?: unknown) => Promise<{ id: string; status: string; created: boolean }>;
 };
 export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean; viewer?: Viewer } & Partial<Omit<RunCtx, "viewer">>;
 type Def<I extends z.ZodType> = {
@@ -139,17 +140,21 @@ export const TOOLS = {
     },
   }),
   create_tasks: def({
-    description: "Create one open Task (with a NOTIFIES edge) for every team the decision never reached. Writes to the graph; demo only.",
+    description: "Propose one open Task (with a NOTIFIES edge) for every team the decision never reached. A person approves each proposal before it is created. Without an approver it only reports what it would create.",
     input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
-    templates: ["ripple", "gap", "create-tasks"],
-    run: async ({ g, now, demo, readonly }, { decisionId }) => {
+    templates: ["ripple", "gap"],
+    run: async ({ g, now, readonly, propose }, { decisionId }) => {
       if (readonly) throw new Error("demo_readonly");
-      if (!demo) throw new Error("create_tasks only runs on the demo graph");
       const r = await ripple(g, decisionId, now);
-      const c = load("create-tasks");
-      const rows = r.gap.map((teamId) => ({ id: `task-${decisionId}-${teamId}`, teamId, decisionId, title: `Review: ${r.decision.title}`, body: claimsBody(claimsFor(r, teamId)) }));
-      const created = rows.length ? await query(g, c.text, { rows, now }) : [];
-      return { rows: created as Row[], sources: [], cypher: [c] };
+      const rows = r.gap.map((teamId) => ({ teamId, payload: { id: `task-${decisionId}-${teamId}`, teamId, decisionId, title: `Review: ${r.decision.title}`, body: claimsBody(claimsFor(r, teamId)) } }));
+      if (!propose) { // no approver (no Postgres): describe, never write
+        const c = load("task-preview");
+        const prev = rows.length ? await roQuery<{ teamId: string; owner: string | null; dueAt: number }>(g, c.text, { rows: rows.map((x) => ({ teamId: x.teamId, decisionId })), now }) : [];
+        const wouldCreate = rows.map(({ teamId, payload }) => ({ teamId, title: payload.title, owner: prev.find((p) => p.teamId === teamId)?.owner ?? null, dueAt: prev.find((p) => p.teamId === teamId)?.dueAt ?? null }));
+        return { rows: [{ proposed: false, reason: "approvals_unavailable", wouldCreate }], sources: [], cypher: [c] };
+      }
+      const out = await Promise.all(rows.map(async ({ teamId, payload }) => ({ teamId, ...(await propose("create_task", payload, claimsFor(r, teamId))) })));
+      return { rows: out as Row[], sources: [], cypher: [] };
     },
   }),
 };
