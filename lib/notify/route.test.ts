@@ -191,6 +191,7 @@ const table: Row[] = [
       ["p-vera", "low", ["email", "inbox"], "weekly_digest"],
     ],
   ],
+  ["evidence.recorded: nobody is notified", ev("evidence.recorded", { changeId: "c1", channelId: "C1" }), []],
   ["slack.inbound: plumbing, nobody", ev("slack.inbound", { kind: "event", teamId: "T1", body: {} }, { kind: "slack", id: "Ev1" }), []],
 ];
 
