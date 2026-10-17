@@ -10,6 +10,8 @@ import { env as readEnv, PROVIDERS, type Env } from "./env";
 
 export { PROVIDERS };
 export type Role = "extract" | "agent";
+/** Agent definition model tier -> pickModel role. */
+export const roleFor = (tier: "reasoning" | "extract"): Role => (tier === "reasoning" ? "agent" : "extract");
 
 export function pickModel(role: Role, env: Partial<Pick<Env, "LLM_PROVIDER" | "LLM_API_KEY" | "LLM_BASE_URL" | "MODEL_AGENT" | "MODEL_EXTRACT">> = readEnv()): LanguageModel | null {
   const provider = env.LLM_PROVIDER;
