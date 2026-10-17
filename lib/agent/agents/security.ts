@@ -21,7 +21,7 @@ export const security = defineAgent({
   group: "act",
   team: "security",
   model: "reasoning",
-  tools: ["affected_controls", "search", "propose_task", "propose_doc"],
+  tools: ["recall", "affected_controls", "search", "propose_task", "propose_doc"],
   writes: ["create_task", "draft_doc"],
   budget: { maxSteps: 8, maxTokens: 60_000 },
   trigger: { events: ["change.confirmed"] },

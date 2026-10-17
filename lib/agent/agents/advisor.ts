@@ -28,7 +28,7 @@ export const advisor = defineAgent({
   group: "understand",
   team: "leadership",
   model: "reasoning",
-  tools: ["decision_costs", "contract_conflicts", "search", "propose_task"],
+  tools: ["recall", "decision_costs", "contract_conflicts", "search", "propose_task"],
   writes: ["create_task"],
   budget: { maxSteps: 6, maxTokens: 50_000 },
   trigger: { events: ["conflict.found"] },

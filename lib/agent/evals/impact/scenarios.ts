@@ -3,7 +3,15 @@
 import { injectionScenarios } from "../injection";
 import type { Scenario } from "../run";
 
-const empty = { teams: [], customers: [], contracts: [], deals: [], hiddenAtDepth4: [] };
+const empty = { teams: [], customers: [], contracts: [], deals: [], hiddenAtDepth4: [], memory: { answeredFromMemory: false, asOf: null } };
+/** What a good run records about each hit team (#210). Sources are artifact ids the run's tools returned. */
+export const FINDINGS = [
+  { teamId: "legal", text: "Legal is hit: two MSAs guarantee API v1 until 2027-06-30, past the Jan 31 shutdown [[art-msa-northwind]] [[art-msa-halden]].", sources: ["art-rfc14", "art-msa-northwind", "art-msa-halden"] },
+  { teamId: "security", text: "Security is hit: auth-service verifies v1 tokens and depends on api-v1 [[art-auth-design]].", sources: ["art-rfc14", "art-auth-design"] },
+  { teamId: "devrel", text: "DevRel is hit: the SDK docs still point at api.ledgerly.test/v1 [[art-sdk-docs]].", sources: ["art-rfc14", "art-sdk-docs"] },
+];
+export const recordCalls = (supersedes: Record<string, string[]> = {}) =>
+  FINDINGS.map((f) => ({ tool: "record_finding", input: { text: f.text, entityIds: [f.teamId, "d-1"], sources: f.sources, confidence: 0.85, supersedes: supersedes[f.teamId] ?? [] } }));
 const RFC = "API v1 will be shut down on Jan 31, 2027";
 
 export const impactScenarios: Scenario[] = [
@@ -12,13 +20,14 @@ export const impactScenarios: Scenario[] = [
     input: { decisionId: "d-1" },
     expect: {
       mustCite: ["art-rfc14", "art-msa-northwind", "art-msa-halden", "art-auth-design", "art-sdk-docs", "art-arch-chain"],
-      mustPropose: [], mustNotPropose: ["create_task", "graph_merge", "send_slack", "send_email", "draft_doc"], maxSteps: 6,
+      mustPropose: [], mustNotPropose: ["create_task", "graph_merge", "send_slack", "send_email", "draft_doc"], mustRecord: ["legal", "security", "devrel"], maxSteps: 6,
     },
     trace: {
       calls: [
         [{ tool: "ripple", input: { decisionId: "d-1", depth: 3 } }, { tool: "ripple", input: { decisionId: "d-1", depth: 4 } }],
         ["legal", "security", "devrel", "data"].map((teamId) => ({ tool: "why_affected", input: { decisionId: "d-1", teamId } })),
         [{ tool: "edge_freshness", input: { decisionId: "d-1", depth: 4 } }],
+        recordCalls(),
       ],
       output: {
         decisionId: "d-1",
@@ -43,6 +52,7 @@ export const impactScenarios: Scenario[] = [
           { id: "ctr-2", note: "Halden Bank MSA guarantees v1 until 2027-06-30 [[art-msa-halden]]" },
         ],
         deals: [{ id: "deal-1", note: "3 open deals promised v1 stays available through 2027 [[art-msg-deal-1]]" }],
+        memory: { answeredFromMemory: false, asOf: null },
         hiddenAtDepth4: [{ id: "data", note: "Data owns reporting-export, 4 hops from api-v1 through api-gateway and billing-sync; invisible at depth 3 [[art-arch-chain]]" }],
       },
     },

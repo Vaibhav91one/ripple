@@ -19,7 +19,7 @@ export const docs = defineAgent({
   group: "act",
   team: "devrel",
   model: "reasoning",
-  tools: ["docs_pages", "search", "propose_doc"],
+  tools: ["recall", "docs_pages", "search", "propose_doc"],
   writes: ["draft_doc"],
   budget: { maxSteps: 8, maxTokens: 60_000 },
   trigger: { events: ["change.confirmed"] },

@@ -28,7 +28,7 @@ export const exposure = defineAgent({
   group: "understand",
   team: "sales",
   model: "reasoning",
-  tools: ["ripple", "deals_at_risk", "customer_usage", "search", "propose_customer_draft"],
+  tools: ["recall", "ripple", "deals_at_risk", "customer_usage", "search", "propose_customer_draft"],
   writes: ["draft_doc"],
   budget: { maxSteps: 8, maxTokens: 70_000 },
   trigger: { events: ["change.confirmed"] },

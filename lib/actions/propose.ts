@@ -33,7 +33,8 @@ export async function propose(ctx: ProposeCtx, kind: ActionKind, payload: unknow
     dedupeKey: `approval.requested:${row.id}`,
   });
   const [policy] = await d.select().from(orgPolicy).where(and(eq(orgPolicy.orgId, ctx.org.id), eq(orgPolicy.actionKind, kind)));
-  if (!policy?.autoApprove) return { id: row.id, status: "pending", created: true };
+  // An agent's own notes (record_finding) are approved at once unless the org set a policy row that turns it off.
+  if (!(policy ? policy.autoApprove : kind === "record_finding")) return { id: row.id, status: "pending", created: true };
   await d.update(pendingActions).set({ status: "approved", approver: "policy", decidedAt: new Date() }).where(eq(pendingActions.id, row.id));
   await audit(ctx, { action: "action.approved", resourceType: "action", resourceId: row.id, meta: { kind, by: "policy" } });
   if (!ctx.hold) await enqueueExecution(row.id, key);

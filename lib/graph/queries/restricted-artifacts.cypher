@@ -6,3 +6,7 @@ UNION
 // Approved drafts (executors draft_doc) that quote restricted text. restrictedTo names the owning team: legal for notices and amendments, security for audit notes.
 MATCH (a:Artifact) WHERE a.restrictedTo IS NOT NULL
 RETURN a.id AS id, 'RESTRICTED:' + a.restrictedTo AS type
+UNION
+// Agent findings (record_finding) derived from restricted sources keep the owner of those sources. restrictedTo is set by the executor.
+MATCH (f:AgentFinding) WHERE f.restrictedTo IS NOT NULL
+RETURN f.id AS id, 'RESTRICTED:' + f.restrictedTo AS type

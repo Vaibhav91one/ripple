@@ -94,6 +94,33 @@ export async function createIssue(e: GithubEnv, title: string, body: string): Pr
   }
 }
 
+/** Agent memory (#210): one conclusion, linked ABOUT every entity it concerns. */
+export const RecordFinding = z.object({
+  id: z.string().min(1), text: z.string().min(1), entityIds: z.array(z.string().min(1)).min(1), sources: z.array(z.string()),
+  confidence: z.number().min(0).max(1), supersedes: z.array(z.string()),
+});
+
+const agentOf = async (runId: string) => {
+  const [{ db }, { agentRuns }, { eq }] = await Promise.all([import("../db"), import("../db/schema"), import("drizzle-orm")]); // lazy: lib/db is server-only
+  return (await db().select({ agent: agentRuns.agent }).from(agentRuns).where(eq(agentRuns.id, runId)))[0]?.agent ?? "unknown";
+};
+
+/** Approved record_finding -> an :AgentFinding node ABOUT its entities. A finding resting on restricted sources or entities keeps their owner (restrictedTo), so it stays invisible to every other team.
+ *  Distinct label: `Finding` is the Security team's restricted finding (classify.ts), and reusing it would make agent notes Security-only and leak into its pages. ponytail: sources owned by several teams -> "nobody" (no team sees it). */
+async function recordFinding(payload: unknown, { writer, now, runId }: ActionCtx) {
+  const p = RecordFinding.parse(payload);
+  const g = writer();
+  const { loadIndex } = await import("../permissions/redact");
+  const idx = await loadIndex(g);
+  const owners = [...new Set([...p.sources.map((s) => idx.artifacts.get(s)), ...p.entityIds.map((e) => idx.ids.get(e)?.owner)].filter((o): o is string => !!o))];
+  const restrictedTo = owners.length > 1 ? "nobody" : (owners[0] ?? null);
+  const agent = runId ? await agentOf(runId) : "unknown";
+  const [row] = await query<{ n: number }>(g, load("finding-record").text, { ...p, now, agent, runId: runId ?? null, restrictedTo });
+  if (!row?.n) throw new Error("none of the entities exist in the graph");
+  await query(g, load("finding-supersede").text, { id: p.id, agent, entityIds: p.entityIds, now });
+  return { findingId: p.id, about: row.n, restrictedTo };
+}
+
 export const SendReminder = z.object({ decisionId: z.string().min(1), teamId: z.string().min(1), title: z.string().optional() });
 
 export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: ActionCtx) => Promise<unknown>>> = {
@@ -112,6 +139,7 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
     return { emitted: r.inserted, changeId: p.decisionId, teamId: p.teamId };
   },
   access_request: async (payload, ctx) => openAccessRequest(payload, ctx),
+  record_finding: async (payload, ctx) => recordFinding(payload, ctx),
   create_issue: async (payload) => {
     const { title, body } = CreateIssue.parse(payload);
     const r = await createIssue(env(), title, body);
@@ -148,5 +176,5 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
 
 /** Who may approve each kind besides an admin. */
 export const OWNER_ROLE: Record<ActionKind, "lead" | "change_owner"> = {
-  create_task: "lead", create_issue: "lead", graph_merge: "change_owner", send_slack: "lead", send_email: "lead", pr_comment: "lead", access_request: "lead", draft_doc: "lead", send_reminder: "lead",
+  create_task: "lead", create_issue: "lead", graph_merge: "change_owner", send_slack: "lead", send_email: "lead", pr_comment: "lead", access_request: "lead", draft_doc: "lead", send_reminder: "lead", record_finding: "lead",
 };

@@ -15,6 +15,8 @@ export const MIGRATIONS: { id: string; cypher: string }[] = [
   { id: "004-access-request-id-index", cypher: "CREATE INDEX FOR (n:AccessRequest) ON (n.id)" },
   // #212 cost-based algorithms (algo.SPpaths) read a `weight` property; existing edges get 1 (a re-run only fills the missing ones).
   { id: "005-edge-weight-default", cypher: "MATCH ()-[r:DEPENDS_ON|USES|OWNS|GUARANTEES|PROMISED]->() WHERE r.weight IS NULL SET r.weight = 1" },
+  // #210 agent memory: :AgentFinding nodes (record_finding), looked up by id on the item pages and by recall.
+  { id: "006-agent-finding-id-index", cypher: "CREATE INDEX FOR (n:AgentFinding) ON (n.id)" },
 ];
 
 /** Apply the migrations this graph has not recorded yet, in order; returns the ids applied now. Idempotent. */

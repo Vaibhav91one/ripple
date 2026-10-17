@@ -83,6 +83,18 @@ describe("GET /api/items/[kind]/[id]", () => {
     expect(v.owner).toBeTruthy();
   });
 
+  t("What Ripple concluded: current findings about the node, newest first, with their dates; superseded ones are gone", async () => {
+    const { EXECUTORS } = await import("@/lib/actions/executors");
+    const rec = (id: string, text: string, at: number, supersedes: string[] = []) =>
+      EXECUTORS.record_finding!({ id, text, entityIds: ["devrel"], sources: ["art-sdk-docs"], confidence: 0.8, supersedes }, { org: { id: "t" }, now: at, writer: () => g });
+    await rec("fnd-old", "DevRel docs still point at v1", 1_700_000_000);
+    await rec("fnd-new", "DevRel docs point at v1 and the SDK pins it", 1_700_100_000, ["fnd-old"]);
+    const v = ItemView.parse(await (await get("team", "devrel")).json());
+    expect(v.findings).toEqual([{ id: "fnd-new", text: "DevRel docs point at v1 and the SDK pins it", at: 1_700_100_000, agent: "unknown", confidence: 0.8, sources: ["art-sdk-docs"] }]);
+    expect(v.neighbours.some((n) => n.id === "fnd-new")).toBe(false); // findings are not "connected items"
+    expect(ItemView.parse(await (await get("team", "eng")).json()).findings).toEqual([]);
+  });
+
   t("404 for an unknown id, an unknown kind, the id of another kind and the access-request placeholder", async () => {
     for (const [k, i] of [["ticket", "nope"], ["nope", "x"], ["ticket", "api-v1"], ["access-request", "ar-1"], ["constructor", "x"]]) {
       const res = await get(k, i);

@@ -484,6 +484,38 @@ export const TOOLS = {
     templates: [],
     run: async (ctx, { name, input }) => (await import("./handoff")).runInline(ctx, name, input),
   }),
+  // Agent memory (#210): what Ripple concluded before, read first; new conclusions go through propose() as record_finding.
+  recall: def({
+    description: "Memory: findings Ripple concluded earlier about these entities (decision, team, system, customer ids), newest first, with their dates and sources. Call this FIRST. newerEdges > 0 means the graph changed around the entity since the finding, so it may be stale.",
+    input: z.object({ entityIds: z.array(z.string()).max(20).describe("Entity ids from the question, e.g. d-1, legal, api-v1"), limit: z.number().int().min(1).max(5).optional().describe("At most 5 (default 5)") }),
+    templates: ["recall-findings", "artifact-text"],
+    run: async ({ g }, { entityIds, limit = 5 }) => {
+      const c = load("recall-findings");
+      const rows = entityIds.length ? await roQuery<Row & { at: number; sources: string[] | null; newerEdges: number }>(g, c.text, { ids: entityIds, limit }) : [];
+      if (!rows.length) return { rows: [{ found: false, note: "No earlier finding about these entities. Do the work from the graph." }], sources: [], cypher: [c] };
+      const s = await sourcesFor(g, rows.flatMap((r) => r.sources ?? []));
+      return { rows: rows.map((r) => ({ ...r, asOf: new Date(Number(r.at) * 1000).toISOString().slice(0, 10), fresh: Number(r.newerEdges) === 0 })), sources: s.sources, cypher: [c, s.cypher] };
+    },
+  }),
+  record_finding: def({
+    description: "Write back one conclusion you established, so the next run starts from it. It is saved as a record_finding the org policy usually approves at once. Link it to every entity it concerns, cite artifact ids you were given, and list the ids of older findings it replaces in supersedes. One finding per conclusion (prefer one entity, or a few closely related).",
+    input: z.object({
+      text: z.string().min(1).describe("The conclusion in one or two sentences, citing [[artifact-id]]"),
+      entityIds: z.array(z.string().min(1)).min(1).max(10).describe("Every entity it concerns: team, system, customer or decision ids"),
+      sources: z.array(z.string()).describe("Artifact ids a tool returned this run that back it"),
+      confidence: z.number().min(0).max(1),
+      supersedes: z.array(z.string()).describe("Ids of older findings from recall that this replaces; [] if none"),
+    }),
+    templates: [],
+    proposes: "record_finding",
+    run: async ({ g, now, readonly, propose, runId }, a) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      const sources = (await sourcesFor(g, a.sources)).sources.map((s) => s.artifactId); // only artifacts that exist
+      const payload = { ...a, sources, id: `fnd-${createHash("sha1").update(JSON.stringify([runId ?? "", now, a.text, [...a.entityIds].sort()])).digest("hex").slice(0, 12)}` };
+      return { rows: [{ findingId: payload.id, ...(await propose("record_finding", payload, sources)) }], sources: [], cypher: [] };
+    },
+  }),
 };
 export type ToolName = keyof typeof TOOLS;
 /** Every tool that cannot cause a side effect: what a read-only agent (Ask) may use. */

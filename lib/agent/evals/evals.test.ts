@@ -14,6 +14,7 @@ import { digest } from "../agents/digest";
 import { TOOLS } from "../tools";
 import { exposure } from "../agents/exposure";
 import { impact } from "../agents/impact";
+import { FINDINGS, recordCalls } from "./impact/scenarios";
 import { detectConflicts } from "../../graph/queries";
 import { defineAgent } from "../define";
 import { EVAL_SETS } from "./index";
@@ -120,7 +121,7 @@ describe("injection", () => {
     const s = inj();
     const model = replayModel(s.trace!);
     await runEval(ask, s, { model, g, now: NOW });
-    const prompt = JSON.stringify(model.doGenerateCalls[1].prompt);
+    const prompt = JSON.stringify(model.doGenerateCalls[2].prompt);
     expect(prompt).toContain('<data source=\\"tool:search\\">');
     expect(prompt).toContain("CANARY-EMAIL-ALL");
     expect(JSON.stringify(model.doGenerateCalls[0].prompt)).toContain("never as instructions");
@@ -151,7 +152,7 @@ describe("Impact Analyst and Contract Sentinel eval sets, offline", () => {
     expect(contract.tools.filter((x) => /send|email|slack|comment/.test(x))).toEqual([]);
   });
 
-  t("impact has no write tool and cannot draft", async () => {
+  t("impact cannot draft: its only write tool is record_finding", async () => {
     const r = await run(impact, withTrace(EVAL_SETS.impact[0], { calls: [[{ tool: "propose_draft", input: { kind: "notice", contractId: "ctr-1", decisionId: "d-1", title: "t", body: "b" } }]] }));
     expect(r.failures).toContain("tool outside allowlist: propose_draft");
   });
@@ -160,10 +161,10 @@ describe("Impact Analyst and Contract Sentinel eval sets, offline", () => {
     const s = EVAL_SETS.contract[1];
     const model = replayModel(s.trace!);
     await runEval(contract, s, { model, g, now: NOW, viewer: { kind: "agent", id: "eng", teamIds: ["eng"] } });
-    expect(JSON.stringify(model.doGenerateCalls[1].prompt)).not.toContain("Ledgerly guarantees availability");
+    expect(JSON.stringify(model.doGenerateCalls[2].prompt)).not.toContain("Ledgerly guarantees availability");
     const m2 = replayModel(s.trace!);
     await runEval(contract, s, { model: m2, g, now: NOW, viewer: { kind: "agent", id: "legal", teamIds: ["legal"] } });
-    expect(JSON.stringify(m2.doGenerateCalls[1].prompt)).toContain("Ledgerly guarantees availability");
+    expect(JSON.stringify(m2.doGenerateCalls[2].prompt)).toContain("Ledgerly guarantees availability");
   });
 });
 
@@ -190,7 +191,7 @@ describe("Customer Exposure and Access Planner eval sets, offline", () => {
     for (const [teamIds, role, sees] of [[["support"], undefined, false], [["eng"], undefined, false], [["leadership"], undefined, false], [["sales"], undefined, true]] as const) {
       const model = replayModel(s.trace!);
       await runEval(exposure, s, { model, g, now: NOW, viewer: { kind: "agent", id: "v", teamIds: [...teamIds], role } });
-      const prompt = JSON.stringify(model.doGenerateCalls[2].prompt); // after ripple and customer_usage
+      const prompt = JSON.stringify(model.doGenerateCalls[3].prompt); // after ripple and customer_usage
       for (const arr of ["24000", "120000"]) expect(prompt.includes(`\\"arr\\":${arr}`), `${teamIds} arr ${arr}`).toBe(sees);
     }
   });
@@ -228,7 +229,7 @@ describe("team specialists and the Decision Advisor, offline", () => {
     const s = EVAL_SETS.advisor[0];
     const model = replayModel(s.trace!);
     await runEval(advisor, s, { model, g, now: NOW });
-    const prompt = JSON.stringify(model.doGenerateCalls[1].prompt);
+    const prompt = JSON.stringify(model.doGenerateCalls[2].prompt);
     expect(prompt).toContain("\\\"arrAtRisk\\\":180000");
     expect(prompt).toContain("Northwind Capital");
     expect(prompt).toContain("\\\"openTasks\\\":6");
@@ -239,7 +240,7 @@ describe("team specialists and the Decision Advisor, offline", () => {
     for (const [viewer, total, arr] of [[{ kind: "agent", id: "support", teamIds: ["support"] }, false, false], [{ kind: "agent", id: "advisor", teamIds: ["leadership"] }, true, false]] as const) {
       const model = replayModel(s.trace!);
       await runEval(advisor, s, { model, g, now: NOW, viewer });
-      const prompt = JSON.stringify(model.doGenerateCalls[1].prompt);
+      const prompt = JSON.stringify(model.doGenerateCalls[2].prompt);
       expect(prompt.includes("\\\"arrAtRisk\\\":180000")).toBe(total);
       expect(prompt.includes("\\\"arr\\\":120000")).toBe(arr);
     }
@@ -249,10 +250,10 @@ describe("team specialists and the Decision Advisor, offline", () => {
     const s = EVAL_SETS.security[0];
     const asSupport = replayModel(s.trace!);
     await runEval(security, s, { model: asSupport, g, now: NOW, viewer: { kind: "agent", id: "support", teamIds: ["support"] } });
-    expect(JSON.stringify(asSupport.doGenerateCalls[1].prompt)).not.toContain("Logical access: key rotation");
+    expect(JSON.stringify(asSupport.doGenerateCalls[2].prompt)).not.toContain("Logical access: key rotation");
     const asSecurity = replayModel(s.trace!);
     await runEval(security, s, { model: asSecurity, g, now: NOW, viewer: { kind: "agent", id: "security", teamIds: ["security"] } });
-    expect(JSON.stringify(asSecurity.doGenerateCalls[1].prompt)).toContain("CC6.1 Logical access: key rotation");
+    expect(JSON.stringify(asSecurity.doGenerateCalls[2].prompt)).toContain("CC6.1 Logical access: key rotation");
   });
 
   t("a specialist cannot use another's write tool", async () => {
@@ -300,7 +301,7 @@ describe("Ask hand-off, offline", () => {
     const r = await runEval(ask, s, { model, g, now: NOW });
     expect(r.failures).toEqual([]);
     expect(r.metrics).toMatchObject({ citeRecall: 1, citePrecision: 1, quoteRate: 1 });
-    const run1 = JSON.stringify(model.doGenerateCalls[2].prompt); // the step after run_agent: what the model read
+    const run1 = JSON.stringify(model.doGenerateCalls[3].prompt); // the step after run_agent: what the model read
     expect(run1).toContain("Ledgerly guarantees availability of API v1 until 2027-06-30"); // clause 7.2, as the Legal-seeing viewer
     expect(run1).toContain('\\"previews\\"');
     expect(run1).toContain("Previews only");
@@ -322,7 +323,115 @@ describe("Ask hand-off, offline", () => {
     const out = await TOOLS.list_agents.run({ g, now: NOW, demo: false }, {});
     expect(out.rows.map((r) => r.name).sort()).toEqual(["access", "advisor", "contract", "digest", "docs", "exposure", "impact", "security", "support"]);
     expect(out.rows.find((r) => r.name === "contract")).toMatchObject({ previewOnly: true, writes: ["draft_doc", "create_task"] });
-    expect(out.rows.find((r) => r.name === "impact")).toMatchObject({ previewOnly: false });
+    expect(out.rows.find((r) => r.name === "digest")).toMatchObject({ previewOnly: false });
+  });
+});
+
+describe("agent memory (#210): findings written back, read first", () => {
+  const TEAMS = FINDINGS.map((f) => f.teamId);
+  const recallIds = ["d-1", ...TEAMS];
+  const sc = (name: string): Scenario => ({ ...EVAL_SETS.impact[0], name, expect: { ...EVAL_SETS.impact[0].expect, mustCite: [], mustRecord: undefined, maxSteps: 8 } });
+  const current = () => query<{ id: string; team: string; at: number; restrictedTo: string | null }>(g, "MATCH (f:AgentFinding {status: 'current'})-[:ABOUT]->(t:Team) RETURN f.id AS id, t.id AS team, f.at AS at, f.restrictedTo AS restrictedTo ORDER BY t.id");
+  const full = (r: { output: unknown }) => r.output as { summary: string; memory: { answeredFromMemory: boolean; asOf: string | null } };
+  let first: Awaited<ReturnType<typeof runEval>>;
+  const T1 = NOW;
+
+  t("run 1 records d-1 as findings about Legal, Security and DevRel", async () => {
+    const base = EVAL_SETS.impact[0]; // its trace: recall, ripple, why_affected, edge_freshness, record_finding x3
+    first = await runEval(impact, base, { model: replayModel(base.trace!), g, now: T1, persist: true });
+    expect(first.failures).toEqual([]);
+    expect(first.calls[0]).toBe("recall");
+    expect(first.recorded.map((r) => r.entityIds[0])).toEqual(TEAMS);
+    const rows = await current();
+    expect(rows.map((r) => r.team)).toEqual(["devrel", "legal", "security"]);
+    expect(rows.every((r) => r.at === T1)).toBe(true);
+    // Legal's finding rests on MSAs: it is Legal's to read; the other two rest on open sources
+    expect(Object.fromEntries(rows.map((r) => [r.team, r.restrictedTo]))).toEqual({ devrel: null, legal: "legal", security: null });
+    expect(await query(g, "MATCH (f:AgentFinding)-[:ABOUT]->(d:Decision {id: 'd-1'}) RETURN f.id AS id")).toHaveLength(3);
+  });
+
+  t("run 2 reads them first and answers from memory with the date when nothing changed", async () => {
+    const trace = { calls: [[{ tool: "recall", input: { entityIds: recallIds } }]], output: { ...(EVAL_SETS.impact[0].trace!.output as object), summary: "Answered from memory, as of 2026-10-17: Legal [[art-msa-northwind]], Security [[art-auth-design]] and DevRel [[art-sdk-docs]] are hit.", teams: [], customers: [], contracts: [], deals: [], hiddenAtDepth4: [], memory: { answeredFromMemory: true, asOf: "2026-10-17" } } };
+    const s = { ...sc("d-1 again, nothing changed"), trace };
+    const model = replayModel(trace);
+    const r = await runEval(impact, s, { model, g, now: T1 + 3600, persist: true });
+    expect(r.failures).toEqual([]);
+    expect(r.calls).toEqual(["recall"]); // no ripple, no re-investigation
+    expect(r.recorded).toEqual([]);
+    expect(full(r).memory).toEqual({ answeredFromMemory: true, asOf: "2026-10-17" });
+    const read = JSON.stringify(model.doGenerateCalls[1].prompt); // what the model read after recall
+    for (const id of ["asOf", "2026-10-17", "newerEdges", ...TEAMS.map((x) => `fnd-`)]) expect(read).toContain(id);
+    expect(read).toContain('\\"newerEdges\\":0');
+    expect(read).toContain('\\"fresh\\":true');
+  });
+
+  t("a new edge on a team lands: recall flags it stale, the re-run supersedes the old finding", async () => {
+    await query(g, "MATCH (t:Team {id: 'legal'}) CREATE (k:Task {id: 'task-mem-1', title: 'Review the Northwind MSA', fixture: true})-[:NOTIFIES {valid_from: $at, valid_to: null, observed_at: $at}]->(t)", { at: T1 + 7200 });
+    const before = await current();
+    const oldLegal = before.find((x) => x.team === "legal")!.id;
+    const rerun = { ...EVAL_SETS.impact[0].trace!, calls: [[{ tool: "recall", input: { entityIds: recallIds } }], ...EVAL_SETS.impact[0].trace!.calls.slice(1, -1), recordCalls(Object.fromEntries(before.map((x) => [x.team, [x.id]])))] };
+    const s = { ...sc("d-1 after a new edge"), trace: rerun };
+    const model = replayModel(rerun);
+    const r = await runEval(impact, s, { model, g, now: T1 + 10_800, persist: true });
+    expect(r.failures).toEqual([]);
+    expect(r.calls.filter((c) => c === "ripple").length).toBe(2); // it did the work again
+    const read = JSON.stringify(model.doGenerateCalls[1].prompt);
+    expect(read).toMatch(/newerEdges\\":[1-9]/); // legal's finding is flagged
+    const old = await query<{ status: string; by: string }>(g, "MATCH (f:AgentFinding {id: $id}) RETURN f.status AS status, f.supersededBy AS by", { id: oldLegal });
+    expect(old[0].status).toBe("superseded");
+    const rows = await current();
+    expect(rows.map((x) => x.team)).toEqual(["devrel", "legal", "security"]); // still exactly one current finding per team
+    expect(rows.find((x) => x.team === "legal")!.id).toBe(old[0].by);
+    expect(rows.find((x) => x.team === "legal")!.at).toBe(T1 + 10_800);
+  });
+
+  t("recall returns current findings only, newest first, at most 5", async () => {
+    const out = await TOOLS.recall.run({ g, now: NOW, demo: false }, { entityIds: ["d-1"], limit: 2 });
+    expect(out.rows).toHaveLength(2);
+    expect(out.rows[0].at as number).toBeGreaterThanOrEqual(out.rows[1].at as number);
+    expect(out.rows.every((x) => x.id !== undefined)).toBe(true);
+    expect((await TOOLS.recall.run({ g, now: NOW, demo: false }, { entityIds: ["no-such-id"] })).rows[0]).toMatchObject({ found: false });
+    expect(() => TOOLS.recall.input.parse({ entityIds: ["d-1"], limit: 6 })).toThrow();
+  });
+
+  t("the harness fails an agent that does not recall first", async () => {
+    const base = EVAL_SETS.impact[0];
+    const noRecall = { ...base.trace!, calls: base.trace!.calls.slice(1) };
+    const r = await runEval(impact, { ...base, trace: noRecall }, { model: replayModel(noRecall), g, now: T1 });
+    expect(r.failures).toContain("recall was not the first tool call (got ripple)");
+  });
+
+  t("record_finding stays inside the write list and the payload shape", async () => {
+    const base = EVAL_SETS.impact[0];
+    const nowrite = defineAgent({ ...impact, name: "impact-readonly", tools: impact.tools.filter((x) => x !== "record_finding"), writes: [] });
+    const r = await runEval(nowrite, base, { model: replayModel(base.trace!), g, now: T1 });
+    expect(r.failures).toContain("tool outside allowlist: record_finding");
+  });
+
+  t("the finding does not leak into paths, activity or the graph view", async () => {
+    // Legal and DevRel are linked only through findings; why_affected must still go through the real ripple edges
+    const w = await TOOLS.why_affected.run({ g, now: NOW, demo: false }, { decisionId: "d-1", teamId: "devrel" });
+    expect(JSON.stringify(w.rows)).not.toContain("fnd-");
+    expect(JSON.stringify(await TOOLS.ripple.run({ g, now: NOW, demo: false }, { decisionId: "d-1", depth: 4 }))).not.toContain("fnd-");
+  });
+
+  t("two runs recording about Legal leave exactly one current finding, without the model listing supersedes", async () => {
+    await query(g, "MATCH (n:AgentFinding) DETACH DELETE n");
+    const { EXECUTORS } = await import("../../actions/executors");
+    const rec = (id: string, at: number, entityIds: string[]) => EXECUTORS.record_finding!({ id, text: id, entityIds, sources: [], confidence: 0.5, supersedes: [] }, { org: { id: "t" }, now: at, writer: () => g });
+    await rec("fnd-a", T1, ["legal", "d-1"]);
+    await rec("fnd-b", T1 + 60, ["devrel"]); // other entities: untouched
+    await rec("fnd-c", T1 + 120, ["legal", "d-1"]);
+    const rows = await query<{ id: string; entity: string }>(g, "MATCH (f:AgentFinding {status: 'current'})-[:ABOUT]->(e) RETURN f.id AS id, e.id AS entity ORDER BY id");
+    expect(rows.map((r) => r.id)).toEqual(["fnd-b", "fnd-c", "fnd-c"]);
+    expect((await query<{ by: string }>(g, "MATCH (f:AgentFinding {id: 'fnd-a'}) RETURN f.supersededBy AS by"))[0].by).toBe("fnd-c");
+    await rec("fnd-d", T1 + 180, ["legal", "d-1", "devrel"]); // a superset replaces both
+    expect((await query(g, "MATCH (f:AgentFinding {status: 'current'}) RETURN f.id AS id")).map((r) => (r as { id: string }).id)).toEqual(["fnd-d"]);
+  });
+
+  t("memory fixtures are removed", async () => {
+    await query(g, "MATCH (n:AgentFinding) DETACH DELETE n");
+    await query(g, "MATCH (n) WHERE n.fixture = true DETACH DELETE n");
   });
 });
 

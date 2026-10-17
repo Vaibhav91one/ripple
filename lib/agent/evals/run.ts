@@ -37,6 +37,10 @@ export type Scenario = {
     mustNotSay?: string[];
     /** Answer validation (#211): the answer must be rejected and replaced, with this outcome. Unset = it must pass validation. */
     rejected?: { outcome: "path" | "not_in_graph" | "unknown_entity" };
+    /** Entities that record_finding must cover (each in some finding's entityIds). */
+    mustRecord?: string[];
+    /** Memory (#210): an agent with the recall tool must call it first. Default true; false for a scenario that records the broken case. */
+    recallFirst?: boolean;
   };
   /** Offline only. */
   trace?: Trace;
@@ -44,6 +48,8 @@ export type Scenario = {
   nested?: Trace;
 };
 export type Proposal = { kind: ActionKind; payload: unknown };
+/** A record_finding call. Findings are the agent's own notes, so they are checked apart from the proposals a person approves. */
+export type Recorded = { id: string; entityIds: string[]; supersedes: string[]; sources: string[]; text: string };
 export type EvalResult = {
   name: string;
   pass: boolean;
@@ -53,15 +59,19 @@ export type EvalResult = {
   steps: number;
   tokens: number;
   output: unknown;
+  /** Tool names in call order. */
+  calls: string[];
+  recorded: Recorded[];
 };
-export type EvalOpts = { model: LanguageModel; g: Graph; now: number; viewer?: Viewer };
+/** persist: run record_finding through its executor, so a later run in the same graph can recall it. */
+export type EvalOpts = { model: LanguageModel; g: Graph; now: number; viewer?: Viewer; persist?: boolean };
 
 /** Payload schemas per action kind. Kinds without an executor schema yet are checked for shape only (an object).
  *  Lazy import: executors pull in octokit, which tsx under Node 26 cannot resolve. ponytail: there the check degrades to "is an object"; vitest and CI (Node 22) validate fully. */
 async function payloadSchemas(): Promise<Partial<Record<ActionKind, z.ZodType>>> {
   try {
-    const { AccessRequest, CreateIssue, CreateTask, DraftDoc, GraphMerge } = await import("../../actions/executors");
-    return { create_task: CreateTask, graph_merge: GraphMerge, create_issue: CreateIssue, draft_doc: DraftDoc, access_request: AccessRequest };
+    const { AccessRequest, CreateIssue, CreateTask, DraftDoc, GraphMerge, RecordFinding } = await import("../../actions/executors");
+    return { create_task: CreateTask, graph_merge: GraphMerge, create_issue: CreateIssue, draft_doc: DraftDoc, access_request: AccessRequest, record_finding: RecordFinding };
   } catch {
     return {};
   }
@@ -100,12 +110,18 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
   const viewer = o.viewer ?? EVAL_VIEWER;
   const failures: string[] = [];
   const proposals: Proposal[] = [];
+  const recorded: Recorded[] = [];
   const returned = new Map<string, Source>(); // ids (and quotes) tools returned this run
   const calls: Call[] = [];
   const allowed = new Set<string>(agent.tools);
   const ctx: Ctx = {
     g: o.g, now: o.now, demo: false, viewer, org: { id: "eval" }, runId: "eval", model: s.nested && replayModel(s.nested),
     propose: async (kind, payload) => { // never writes: records, and the checks below validate the payload
+      if (kind === "record_finding") {
+        recorded.push(payload as Recorded);
+        if (o.persist) await (await import("../../actions/executors")).EXECUTORS.record_finding!(payload, { org: { id: "eval" }, now: o.now, writer: () => o.g });
+        return { id: `eval-finding-${recorded.length}`, status: o.persist ? "approved" : "pending", created: true };
+      }
       proposals.push({ kind, payload });
       return { id: `eval-${proposals.length}`, status: "pending", created: true };
     },
@@ -145,6 +161,11 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
   // plumbing: allowlist, step and token budget
   const called = steps.flatMap((st) => st.toolCalls.map((c) => c.toolName));
   for (const n of new Set(called)) if (!allowed.has(n)) failures.push(`tool outside allowlist: ${n}`);
+  if (allowed.has("recall") && s.expect.recallFirst !== false && called[0] !== "recall") failures.push(`recall was not the first tool call (got ${called[0] ?? "none"})`);
+  if (recorded.length && !agent.writes.includes("record_finding")) failures.push(`recorded a finding but the agent writes [${agent.writes.join(", ")}]`);
+  const rf = recorded.length ? (await payloadSchemas()).record_finding : undefined;
+  for (const r of recorded) if (rf && !rf.safeParse(r).success) failures.push("invalid record_finding payload");
+  for (const e of s.expect.mustRecord ?? []) if (!recorded.some((r) => r.entityIds.includes(e))) failures.push(`no finding recorded about ${e}`);
   if (steps.length > s.expect.maxSteps) failures.push(`${steps.length} steps > maxSteps ${s.expect.maxSteps}`);
   const tokens = used(steps);
   if (tokens > agent.budget.maxTokens) failures.push(`${tokens} tokens > budget ${agent.budget.maxTokens}`);
@@ -192,7 +213,7 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
 
   const rec = teams.filter((t) => want.includes(t)).length;
   return {
-    name: s.name, pass: failures.length === 0, failures, steps: steps.length, tokens, output,
+    name: s.name, pass: failures.length === 0, failures, steps: steps.length, tokens, output, calls: called, recorded,
     metrics: {
       citeRecall: ratio(s.expect.mustCite.filter((id) => cited.includes(id)).length, s.expect.mustCite.length),
       citePrecision: ratio(cited.length - invented.length, cited.length),
