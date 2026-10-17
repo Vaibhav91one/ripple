@@ -1,6 +1,6 @@
 import type { RippleEvent } from "../../events/types";
 import { env } from "../../env";
-import type { Account } from "../define";
+import { BadSignature, type Account } from "../define";
 import { githubApp, verifySignature } from "./client";
 import type { Octo } from "./sync";
 
@@ -23,7 +23,7 @@ async function changedPaths(octo: Octo, full: string, number: number): Promise<s
 export async function githubWebhook(req: Request, acct: Account, octo?: Octo): Promise<RippleEvent[] | "ignored"> {
   const raw = await req.text();
   const secret = env().GITHUB_APP_WEBHOOK_SECRET;
-  if (!secret || !(await verifySignature(secret, raw, req.headers.get("x-hub-signature-256")))) throw new Error("bad signature");
+  if (!secret || !(await verifySignature(secret, raw, req.headers.get("x-hub-signature-256")))) throw new BadSignature();
   if (req.headers.get("x-github-event") !== "pull_request") return "ignored";
   const p = JSON.parse(raw) as PrPayload;
   const opened = p.action === "opened" || p.action === "reopened";

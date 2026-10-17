@@ -25,6 +25,11 @@ export const GraphProposal = z.discriminatedUnion("op", [
 ]);
 export type GraphProposal = z.input<typeof GraphProposal>;
 
+/** Throw this from `webhook()` when the signature is wrong (400 bad_signature); any other error is a processing failure (502, so the provider redelivers). */
+export class BadSignature extends Error {
+  constructor() { super("bad signature"); }
+}
+
 /** A connector_account row with its token decrypted. */
 export type Account = { id: string; orgId: string; kind: string; externalId: string; token: string | null; scopes: string[] };
 export type SyncPage = { records: unknown[]; nextCursor: unknown };
