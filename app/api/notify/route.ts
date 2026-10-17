@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const ctx = await getContext(req);
     const denied = await denyIfReadonly(ctx, "notify", body.data.decisionId);
     if (denied) return denied;
-    const results = await notifyGaps(ctx.writer(), body.data.decisionId, { baseUrl: new URL(req.url).origin });
+    const results = await notifyGaps(ctx.writer(), body.data.decisionId, { orgId: ctx.org.id, baseUrl: new URL(req.url).origin });
     await ctx.audit({ action: "notify", resourceType: "decision", resourceId: body.data.decisionId, meta: { teams: results.map((r) => r.teamId) } });
     return Response.json({ decisionId: body.data.decisionId, results });
   } catch (e) {

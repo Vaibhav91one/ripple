@@ -8,6 +8,14 @@ describe("decodeAckToken", () => {
     expect(r.state).toBe("ok");
     expect(r.state !== "invalid" && r.payload.teamId).toBe("legal");
   });
+  it("carries org and person, and tampering with them is rejected", () => {
+    const t = encodeAckToken({ teamId: "legal", decisionId: "d-1", exp: now + 9, o: "org_1", p: "p-mei" });
+    const r = decodeAckToken(t, now);
+    expect(r.state === "ok" && [r.payload.o, r.payload.p]).toEqual(["org_1", "p-mei"]);
+    const [, sig] = t.split(".");
+    const forged = Buffer.from(JSON.stringify({ teamId: "legal", decisionId: "d-1", exp: now + 9, o: "org_2", p: "p-mei" })).toString("base64url");
+    expect(decodeAckToken(`${forged}.${sig}`, now).state).toBe("invalid");
+  });
   it("flags expired", () => {
     expect(decodeAckToken(encodeAckToken({ teamId: "legal", decisionId: "d-1", exp: now - 1 }), now).state).toBe("expired");
   });
