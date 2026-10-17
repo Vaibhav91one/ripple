@@ -15,7 +15,7 @@ v2 is a dashboard product: `/overview`, a `/graph` explorer, `/decisions`, `/cha
 
 ## Use Ripple from your agent
 
-Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (11 tools) or stdio against a local FalkorDB.
+Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (12 tools) or stdio against a local FalkorDB.
 
 ```bash
 # Claude Code, hosted demo
@@ -92,6 +92,8 @@ Ask it as a team (what hits me?) and inside a team (who knows this?):
 - **Temporal edges.** Every edge has `valid_from` / `valid_to` (epoch ints), so "what changed" and "what was true then" are plain `WHERE` clauses; moving the sunset date ends one edge and writes another.
 - **`MERGE` write-back.** Conflicts, acks and tasks are written back with `MERGE`, so the gap shrinks when a team acks.
 - **Full-text and vector index on `Artifact`.** `search.cypher` and `search-vector.cypher` find the decision's evidence, and the vector query hops to the systems each hit is `ABOUT` in the same statement.
+- **Shortest path.** `why-affected.cypher` uses FalkorDB's `shortestPath` between a bound decision and a bound team to answer "why is this team affected?" with the chain of nodes and the quote on each edge (`why_affected` tool).
+- **Read-only queries.** Every read (agent tools, MCP tools, page data) goes through `GRAPH.RO_QUERY` (`roQuery`), so FalkorDB itself rejects a write from a read path; only the MERGE/CREATE/SET templates use `query`.
 - **Fixed Cypher tools.** The agent picks among a fixed set of Cypher-backed tools and fills parameters; it never writes Cypher.
 
 ## Architecture
@@ -850,6 +852,36 @@ WHERE (h)-[:ABOUT]->(:System {id: $id})
 RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 ```
 
+### `why-affected.cypher`
+
+Shortest path from a decision to a team over the ripple edges (sunset, dependencies, contracts, deals,
+
+```cypher
+// Shortest path from a decision to a team over the ripple edges (sunset, dependencies, contracts, deals,
+// tickets, ownership), any direction. FalkorDB's shortestPath must sit in WITH/RETURN, takes no property
+// filters on edges, so ended edges (valid_to set) are dropped after the fact: such a path gives no row.
+// Rows: nodes [{id, label, name}], rels [{type, src, quote}]; none when unreachable.
+MATCH (d:Decision {id: $id}), (t:Team {id: $team})
+WITH d, t, shortestPath((d)-[:SUNSETS|DEPENDS_ON|ABOUT|PROMISED|GUARANTEES|MANAGED_BY|OWNED_BY|OWNS|CARES_ABOUT|HANDLED_BY|MEMBER_OF|PARTY_TO|USES*..8]-(t)) AS p
+WHERE p IS NOT NULL AND ALL(r IN relationships(p) WHERE r.valid_to IS NULL)
+RETURN [n IN nodes(p) | {id: n.id, label: labels(n)[0], name: coalesce(n.name, n.title)}] AS nodes,
+  [r IN relationships(p) | {type: type(r), src: r.src, quote: r.quote}] AS rels
+```
+
+### `why-affected-any.cypher`
+
+Fallback for why-affected.cypher when the team is not on a dependency path: the shortest path over any edge
+
+```cypher
+// Fallback for why-affected.cypher when the team is not on a dependency path: the shortest path over any edge
+// (e.g. a team reached only through a WAITING_ON hop from a team that was involved).
+MATCH (d:Decision {id: $id}), (t:Team {id: $team})
+WITH d, t, shortestPath((d)-[*..8]-(t)) AS p
+WHERE p IS NOT NULL AND ALL(r IN relationships(p) WHERE r.valid_to IS NULL)
+RETURN [n IN nodes(p) | {id: n.id, label: labels(n)[0], name: coalesce(n.name, n.title)}] AS nodes,
+  [r IN relationships(p) | {type: type(r), src: r.src, quote: r.quote}] AS rels
+```
+
 ## Numbers
 
 Local graph `demo`, measured with `GRAPH.RO_QUERY`: 284 nodes, 462 edges across 27 edge types (the live server reports 287 nodes).
@@ -927,6 +959,7 @@ Tools (all read-only except `ack_brief`; each returns JSON `{ rows, sources, cyp
 - `who_knows`: top people for a system, with evidence.
 - `trace_decision`: a decision and the artifacts that support it.
 - `bottleneck`: teams blocking the most open requests.
+- `why_affected`: the shortest evidence path from a decision to one team (decision, system, contract/deal/ticket, team) with source quotes.
 - `who_wasnt_told`: affected teams that never saw the decision, and why.
 - `check_contract_conflict`: contract conflicts with severity and verbatim clause quotes.
 - `deals_at_risk`: open deals in the ripple with amount, stage and the PROMISED quote.

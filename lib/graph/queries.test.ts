@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { closeClient, graphFor, query, type Graph } from "./client";
+import { closeClient, graphFor, query, roQuery, type Graph } from "./client";
 import { seed } from "../ingest/seed";
-import { bottleneck, changeSunset, conflicts, diff, gap, ripple, search, searchVector, whoKnows } from "./queries";
+import { bottleneck, changeSunset, conflicts, diff, gap, ripple, search, searchVector, whoKnows, whyAffected } from "./queries";
 
 const name = `test_q_${randomUUID().replaceAll("-", "")}`;
 const day = (d: string) => Math.floor(Date.parse(`${d}T09:00:00Z`) / 1000);
@@ -38,6 +38,19 @@ const t = (title: string, fn: () => Promise<void>, need = true) =>
   });
 
 describe("queries on the ledgerly seed (in order: later tests mutate the graph)", () => {
+  t("roQuery rejects a write and leaves the graph unchanged", async () => {
+    await expect(roQuery(g, "CREATE (:Probe {id: 'x'})")).rejects.toThrow(/read.?only/i);
+    expect(await roQuery(g, "MATCH (p:Probe) RETURN p")).toEqual([]);
+  });
+
+  t("whyAffected: legal via the contract, data via the any-edge fallback, unknown team null", async () => {
+    const legal = await whyAffected(g, "d-1", "legal");
+    expect(legal.data?.nodes.map((x) => x.id)).toEqual(["d-1", "api-v1", "ctr-1", "legal"]);
+    expect(legal.data?.rels.map((r) => r.type)).toEqual(["SUNSETS", "GUARANTEES", "MANAGED_BY"]);
+    expect((await whyAffected(g, "d-1", "data")).data?.nodes.at(-1)?.id).toBe("data");
+    expect((await whyAffected(g, "d-1", "nope")).data).toBeNull();
+  });
+
   t("ripple counts match the seed", async () => {
     const r = await ripple(g, "d-1", NOW);
     expect(r.teams.map((x) => x.teamId).sort()).toEqual(["devrel", "legal", "sales", "security", "support"]);

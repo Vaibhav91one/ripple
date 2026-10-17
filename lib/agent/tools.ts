@@ -1,7 +1,7 @@
 // Agent tools = the Cypher templates. The model picks a tool and fills params; it never writes Cypher.
 import { z } from "zod";
-import { query, type Graph } from "../graph/client";
-import { bottleneck, load, NotFound, ripple, search, whoKnows, type Cypher } from "../graph/queries";
+import { query, roQuery, type Graph } from "../graph/client";
+import { bottleneck, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import type { Source } from "../schemas";
 
 export type Row = Record<string, unknown>;
@@ -20,7 +20,7 @@ const QUOTE_LEN = 160;
 /** Sources for artifact ids, quoting the start of the artifact text (always a verbatim substring). */
 async function sourcesFor(g: Graph, ids: string[]): Promise<{ sources: Source[]; cypher: Cypher }> {
   const c = load("artifact-text");
-  const rows = await query<{ id: string; text: string | null }>(g, c.text, { ids: [...new Set(ids)] });
+  const rows = await roQuery<{ id: string; text: string | null }>(g, c.text, { ids: [...new Set(ids)] });
   const sources = rows.flatMap((r) => (r.text?.trim() ? [{ artifactId: r.id, quote: r.text.trim().slice(0, QUOTE_LEN) }] : []));
   return { sources, cypher: c };
 }
@@ -76,9 +76,9 @@ export const TOOLS = {
     run: async ({ g }, { decisionId }) => {
       const dc = load("decision");
       const tc = load("trace-decision");
-      const [d] = await query<{ id: string; title: string; status: string; src: string | null; quote: string | null }>(g, dc.text, { id: decisionId });
+      const [d] = await roQuery<{ id: string; title: string; status: string; src: string | null; quote: string | null }>(g, dc.text, { id: decisionId });
       if (!d) return { rows: notInGraph(`decision ${decisionId}`), sources: [], cypher: [dc] };
-      const sup = await query<{ sourceId: string | null; sourceTitle: string | null; quote: string | null }>(g, tc.text, { id: decisionId });
+      const sup = await roQuery<{ sourceId: string | null; sourceTitle: string | null; quote: string | null }>(g, tc.text, { id: decisionId });
       const supported = sup.filter((x) => x.sourceId);
       const s = await sourcesFor(g, supported.map((x) => x.sourceId!));
       const sources = dedupe([
@@ -97,6 +97,18 @@ export const TOOLS = {
     run: async ({ g, now }) => {
       const b = await bottleneck(g, now);
       return { rows: b.data, sources: [], cypher: b.cypher };
+    },
+  }),
+  why_affected: def({
+    description: "The shortest path of evidence from a decision to one team (decision, system, contract/deal/ticket, team), with the source quote on each hop. Use it to show why a not-told team is affected.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), teamId: z.string().describe("Team id, e.g. legal") }),
+    templates: ["why-affected", "why-affected-any", "artifact-text"],
+    run: async ({ g }, { decisionId, teamId }) => {
+      const w = await whyAffected(g, decisionId, teamId);
+      if (!w.data) return { rows: [{ found: false, note: `No path from decision ${decisionId} to team ${teamId} in the graph.` }], sources: [], cypher: w.cypher };
+      const { nodes, rels } = w.data;
+      const sources = dedupe(rels.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : [])));
+      return { rows: [{ found: true, hops: rels.length, nodes, rels }], sources, cypher: w.cypher };
     },
   }),
   create_tasks: def({

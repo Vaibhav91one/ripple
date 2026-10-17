@@ -51,10 +51,17 @@ describe("ripple MCP server (tests run in order: ack_brief mutates the graph)", 
     const { tools } = await client.listTools();
     expect(tools.map((x) => x.name).sort()).toEqual([
       "ack_brief", "affected_controls", "bottleneck", "check_contract_conflict", "deals_at_risk", "list_decisions",
-      "ripple_impact", "search", "trace_decision", "who_knows", "who_wasnt_told",
+      "ripple_impact", "search", "trace_decision", "who_knows", "who_wasnt_told", "why_affected",
     ]);
     expect(tools.filter((x) => x.annotations?.destructiveHint).map((x) => x.name)).toEqual(["ack_brief"]);
     expect(tools.filter((x) => x.name !== "ack_brief").every((x) => x.annotations?.readOnlyHint)).toBe(true);
+  });
+
+  t("why_affected d-1 -> legal runs through the contract; unknown team is found:false", async () => {
+    const out = await call("why_affected", { decisionId: "d-1", teamId: "legal" });
+    expect(out.rows[0].found).toBe(true);
+    expect(out.rows[0].nodes.map((n: { id: string }) => n.id)).toEqual(["d-1", "api-v1", "ctr-1", "legal"]);
+    expect((await call("why_affected", { decisionId: "d-1", teamId: "nope" })).rows[0].found).toBe(false);
   });
 
   t("ripple_impact d-1 has the known counts and sources", async () => {

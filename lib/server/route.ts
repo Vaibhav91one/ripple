@@ -1,6 +1,6 @@
 // Shared plumbing for the /api route handlers: graph lookup, 503 when FalkorDB is down, Zod-checked JSON.
 import { z } from "zod";
-import { graphFor, query, type Graph } from "../graph/client";
+import { graphFor, roQuery, type Graph } from "../graph/client";
 import { NotFound } from "../graph/queries";
 
 /** Read per request so tests can point at a temp graph with RIPPLE_GRAPH; the demo tenant is `demo`. */
@@ -17,7 +17,7 @@ export async function handle<S extends z.ZodType>(
   let g: Graph;
   try {
     g = await graphFor(graphName());
-    await query(g, "RETURN 1");
+    await roQuery(g, "RETURN 1");
   } catch {
     return json({ error: "graph_down" }, 503);
   }

@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { query, type Graph } from "./client";
+import { query, roQuery, type Graph } from "./client";
 import {
   Artifact, BottleneckRow, Change, Conflict, Decision, Person, WhoKnowsRow,
   type EdgeType, type InboxItem, type RippleResult, type Source,
@@ -20,9 +20,9 @@ export function load(name: string): Cypher {
   if (text === undefined) cache.set(name, (text = readFileSync(path.join(DIR, `${name}.cypher`), "utf8")));
   return { name, text };
 }
-async function run<T>(g: Graph, name: string, params: Record<string, unknown>, schema: z.ZodType<T>, text?: string) {
+async function run<T>(g: Graph, name: string, params: Record<string, unknown>, schema: z.ZodType<T>, text?: string, write = false) {
   const c = text ? { name, text } : load(name);
-  const rows = await query(g, c.text, params);
+  const rows = await (write ? query : roQuery)(g, c.text, params);
   return { rows: z.array(schema).parse(rows), c };
 }
 
@@ -67,7 +67,7 @@ export async function conflicts(g: Graph, decisionId: string, now: number): Prom
     ];
     await query(g, merge.text, { cid, id: decisionId, now, contractIds: r.contractIds, sources: JSON.stringify(sources) });
   }
-  const resolve = await run(g, "conflicts-resolve", { id: decisionId, keep }, z.object({ n }));
+  const resolve = await run(g, "conflicts-resolve", { id: decisionId, keep }, z.object({ n }), undefined, true);
   const list = await run(g, "conflicts-list", { id: decisionId }, ConflictRow);
   const data = list.rows.map((r) => Conflict.parse({ ...r, sources: JSON.parse(r.sources) }));
   return { data, cypher: [det.c, merge, resolve.c, list.c] };
@@ -231,6 +231,25 @@ export async function search(g: Graph, text: string): Promise<Result<z.infer<typ
 export async function searchVector(g: Graph, vec: number[], k = 10) {
   const { rows, c } = await run(g, "search-vector", { vec, k }, Hit.extend({ systemIds: z.array(z.string()) }));
   return { data: rows, cypher: [c] };
+}
+
+// ---------- why affected ----------
+const PathRows = z.array(z.object({
+  nodes: z.array(z.object({ id: z.string(), label: z.string(), name: z.string().nullable() })),
+  rels: z.array(z.object({ type: z.string(), src: z.string().nullable(), quote: z.string().nullable() })),
+}));
+export type WhyPath = z.infer<typeof PathRows>[number];
+
+/** Shortest path decision -> team over the ripple edges, else over any edge; null when unreachable. */
+export async function whyAffected(g: Graph, decisionId: string, teamId: string): Promise<Result<WhyPath | null>> {
+  const cypher: Cypher[] = [];
+  for (const name of ["why-affected", "why-affected-any"]) {
+    const c = load(name);
+    cypher.push(c);
+    const [path] = PathRows.parse(await roQuery(g, c.text, { id: decisionId, team: teamId }));
+    if (path) return { data: path, cypher };
+  }
+  return { data: null, cypher };
 }
 
 // ---------- live change ----------

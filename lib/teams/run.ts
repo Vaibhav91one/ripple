@@ -1,6 +1,6 @@
 // Server-only plumbing for the team dashboards: run a teams-<team>.cypher and the shared ripple-angle.cypher.
 import type { z } from "zod";
-import { query, type Graph } from "@/lib/graph/client";
+import { roQuery, type Graph } from "@/lib/graph/client";
 import { load } from "@/lib/graph/queries";
 import type { Change, RippleAngle } from "@/lib/schemas";
 
@@ -10,7 +10,7 @@ type KindRows = { kind: string; rows: Record<string, unknown>[] };
 /** Run a UNION ALL query whose branches each return `kind, rows` and group the rows by kind. */
 async function byKind(g: Graph, name: string, params: Record<string, unknown>) {
   const out: Record<string, Record<string, unknown>[]> = {};
-  for (const r of await query<KindRows>(g, load(name).text, params)) out[r.kind] = [...(out[r.kind] ?? []), ...r.rows];
+  for (const r of await roQuery<KindRows>(g, load(name).text, params)) out[r.kind] = [...(out[r.kind] ?? []), ...r.rows];
   return out;
 }
 
