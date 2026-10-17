@@ -3,7 +3,7 @@ import type {
   BottleneckRow,
   Change,
   Decision,
-  InboxItem,
+  Inbox,
   Overview,
   Person,
   RippleResult,
@@ -58,8 +58,12 @@ export async function postChange(decisionId: string, newOn: number): Promise<Rip
   return applySunsetMove(await getRipple(decisionId), newOn);
 }
 
-export async function getInbox(personId: string): Promise<InboxItem[]> {
-  return m.inboxes[personId] ?? [];
+export async function getInbox(personId: string): Promise<Inbox> {
+  const items = m.inboxes[personId] ?? [];
+  return {
+    forMe: items.filter((i) => i.kind !== "brief"),
+    sent: items.flatMap((i) => (i.kind === "brief" ? [{ ...i, kind: "sent" as const, status: "pending" as const }] : [])),
+  };
 }
 
 export async function getSource(artifactId: string): Promise<Artifact> {

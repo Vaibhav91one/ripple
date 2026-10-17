@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { StatusPill } from "@/components/kit/obsidian/analytics/status-pill";
 import { SourceChip } from "@/components/ripple/TeamCard";
+import { describeEdge } from "@/lib/changes";
 import type { RippleAngle as Angle } from "@/lib/schemas";
 import { fmtDay } from "./format";
 import { useNames } from "./useTeamDashboard";
@@ -22,10 +23,14 @@ export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: strin
         <h2 className="text-sm font-semibold text-strong">Changes affecting {teamName}</h2>
         <StatusPill tone={status.tone} label={status.label} />
       </header>
-      <Link href={`/decisions/${angle.decisionId}`} className="group flex items-center justify-between rounded-md border border-hairline bg-raised px-3 py-2 text-sm text-strong hover:border-ripple transition-colors">
-        <span>{name(angle.decisionId)}</span>
-        <ArrowUpRight className="size-4 text-faint group-hover:text-ripple transition-colors" aria-hidden />
-      </Link>
+      {angle.decisionId ? (
+        <Link href={`/decisions/${angle.decisionId}`} className="group flex items-center justify-between rounded-md border border-hairline bg-raised px-3 py-2 text-sm text-strong hover:border-ripple transition-colors">
+          <span>{name(angle.decisionId)}</span>
+          <ArrowUpRight className="size-4 text-faint group-hover:text-ripple transition-colors" aria-hidden />
+        </Link>
+      ) : (
+        <p className="text-sm text-faint">No open decisions.</p>
+      )}
       {angle.facts.length > 0 && (
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-medium uppercase tracking-wide text-faint">Why it reaches you</h3>
@@ -46,7 +51,7 @@ export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: strin
             {angle.changes.slice(0, 5).map((c, i) => (
               <li key={i} className="flex items-baseline justify-between gap-3 text-xs">
                 <span className="min-w-0 truncate text-body">
-                  {name(c.edge.from)} <span className="font-mono text-faint">{c.edge.type}</span> {name(c.edge.to)}
+                  {describeEdge(c.edge, name)}
                 </span>
                 <span className="shrink-0 text-faint">{c.kind === "ended" ? "ended" : "added"} {fmtDay(c.at)}</span>
               </li>

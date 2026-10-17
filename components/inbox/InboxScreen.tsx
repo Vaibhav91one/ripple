@@ -26,15 +26,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function InboxScreen() {
   const [p] = useQueryState("p", parseAsString.withDefault("p-priya"));
-  const { data = [], isPending, error, refetch } = useQuery({ queryKey: ["inbox", p], queryFn: () => getInbox(p) });
+  const { data, isPending, error, refetch } = useQuery({ queryKey: ["inbox", p], queryFn: () => getInbox(p) });
+  const { forMe = [], sent = [] } = data ?? {};
   const [acked, setAcked] = useState<string[]>([]);
   const [now] = useState(() => Date.now());
 
-  const briefs = data.filter((i): i is Extract<InboxItem, { kind: "brief" }> => i.kind === "brief");
+  const briefs = forMe.filter((i): i is Extract<InboxItem, { kind: "brief" }> => i.kind === "brief");
   const tasks: Task[] = briefs.map((b) => ({ id: b.id, label: b.title, done: acked.includes(b.id) }));
   const unread = tasks.filter((t) => !t.done).length;
-  const reviews = data.filter((i) => i.kind === "review");
-  const waiting = data.filter((i) => i.kind === "waiting");
+  const reviews = forMe.filter((i) => i.kind === "review");
+  const waiting = forMe.filter((i) => i.kind === "waiting");
 
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col gap-8 px-8 py-8">
@@ -49,6 +50,20 @@ export function InboxScreen() {
           <TaskList tasks={tasks} onTasksChange={(next) => setAcked(next.filter((t) => t.done).map((t) => t.id))} />
         ) : (
           <p className="text-sm text-faint">Nothing to acknowledge.</p>
+        )}
+      </Section>
+
+      <Section title="Briefs you sent">
+        {sent.length ? (
+          <TaskRows
+            rows={sent.map((s) => ({
+              label: s.title,
+              meta: s.status === "acked" ? "Acknowledged" : "Waiting",
+              status: s.status === "acked" ? "done" : "pending",
+            }))}
+          />
+        ) : (
+          <p className="text-sm text-faint">You have not sent any briefs.</p>
         )}
       </Section>
 
