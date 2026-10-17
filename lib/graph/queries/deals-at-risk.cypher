@@ -7,3 +7,4 @@ MATCH (dl:Deal)-[r:PROMISED]->(x) WHERE r.valid_to IS NULL AND dl.stage <> 'clos
 RETURN dl.id AS dealId, dl.name AS name, dl.amount AS amount, dl.stage AS stage, x.id AS systemId,
   r.src AS src, r.quote AS quote
 ORDER BY dl.amount DESC
+LIMIT $limit

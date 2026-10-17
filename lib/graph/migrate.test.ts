@@ -38,6 +38,18 @@ describe("migrateGraph", () => {
     expect(await count("MATCH (m:Migration) RETURN count(m) AS n")).toBe(MIGRATIONS.length);
   });
 
+  it("005 sets weight=1 on existing weighted edges, keeps a custom weight, and leaves other edges alone", async () => {
+    const weighted = "MATCH ()-[r:DEPENDS_ON|USES|OWNS|GUARANTEES|PROMISED]->() ";
+    await query(g, "MATCH ()-[r]->() REMOVE r.weight"); // pre-#212 shape: no edge has a weight
+    await query(g, "MATCH (:System {id: 'auth-service'})-[r:DEPENDS_ON]->() SET r.weight = 7");
+    await query(g, "MATCH (m:Migration {id: '005-edge-weight-default'}) DELETE m");
+    expect(await migrateGraph(g)).toEqual(["005-edge-weight-default"]);
+    expect(await count(weighted + "WHERE r.weight IS NULL RETURN count(r) AS n")).toBe(0);
+    expect(await count(weighted + "WHERE r.weight = 1 RETURN count(r) AS n")).toBeGreaterThan(40);
+    expect(await count("MATCH (:System {id: 'auth-service'})-[r:DEPENDS_ON]->() RETURN r.weight AS n")).toBe(7);
+    expect(await count("MATCH ()-[r:SUNSETS]->() WHERE r.weight IS NOT NULL RETURN count(r) AS n")).toBe(0);
+  });
+
   it("item 'why' rows for system api-v1 are non-empty after the migration", async () => {
     expect((await itemView(g, "system", "api-v1")).data.why.length).toBeGreaterThan(0);
   });

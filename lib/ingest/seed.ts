@@ -3,7 +3,7 @@
 import { closeClient, graphFor, query, type Graph } from "../graph/client";
 import { readEmbedding } from "./embed";
 import { detectConflicts } from "../graph/queries";
-import { ensureSchema } from "../graph/schema";
+import { ensureSchema, WEIGHTED } from "../graph/schema";
 import * as m from "../mock/ledgerly";
 import * as v2 from "../mock/ledgerly-v2";
 import { EdgeType, type Artifact } from "../schemas";
@@ -158,7 +158,7 @@ export async function seed(graphName: string): Promise<void> {
        MATCH (a {id: row.from}) MATCH (b {id: row.to})
        MERGE (a)-[r:${type}]->(b)
        SET r += row.extra, r.valid_from = row.valid_from, r.valid_to = row.valid_to,
-           r.observed_at = row.observed_at, r.src = row.src, r.quote = row.quote`,
+           r.observed_at = row.observed_at, r.src = row.src, r.quote = row.quote${WEIGHTED.has(type) ? ", r.weight = coalesce(row.extra.weight, r.weight, 1)" : ""}`,
       { rows },
     );
   }

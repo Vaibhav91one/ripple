@@ -8,4 +8,4 @@ MATCH (cu:Customer)-[u:USES]->(x) WHERE u.valid_to IS NULL
 RETURN cu.id AS customerId, cu.name AS name, cu.arr AS arr, cu.tier AS tier, x.id AS systemId,
   u.calls_30d AS calls30d, u.last_seen AS lastSeen, u.src AS src
 ORDER BY coalesce(u.calls_30d, -1) DESC, coalesce(cu.arr, 0) DESC, cu.id
-LIMIT 15
+LIMIT $limit

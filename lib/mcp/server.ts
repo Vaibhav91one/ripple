@@ -29,6 +29,9 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
         return { rows: d.data, sources: [], cypher: d.cypher };
       },
     },
+    critical_systems: { ...TOOLS.critical_systems, run: (args: never) => TOOLS.critical_systems.run(ctx, args) },
+    team_clusters: { ...TOOLS.team_clusters, run: (args: never) => TOOLS.team_clusters.run(ctx, args) },
+    weighted_path: { ...TOOLS.weighted_path, run: (args: never) => TOOLS.weighted_path.run(ctx, args) },
     search: { ...TOOLS.search, run: (args: never) => TOOLS.search.run(ctx, args) },
     ripple_impact: {
       description: `${TOOLS.ripple.description} Counts include customers, tickets, deals, contracts and ARR at risk. Optional depth (1..4) is the dependency hop limit.`,
@@ -60,11 +63,11 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
     },
     deals_at_risk: {
       description: "Open deals in a decision's ripple: amount, stage, and the verbatim PROMISED quote (what sales told the customer).",
-      input: z.object({ decisionId }),
-      run: async ({ decisionId: id }: Id) => {
+      input: TOOLS.deals_at_risk.input,
+      run: async ({ decisionId: id, limit = 10 }: Id & { limit?: number }) => {
         await ripple(g, id, now); // throws NotFound for an unknown decision
         const c = load("deals-at-risk");
-        const rows = await roQuery<Row & { src: string | null; quote: string | null }>(g, c.text, { id });
+        const rows = await roQuery<Row & { src: string | null; quote: string | null }>(g, c.text, { id, limit });
         return { rows, sources: dedupe(rows.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : []))), cypher: [c] };
       },
     },

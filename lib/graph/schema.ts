@@ -24,3 +24,6 @@ export async function ensureSchema(graph: Graph): Promise<void> {
     }
   }
 }
+
+/** Edge types that carry a `weight` (default 1) for cost-based algorithms such as algo.SPpaths. Seed, connector writes and migration 005 set it. */
+export const WEIGHTED: ReadonlySet<string> = new Set(["DEPENDS_ON", "USES", "OWNS", "GUARANTEES", "PROMISED"]);

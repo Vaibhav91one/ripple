@@ -3,3 +3,4 @@ MATCH (c:Contract) WHERE c.endsAt IS NOT NULL AND c.endsAt >= $now AND c.endsAt 
 OPTIONAL MATCH (c)-[:PARTY_TO]->(cu:Customer)
 RETURN c.id AS id, c.name AS name, c.endsAt AS endsAt, c.noticeDays AS noticeDays, cu.id AS customerId
 ORDER BY c.endsAt
+LIMIT $limit

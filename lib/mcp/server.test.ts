@@ -50,8 +50,8 @@ describe("ripple MCP server (tests run in order: ack_brief mutates the graph)", 
   t("lists every tool; only ack_brief is destructive", async () => {
     const { tools } = await client.listTools();
     expect(tools.map((x) => x.name).sort()).toEqual([
-      "ack_brief", "affected_controls", "bottleneck", "check_contract_conflict", "deals_at_risk", "list_agents", "list_decisions",
-      "ripple_impact", "run_agent", "search", "trace_decision", "who_knows", "who_wasnt_told", "why_affected",
+      "ack_brief", "affected_controls", "bottleneck", "check_contract_conflict", "critical_systems", "deals_at_risk", "list_agents", "list_decisions",
+      "ripple_impact", "run_agent", "search", "team_clusters", "trace_decision", "weighted_path", "who_knows", "who_wasnt_told", "why_affected",
     ]);
     expect(tools.filter((x) => x.annotations?.destructiveHint).map((x) => x.name)).toEqual(["ack_brief"]);
     expect(tools.filter((x) => x.name !== "ack_brief").every((x) => x.annotations?.readOnlyHint)).toBe(true);

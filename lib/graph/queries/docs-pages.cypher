@@ -5,3 +5,4 @@ WHERE sn.valid_to IS NULL
 MATCH (p:Page {v1Related: true})
 RETURN p.id AS id, p.path AS path, p.views30d AS views30d, p.feedbackDown AS feedbackDown, s.id AS systemId, sn.src AS src
 ORDER BY p.views30d DESC, p.id
+LIMIT $limit
