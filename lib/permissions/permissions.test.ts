@@ -17,6 +17,7 @@ import { createRippleServer } from "../mcp/server";
 import { RippleResult } from "../schemas";
 import { restrictedLine } from "./classify";
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), connection: async () => {} })); // health route, outside a request
 
 const name = `test_p_${randomUUID().replaceAll("-", "")}`;
@@ -105,6 +106,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "items/[kind]/[id]": [{ url: "/api/items/x/y" }],
   "search": [{ url: "/api/search?q=SENTINEL_SRC" }],
   "mcp": [{ url: "/api/mcp" }],
+  "org/keys": [{ url: "/api/org/keys" }], // admin only: 403 for the demo viewers
   "teams/[team]": TEAMS.map((x) => ({ url: `/api/teams/${x}`, params: { team: x } })),
   "source/[id]": [] , // filled in beforeAll from the graph: every artifact
 };
@@ -333,6 +335,44 @@ describe("sentinel leak: MCP tools", () => {
     expect(r).toContain("SENTINEL_DEAL");
     await client.close();
   });
+});
+
+// ---------- MCP API keys (#100) ----------
+// A key acts as the user who created it: same teams, same role, so the same redaction as that user's session.
+describe.skipIf(!process.env.DATABASE_URL)("sentinel leak: MCP over an API key (Postgres)", () => {
+  const org = `test-org-${randomUUID()}`;
+  const keys: Record<string, string> = {};
+  const MEMBERS = { u_eng: ["eng"], u_legal: ["legal"], u_sales: ["sales"], u_security: ["security"] } as const;
+  beforeAll(async () => {
+    const [{ db }, { orgs, memberships }, { createKey }] = await Promise.all([import("../db"), import("../db/schema"), import("../api-keys")]);
+    await db().insert(orgs).values({ id: org, slug: org, graphName: name });
+    for (const [u, teams] of Object.entries(MEMBERS)) {
+      await db().insert(memberships).values(teams.map((teamId) => ({ orgId: org, userId: u, teamId })));
+      keys[u] = (await createKey(org, u, u)).key;
+    }
+  });
+  afterAll(async () => {
+    const [{ db }, { orgs }, { eq }] = await Promise.all([import("../db"), import("../db/schema"), import("drizzle-orm")]);
+    await db().delete(orgs).where(eq(orgs.id, org)); // cascades keys + memberships
+  });
+
+  t("each key's MCP output is redacted exactly like its user's", async () => {
+    const { getContext } = await import("../server/context");
+    for (const [u, teams] of Object.entries(MEMBERS)) {
+      const ctx = await getContext(new Request("http://x/api/mcp", { method: "POST", headers: { authorization: `Bearer ${keys[u]}` } }));
+      expect(ctx.viewer).toMatchObject({ kind: "user", userId: u, teamIds: teams });
+      const [a, b] = InMemoryTransport.createLinkedPair();
+      await createRippleServer({ g: ctx.writer(), now: NOW, demo: ctx.org.isDemo, readonly: ctx.readonly, viewer: ctx.viewer }).connect(a);
+      const client = new Client({ name: "test", version: "0" });
+      await client.connect(b);
+      const own = teams[0] as V;
+      for (const tool of Object.keys(MCP_ARGS).filter((x) => x !== "ack_brief")) {
+        const text = JSON.stringify(await client.callTool({ name: tool, arguments: MCP_ARGS[tool] }));
+        for (const s of forbidden(own)) expect(text, `${u} key ${tool} leaked ${s}: ${snip(text, s)}`).not.toContain(s);
+      }
+      await client.close();
+    }
+  }, 120_000);
 });
 
 // ---------- background runtime (#140) ----------

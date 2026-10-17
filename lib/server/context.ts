@@ -16,7 +16,7 @@ export const DEMO_GRAPH = "demo";
 export type Org = { id: string; graphName: string; isDemo: boolean };
 export type Viewer =
   | { kind: "anon"; orgId: string; teamIds: string[]; role: "member" | "change_owner" }
-  | { kind: "user"; userId: string; orgId: string; teamIds: string[]; role: "member" | "lead" | "admin" | "change_owner"; personId?: string };
+  | { kind: "user"; userId: string; orgId: string; teamIds: string[]; role: "member" | "lead" | "admin" | "change_owner"; personId?: string; apiKeyId?: string };
 export type Context = {
   viewer: Viewer;
   org: Org;
@@ -72,10 +72,38 @@ async function withMembership<V extends Extract<Viewer, { kind: "user" }>>(v: V)
   }
 }
 
+/** A bad, unknown or revoked `Authorization: Bearer rpl_...` key: the route answers 401. */
+export class ApiKeyError extends Error {}
+
+/** `rpl_` bearer on /api/mcp only -> the key's org and its creator's viewer (teams, role, person from memberships). */
+async function keyViewer(req?: Request) {
+  const token = req?.headers.get("authorization")?.match(/^Bearer\s+(rpl_\S+)$/i)?.[1];
+  if (!token || new URL(req!.url).pathname !== "/api/mcp") return null;
+  if (!env().DATABASE_URL) throw new ApiKeyError("api keys need Postgres");
+  const { resolveKey } = await import("../api-keys");
+  const k = await resolveKey(token);
+  if (!k) throw new ApiKeyError("invalid or revoked key");
+  const { getMember } = await import("../members");
+  const m = await getMember(k.orgId, k.viewerUserId);
+  const viewer: Viewer = { kind: "user", userId: k.viewerUserId, orgId: k.orgId, teamIds: m?.teamIds ?? [], role: m?.role ?? "member", personId: m?.personId ?? undefined, apiKeyId: k.id };
+  return { viewer, graphName: k.graphName };
+}
+
 /** Signed in with an active Clerk org -> that org's graph; anyone else -> the demo. RIPPLE_GRAPH is a test-only graph override. */
 export async function getContext(req?: Request): Promise<Context> {
-  void req;
   const e = env();
+  const keyed = await keyViewer(req);
+  if (keyed) {
+    const raw = await graphFor(keyed.graphName);
+    const { viewer } = keyed;
+    const org: Org = { id: viewer.orgId, graphName: keyed.graphName, isDemo: false };
+    return {
+      viewer, org, readonly: false, graph: readOnly(raw),
+      now: Math.floor((e.RIPPLE_NOW ? Date.parse(e.RIPPLE_NOW) : Date.now()) / 1000),
+      audit: (ev) => audit({ org, viewer: { kind: "apikey", id: viewer.kind === "user" ? viewer.apiKeyId : undefined } }, ev),
+      writer: () => raw,
+    };
+  }
   const session = await sessionViewer();
   const viewer: Viewer = (session && (await withMembership(session))) ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: (await lensTeam()).split(","), role: await lensRole() };
   const graphName = e.RIPPLE_GRAPH || (session ? graphNameFor(session.orgId) : DEMO_GRAPH);

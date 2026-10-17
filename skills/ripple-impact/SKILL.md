@@ -5,7 +5,7 @@ description: Use when a change deprecates, sunsets or breaks something other tea
 
 # ripple-impact
 
-Needs the `ripple` MCP server (see the README: "Use Ripple from your agent"). Ripple answers from a graph; it never guesses. Every claim you write must carry an artifact id and a verbatim quote from a tool result.
+Needs the `ripple` MCP server (see the README: "Use Ripple from your agent"). To read your own org rather than the public demo, add an API key from Settings > API keys as `Authorization: Bearer rpl_...` (README has the Claude Code and Cursor snippets); without one you get the anonymous, read-only demo. Ripple answers from a graph; it never guesses. Every claim you write must carry an artifact id and a verbatim quote from a tool result.
 
 ## Steps
 

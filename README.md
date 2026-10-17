@@ -34,6 +34,20 @@ Cursor and other clients (`mcp.json`):
 { "mcpServers": { "ripple": { "url": "https://ripple.vaibhav.quest/api/mcp" } } }
 ```
 
+**Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). To query your org's graph, an org admin creates a key in **Settings > API keys** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: the same teams and role, so restricted text is redacted exactly as in their session. Add it as a bearer header:
+
+```bash
+# Claude Code
+claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp --header "Authorization: Bearer rpl_<prefix>_<secret>"
+```
+
+```json
+// Cursor (.cursor/mcp.json)
+{ "mcpServers": { "ripple": { "url": "https://ripple.vaibhav.quest/api/mcp", "headers": { "Authorization": "Bearer rpl_<prefix>_<secret>" } } } }
+```
+
+A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
+
 **Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). Install by copying the folder into `~/.claude/skills/` (all projects) or `.claude/skills/` (one project):
 
 ```bash
