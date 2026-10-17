@@ -1,17 +1,22 @@
 // Installation sync: repos -> CODEOWNERS, then PRs updated in the last 90 days (files + reviews). One page per repo.
+import { query, type Graph } from "../../graph/client";
 import type { Account, SyncPage } from "../define";
 import { githubApp } from "./client";
 import { parseCodeowners, type Directory } from "./codeowners";
-import type { PrRecord, RepoRecord } from "./map";
+import type { ExistingOwner, PrRecord, RepoRecord } from "./map";
 
 const DAY = 86_400_000;
 const CODEOWNERS_PATHS = [".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"];
 
+async function orgGraph(orgId: string) {
+  const [{ db }, { orgs }, { graphFor }, { eq }] = await Promise.all([import("../../db"), import("../../db/schema"), import("../../graph/client"), import("drizzle-orm")]);
+  const [org] = await db().select().from(orgs).where(eq(orgs.id, orgId));
+  return graphFor(org.graphName);
+}
+
 /** The org's Teams and Persons, for resolving CODEOWNERS handles and PR logins. Person.github is optional. */
 export async function loadDirectory(orgId: string): Promise<Directory> {
-  const [{ db }, { orgs }, { graphFor, query }, { eq }] = await Promise.all([import("../../db"), import("../../db/schema"), import("../../graph/client"), import("drizzle-orm")]);
-  const [org] = await db().select().from(orgs).where(eq(orgs.id, orgId));
-  const g = await graphFor(org.graphName);
+  const g = await orgGraph(orgId);
   const [teams, people] = await Promise.all([
     query<{ id: string; name: string }>(g, "MATCH (t:Team) RETURN t.id AS id, t.name AS name"),
     query<{ id: string; email: string | null; github: string | null }>(g, "MATCH (p:Person) RETURN p.id AS id, p.email AS email, p.github AS github"),
@@ -19,11 +24,19 @@ export async function loadDirectory(orgId: string): Promise<Directory> {
   return { teams, people: people.map((p) => ({ id: p.id, email: p.email ?? undefined, github: p.github ?? undefined })) };
 }
 
+/** Current OWNED_BY edges of a repo's systems (the repo itself and its `gh:<repo>:<path>` systems). */
+export const loadOwned = async (orgId: string, full: string) => ownedIn(await orgGraph(orgId), full);
+export async function ownedIn(g: Graph, full: string): Promise<ExistingOwner[]> {
+  const rows = await query<{ sys: string; label: string; id: string }>(g,
+    "MATCH (s:System)-[r:OWNED_BY]->(o) WHERE (s.id = $repo OR s.id STARTS WITH $paths) AND r.valid_to IS NULL RETURN s.id AS sys, labels(o)[0] AS label, o.id AS id", { repo: `gh:${full}`, paths: `gh:${full}:` });
+  return rows.map((x) => ({ sys: x.sys, owner: { label: x.label as "Team" | "Person", id: x.id } }));
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Octo = { request: (route: string, params?: Record<string, unknown>) => Promise<{ data: any }> };
 
 /** `seam` is for tests. token = the installation id (connector_account.token_enc). nextCursor = last finished repo; the final page clears it so the next run starts over. */
-export async function* syncGithub(acct: Account, cursor: unknown, seam: { octo?: Octo; dir?: Directory; now?: number } = {}): AsyncGenerator<SyncPage> {
+export async function* syncGithub(acct: Account, cursor: unknown, seam: { octo?: Octo; dir?: Directory; owned?: (full: string) => Promise<ExistingOwner[]>; now?: number } = {}): AsyncGenerator<SyncPage> {
   const octo = seam.octo ?? ((await githubApp()?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
   if (!octo) throw new Error("GitHub App is not configured");
   const dir = seam.dir ?? (await loadDirectory(acct.orgId));
@@ -39,7 +52,7 @@ export async function* syncGithub(acct: Account, cursor: unknown, seam: { octo?:
       if (res && !Array.isArray(res.data) && res.data.content) { codeowners = Buffer.from(res.data.content, "base64").toString("utf8"); break; }
     }
     const patterns = codeowners ? parseCodeowners(codeowners).map((x) => x.pattern) : [];
-    const records: (RepoRecord | PrRecord)[] = [{ t: "repo", full: r.full, url: r.url, codeowners, dir }];
+    const records: (RepoRecord | PrRecord)[] = [{ t: "repo", full: r.full, url: r.url, codeowners, dir, existing: await (seam.owned ?? ((f) => loadOwned(acct.orgId, f)))(r.full) }];
     const prs = await octo.request("GET /repos/{owner}/{repo}/pulls", { owner, repo, state: "all", sort: "updated", direction: "desc", per_page: 50 }); // ponytail: newest 50 PRs
     for (const p of prs.data as any[]) {
       if (Date.parse(p.updated_at) < since) break;

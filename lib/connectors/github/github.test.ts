@@ -7,7 +7,9 @@ import { GraphProposal } from "../define";
 import { matchPath, parseCodeowners, resolveOwner, type Directory } from "./codeowners";
 import { github } from "./index";
 import { mapGithub } from "./map";
-import { syncGithub, type Octo } from "./sync";
+import { ownedIn, syncGithub, type Octo } from "./sync";
+import { ensureSchema } from "../../graph/schema";
+import { search } from "../../graph/queries";
 
 vi.mock("server-only", () => ({}));
 vi.mock("../../queue", () => ({ enqueue: vi.fn(async () => "job") }));
@@ -75,6 +77,7 @@ describe("sync -> graph (recorded API responses, real FalkorDB)", () => {
   let g: Graph;
   beforeAll(async () => {
     g = await graphFor(gname);
+    await ensureSchema(g);
     for (const t of dir.teams) await query(g, "CREATE (:Team {id: $id, name: $name})", { id: t.id, name: t.name });
     for (const p of dir.people) await query(g, "CREATE (:Person {id: $id})", { id: p.id });
   }, 30_000);
@@ -83,7 +86,7 @@ describe("sync -> graph (recorded API responses, real FalkorDB)", () => {
   it("writes the repo, path systems, ownership, PR and its edges", async () => {
     const acct = { id: "a", orgId: "o", kind: "github", externalId: "1", token: "1", scopes: [] };
     const pages = [];
-    for await (const page of syncGithub(acct, null, { octo, dir, now: NOW })) pages.push(page);
+    for await (const page of syncGithub(acct, null, { octo, dir, owned: async () => [], now: NOW })) pages.push(page);
     expect(pages).toHaveLength(1);
     expect(pages[0].nextCursor).toBeNull();
     expect(pages[0].records).toHaveLength(2); // the repo + PR 12; PR 3 is older than 90 days
@@ -105,10 +108,47 @@ describe("sync -> graph (recorded API responses, real FalkorDB)", () => {
     expect(pr).toEqual({ kind: "pr", status: "closed" });
   });
 
+  it("a synced PR looks like a seeded one: :PR:Artifact, found by full-text search, served by /api/items/pr/<id>", async () => {
+    const [labels] = await query<{ l: string[] }>(g, "MATCH (p {id: 'gh:acme/shop#12'}) RETURN labels(p) AS l");
+    expect([...labels.l].sort()).toEqual(["Artifact", "PR"]);
+    const [props] = await query<{ author: string; title: string; ts: number; uri: string; text: string }>(g, "MATCH (p:PR {id: 'gh:acme/shop#12'}) RETURN p.author AS author, p.title AS title, p.ts AS ts, p.uri AS uri, p.text AS text");
+    expect(props).toMatchObject({ author: "p-ana", title: "Fix invoice rounding", uri: "https://github.com/acme/shop/pull/12" });
+    expect(props.text).toContain("Rounds half up");
+    const hits = await search(g, "invoice");
+    expect(hits.data.map((h) => h.id)).toContain("gh:acme/shop#12");
+
+    vi.stubEnv("RIPPLE_GRAPH", gname);
+    const { GET } = await import("../../../app/api/items/[kind]/[id]/route");
+    const res = await GET(new Request("http://t/api/items/pr/x"), { params: Promise.resolve({ kind: "pr", id: "gh:acme/shop#12" }) });
+    vi.unstubAllEnvs();
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(await res.json())).toContain("Fix invoice rounding");
+  });
+
+  it("ends OWNED_BY edges that CODEOWNERS no longer lists, and keeps the new ones current", async () => {
+    const acct = { id: "a", orgId: "o", kind: "github", externalId: "1", token: "1", scopes: [] };
+    const changed = `* @acme/platform\n/api/ @ana-gh\n`; // billing section gone, platform dropped from /api/
+    const run = async (codeowners: string, now: number) => {
+      recorded["GET /repos/{owner}/{repo}/contents/.github/CODEOWNERS"] = { content: Buffer.from(codeowners).toString("base64") };
+      for await (const page of syncGithub(acct, null, { octo, dir, owned: (f) => ownedIn(g, f), now: NOW }))
+        for (const rec of page.records) for (const raw of mapGithub(rec)) await applyProposal(g, GraphProposal.parse(raw), now);
+    };
+    await run(CODEOWNERS, 10);
+    await run(changed, 20);
+    const edges = await query<{ sys: string; owner: string; to: number | null }>(g, "MATCH (s:System)-[r:OWNED_BY]->(o) RETURN s.id AS sys, o.id AS owner, r.valid_to AS to ORDER BY sys, owner");
+    const state = Object.fromEntries(edges.map((e) => [`${e.sys} ${e.owner}`, e.to]));
+    expect(state["gh:acme/shop:/api/ t-platform"]).toBe(20); // removed owner: ended
+    expect(state["gh:acme/shop:/billing/ t-billing"]).toBe(20); // whole section disappeared
+    expect(state["gh:acme/shop:/billing/ p-dev"]).toBe(20);
+    expect(state["gh:acme/shop:/api/ p-ana"] ?? null).toBeNull(); // still listed: current
+    expect(state["gh:acme/shop t-platform"] ?? null).toBeNull();
+    recorded["GET /repos/{owner}/{repo}/contents/.github/CODEOWNERS"] = { content: Buffer.from(CODEOWNERS).toString("base64") };
+  });
+
   it("resumes after the cursor", async () => {
     const acct = { id: "a", orgId: "o", kind: "github", externalId: "1", token: "1", scopes: [] };
     const pages = [];
-    for await (const page of syncGithub(acct, "acme/shop", { octo, dir, now: NOW })) pages.push(page);
+    for await (const page of syncGithub(acct, "acme/shop", { octo, dir, owned: async () => [], now: NOW })) pages.push(page);
     expect(pages).toHaveLength(0);
   });
 });

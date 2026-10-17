@@ -2,7 +2,8 @@
 import type { GraphProposal } from "../define";
 import { matchPath, parseCodeowners, resolveOwner, type Directory, type Ref } from "./codeowners";
 
-export type RepoRecord = { t: "repo"; full: string; url: string; codeowners: string | null; dir: Directory };
+export type RepoRecord = { t: "repo"; full: string; url: string; codeowners: string | null; dir: Directory; /** current OWNED_BY edges of this repo's systems, so owners dropped from CODEOWNERS get ended */ existing?: ExistingOwner[] };
+export type ExistingOwner = { sys: string; owner: Ref };
 export type PrRecord = {
   t: "pr"; full: string; number: number; title: string; body: string | null; url: string; state: "open" | "closed";
   createdAt: string; author: string | null; reviewers: string[]; files: string[]; patterns: string[]; dir: Directory;
@@ -16,13 +17,14 @@ const ownable = (pattern: string) => pattern !== "*" && pattern !== "/*";
 
 type Node = { label: "System" | "PR"; id: string };
 const base = { confidence: 1, structured: true } as const;
-const node = (label: Node["label"], id: string, props: Record<string, string | number | boolean>, src: string): GraphProposal => ({ op: "merge_node", label, id, props, src, ...base });
+const node = (label: Node["label"], id: string, props: Record<string, string | number | boolean>, src: string, labels?: ["Artifact"]): GraphProposal => ({ op: "merge_node", label, ...(labels ? { labels } : {}), id, props, src, ...base });
 const edge = (type: string, from: Ref | Node, to: Ref | Node, src: string): GraphProposal => ({ op: "merge_edge", type, from, to, props: {}, src, ...base });
 
 export function mapRepo(r: RepoRecord): GraphProposal[] {
   const src = `github:repo/${r.full}`;
   const repo: Node = { label: "System", id: repoId(r.full) };
   const out = [node("System", repo.id, { name: r.full, kind: "repo", status: "current", uri: r.url }, src)];
+  const wanted = new Set<string>();
   for (const rule of r.codeowners ? parseCodeowners(r.codeowners) : []) {
     let sys = repo;
     if (ownable(rule.pattern)) { // a CODEOWNERS path becomes its own system so PRs can be ABOUT it
@@ -31,9 +33,11 @@ export function mapRepo(r: RepoRecord): GraphProposal[] {
     }
     for (const o of rule.owners) {
       const ref = resolveOwner(o, r.dir);
-      if (ref) out.push(edge("OWNED_BY", sys, ref, `${src}#CODEOWNERS ${rule.pattern}`)); // ponytail: owners removed from CODEOWNERS keep their edge; end_edge on diff if it matters
+      if (ref) { wanted.add(`${sys.id}|${ref.id}`); out.push(edge("OWNED_BY", sys, ref, `${src}#CODEOWNERS ${rule.pattern}`)); }
     }
   }
+  // an owner (or a whole path section) that CODEOWNERS no longer lists: end the edge, keep the history
+  for (const x of r.existing ?? []) if (!wanted.has(`${x.sys}|${x.owner.id}`)) out.push({ op: "end_edge", type: "OWNED_BY", from: { label: "System", id: x.sys }, to: x.owner, props: {}, src: `${src}#CODEOWNERS`, ...base });
   return out;
 }
 
@@ -41,9 +45,10 @@ export function mapPr(r: PrRecord): GraphProposal[] {
   const src = `github:pr/${r.full}#${r.number}`;
   const pr: Node = { label: "PR", id: prId(r.full, r.number) };
   const text = `${r.title}\n\n${r.body ?? ""}`.trim().slice(0, 2000);
-  const out = [node("PR", pr.id, { kind: "pr", title: r.title, text, status: r.state, ts: Math.floor(Date.parse(r.createdAt) / 1000), uri: r.url }, src)];
   const person = (login: string) => resolveOwner(`@${login}`, r.dir);
   const author = r.author ? person(r.author) : null;
+  // same shape as a seeded PR (:PR:Artifact with kind, title, text, ts, uri, author) so search, permissions, item pages and who_knows treat it alike
+  const out = [node("PR", pr.id, { kind: "pr", title: r.title, text, status: r.state, ts: Math.floor(Date.parse(r.createdAt) / 1000), uri: r.url, author: author?.id ?? r.author ?? "unknown" }, src, ["Artifact"])];
   if (author) out.push(edge("AUTHORED", author, pr, src));
   for (const login of new Set(r.reviewers)) {
     const p = login === r.author ? null : person(login);

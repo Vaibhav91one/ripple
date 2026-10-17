@@ -19,7 +19,7 @@ const base = {
 const EdgeType = z.string().regex(/^[A-Z][A-Z_]*$/);
 
 export const GraphProposal = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("merge_node"), label: Label, id: z.string().min(1), ...base }),
+  z.object({ op: z.literal("merge_node"), label: Label, /** extra labels, e.g. Artifact on a PR */ labels: z.array(Label).optional(), id: z.string().min(1), ...base }),
   z.object({ op: z.literal("merge_edge"), type: EdgeType, from: Ref, to: Ref, ...base }),
   z.object({ op: z.literal("end_edge"), type: EdgeType, from: Ref, to: Ref, ...base }),
 ]);
