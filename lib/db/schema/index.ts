@@ -10,3 +10,4 @@ export * from "./actions";
 export * from "./notifications";
 export * from "./documents";
 export * from "./team-channel";
+export * from "./evidence";
