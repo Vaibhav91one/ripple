@@ -1,12 +1,14 @@
 // Plans -> stored notifications (the inbox copy) -> queued `deliver` jobs -> one batched message per channel.
 // Every function takes its db, readers, adapter and clock, so tests run on an injected `now` with no sleeping.
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { safeMessage } from "../log";
 import type { RippleEvent } from "../events/types";
 import type { enqueue as Enqueue } from "../queue";
 import * as schema from "../db/schema";
+import type { Message as Built } from "./message";
 import { route } from "./route";
 import type { GraphReader, NotificationPlan, PrefsReader } from "./types";
 
@@ -55,7 +57,8 @@ export async function routeAndStore(
 
 // ---- delivery ----
 export type Person = { id: string; email: string | null };
-export type Message = { subject: string; lines: string[] };
+/** `sections`: one built message per notification (title, why, quotes, buttons); `lines` stays as the plain-text fallback. */
+export type Message = { subject: string; lines: string[]; sections?: Built[] };
 export type SendResult = { status: "sent" | "failed"; providerId?: string; error?: string };
 export interface Adapter {
   send(channel: Channel, person: Person, message: Message): Promise<SendResult>;
@@ -67,7 +70,14 @@ const esc = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").re
 export const emailAdapter: Adapter = {
   async send(_channel, person, m) {
     const [{ sendEmail }, { env }] = await Promise.all([import("../notify"), import("../env")]);
-    const html = `<ul>${m.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+    let html = `<ul>${m.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+    if (m.sections?.length) {
+      const [{ createElement }, { NotificationEmail }, { renderHtml }] = await Promise.all([
+        import("react"), import("@/components/email/NotificationEmail"), import("../notify"),
+      ]);
+      const render = await renderHtml();
+      html = m.sections.map((message) => render(createElement(NotificationEmail, { message }))).join("");
+    }
     const r = await sendEmail(env(), person.email, m.subject, html);
     if (r.status === "sent") return { status: "sent", providerId: r.id };
     return { status: "failed", error: r.error ?? (person.email ? "email not configured (RESEND_API_KEY, RESEND_FROM)" : "no email address for person") };
@@ -78,6 +88,7 @@ export const emailAdapter: Adapter = {
 export const logAdapter: Adapter = {
   async send(channel, person, m) {
     console.log(`[deliver:${channel}] to ${person.id}: ${m.subject}\n  ${m.lines.join("\n  ")}`);
+    for (const s of m.sections ?? []) console.log(`[deliver:${channel}] message ${JSON.stringify(s)}`);
     return { status: "sent", providerId: "log" };
   },
 };
@@ -93,7 +104,11 @@ export const defaultAdapter: Adapter = {
  */
 export async function deliverBatch(
   d: Db, job: { orgId: string; batchKey: string },
-  deps: { adapter: Adapter; person: (id: string) => Person; now: () => number },
+  deps: {
+    adapter: Adapter; person: (id: string) => Person; now: () => number;
+    /** Builds one notification's section for its delivery id (ack tokens carry it). A failure drops that section, never the send. */
+    build?: (n: (typeof notifications)["$inferSelect"], deliveryId: string) => Promise<Built>;
+  },
 ) {
   const rows = await d.select().from(notifications)
     .where(and(eq(notifications.orgId, job.orgId), eq(notifications.batchKey, job.batchKey))).orderBy(asc(notifications.createdAt));
@@ -109,11 +124,17 @@ export async function deliverBatch(
       byPerson.set(r.personId, [...(byPerson.get(r.personId) ?? []), r]);
     }
     for (const [personId, items] of byPerson) {
-      const queued = await d.insert(deliveries).values(items.map((n) => ({ notificationId: n.id, channel, status: "queued" as const })))
-        .returning({ id: deliveries.id });
+      // ids are made here so each message can carry its own delivery id before the row's status moves on
+      const queued = await d.insert(deliveries).values(items.map((n) => ({ id: randomUUID(), notificationId: n.id, channel, status: "queued" as const })))
+        .returning({ id: deliveries.id, notificationId: deliveries.notificationId });
+      const idOf = new Map(queued.map((q) => [q.notificationId, q.id]));
+      const sections = deps.build
+        ? (await Promise.all(items.map((n) => deps.build!(n, idOf.get(n.id)!).catch((e) => (console.warn("[deliver] build failed:", safeMessage(e)), null))))).filter((x): x is Built => !!x)
+        : [];
       const message: Message = {
         subject: items.length === 1 ? items[0].title : `${items.length} updates from Ripple`,
         lines: items.map((n) => `${n.title} (${n.body.reason})`),
+        ...(sections.length && { sections }),
       };
       let result: SendResult;
       try {
