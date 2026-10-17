@@ -55,7 +55,10 @@
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
+  --color-chart: var(--chart);
   --color-chart-2: var(--chart-2);
+  --color-accent-ink: var(--accent-ink);
+  --radius-ref: var(--ref-radius);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -105,7 +108,6 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
@@ -156,7 +158,6 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
@@ -188,6 +189,29 @@
   --card: var(--surface);
   --popover: var(--overlay);
   --border: var(--hairline);
+}
+
+/* Reference-component tokens (components/kit/refs). Ripple's values live here so a ref renders correctly on any page;
+   the .skin-* classes in components/kit/refs/skins.css override them for /styleguide/refs.
+   --pattern-bg holds the only hex values allowed in this file outside the Ripple tokens above (sampled from a reference image). */
+:root {
+  --hatch: var(--conflict);
+  --chart: var(--ripple);
+  --chart-2: var(--gap);
+  --accent-ink: var(--page);
+  --ref-radius: 12px;
+  --glow-a: var(--raised);
+  --glow-b: var(--gap);
+  --glow-ink: var(--strong);
+  --pattern-bg:
+    radial-gradient(40% 34% at 100% 100%, #F58F4A 0%, #F2A066 35%, rgb(242 160 102 / 0) 100%),
+    radial-gradient(45% 50% at 100% 72%, #EED1A1 0%, #E6CDAE 40%, rgb(230 205 174 / 0) 100%),
+    radial-gradient(42% 32% at 62% 100%, #EBD6BC 0%, #E6D5BE 40%, rgb(230 213 190 / 0) 100%),
+    radial-gradient(45% 32% at 55% 68%, #C4CDC6 0%, #BAC6CA 30%, rgb(186 198 202 / 0) 100%),
+    radial-gradient(50% 42% at 92% 28%, #93B3D3 0%, #6E9ACA 40%, rgb(73 129 189 / 0) 100%),
+    radial-gradient(35% 20% at 95% 0%, #5F92C8 0%, rgb(95 146 200 / 0) 100%),
+    radial-gradient(40% 22% at 50% 44%, #3E6CA5 0%, rgb(62 108 165 / 0) 100%),
+    linear-gradient(180deg, #151E48 0%, #172249 25%, #1C2A5A 40%, #305D95 55%, #3D7CBF 70%, #5A92C8 85%, #6FA2CA 100%);
 }
 
 @layer base {
