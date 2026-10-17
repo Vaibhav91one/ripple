@@ -1,21 +1,23 @@
 // What the decision means for one team ($team, $decision, $since). Each branch returns kind + rows.
-// changes: recent edges that touch the team, its people, or things it owns/manages/handles (newest 8)
+// changes: recent edges that touch the team, its people, or things it owns/manages/handles (newest 80; the wrapper keeps those inside the decision's ripple)
 MATCH (a)-[r]->(b)
 WHERE r.valid_from > $since AND type(r) <> 'BETWEEN'
   AND (a.id = $team OR b.id = $team OR a.teamId = $team OR b.teamId = $team OR a.ownerTeamId = $team
     OR (a)-[:MANAGED_BY]->(:Team {id: $team}) OR (a)-[:OWNED_BY]->(:Team {id: $team})
     OR (a)-[:HANDLED_BY]->(:Person {teamId: $team}) OR (:Team {id: $team})-[:OWNS]->(a))
-WITH a, r, b ORDER BY r.valid_from DESC LIMIT 8
+WITH a, r, b ORDER BY r.valid_from DESC LIMIT 80
 RETURN 'changes' AS kind, collect({from: a.id, to: b.id, type: type(r), validFrom: r.valid_from, validTo: r.valid_to,
   src: r.src, quote: r.quote}) AS rows
 UNION ALL
-// gap: is the team hit by what the decision sunsets, and did it take part or acknowledge?
+// gap: is the team hit by what the decision sunsets, or does it own a goal the decision blocks, and did the team, or one of its people, take part or acknowledge?
 MATCH (t:Team {id: $team})
 OPTIONAL MATCH (d:Decision {id: $decision})-[:SUNSETS]->(s:System)
 OPTIONAL MATCH (t)-[a:AFFECTED|OWNS|CARES_ABOUT]->(s)
 OPTIONAL MATCH (t)-[i:INVOLVED_IN]->(d)
 OPTIONAL MATCH (t)-[k:ACKED]->(d)
-WITH count(a) > 0 AS affected, count(i) > 0 AS involved, count(k) > 0 AS acked
+OPTIONAL MATCH (:Person {teamId: t.id})-[mk:ACKED]->(d)
+OPTIONAL MATCH (gl:Goal)-[b:BLOCKED_BY]->(d) WHERE b.valid_to IS NULL AND ((t)-[:OWNS]->(gl) OR gl.ownerTeamId = t.id)
+WITH count(a) > 0 OR count(b) > 0 AS affected, count(i) > 0 AS involved, count(k) > 0 OR count(mk) > 0 AS acked
 RETURN 'gap' AS kind, [{affected: affected, involved: involved, acked: acked}] AS rows
 UNION ALL
 // facts: one sourced line per way the team is tied to the sunset (the wrapper keeps the first 3)

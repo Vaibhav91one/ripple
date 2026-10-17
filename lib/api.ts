@@ -2,7 +2,7 @@
 // NEXT_PUBLIC_RIPPLE_OFFLINE=1 serves lib/mock instead (demo without FalkorDB); it is never the default.
 import { z } from "zod";
 import {
-  Artifact, BottleneckRow, Change, Decision, InboxItem, Overview, Person, RippleResult, WhoKnowsRow,
+  Artifact, BottleneckRow, Change, Decision, Inbox, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import * as mock from "@/lib/mock/api";
@@ -46,8 +46,8 @@ export const getBottleneck = (): Promise<BottleneckRow[]> =>
 export const getWhoKnows = (systemId: string): Promise<WhoKnowsRow[]> =>
   OFFLINE ? mock.getWhoKnows(systemId) : call(z.array(WhoKnowsRow), `/api/who-knows?${qs({ system: systemId })}`);
 
-export const getInbox = (personId: string): Promise<InboxItem[]> =>
-  OFFLINE ? mock.getInbox(personId) : call(z.array(InboxItem), `/api/inbox?${qs({ p: personId })}`);
+export const getInbox = (personId: string): Promise<Inbox> =>
+  OFFLINE ? mock.getInbox(personId) : call(Inbox, `/api/inbox?${qs({ p: personId })}`);
 
 export const getSource = (artifactId: string): Promise<Artifact> =>
   OFFLINE ? mock.getSource(artifactId) : call(Artifact, `/api/source/${encodeURIComponent(artifactId)}`);

@@ -11,7 +11,7 @@ import type { TeamDashboard, TeamId } from "./dashboards";
 
 export { TEAM_IDS, TeamDashboard, TeamId } from "./dashboards";
 
-export const registry: Record<TeamId, (g: Graph, now: number) => Promise<TeamDashboard>> = {
+export const registry: Record<TeamId, (g: Graph, now: number, decisionId: string | null) => Promise<TeamDashboard>> = {
   eng: computeEng,
   support: computeSupport,
   sales: computeSales,

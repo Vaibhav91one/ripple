@@ -121,6 +121,8 @@ export const Task = z.object({
   createdAt: ts,
   kind: z.enum(["questionnaire", "access_review", "review", "general"]).nullish(),
   dueAt: ts.nullish(),
+  /** The brief's cited claims, for tasks created by a notification. */
+  body: z.string().nullish(),
 });
 export const Ack = z.object({
   teamId: id,
@@ -209,6 +211,17 @@ export const InboxItem = z.discriminatedUnion("kind", [
   z.object({ ...inboxBase, kind: z.literal("waiting"), waitingOn: id }),
 ]);
 
+/** A brief the person's team sent to another team about a decision, with where that team stands. */
+export const SentItem = z.object({
+  ...inboxBase,
+  kind: z.literal("sent"),
+  teamId: id,
+  decisionId: id,
+  status: z.enum(["pending", "acked"]),
+});
+/** `forMe`: addressed to the person (briefs to acknowledge, reviews, who is waiting). `sent`: what they sent out. */
+export const Inbox = z.object({ forMe: z.array(InboxItem), sent: z.array(SentItem) });
+
 export const StreamEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("tool_call"),
@@ -251,6 +264,8 @@ export type Change = z.infer<typeof Change>;
 export type BottleneckRow = z.infer<typeof BottleneckRow>;
 export type WhoKnowsRow = z.infer<typeof WhoKnowsRow>;
 export type InboxItem = z.infer<typeof InboxItem>;
+export type SentItem = z.infer<typeof SentItem>;
+export type Inbox = z.infer<typeof Inbox>;
 export type StreamEvent = z.infer<typeof StreamEvent>;
 
 // ---------- v2 dashboard rows (ids only; screens resolve names with getNames) ----------
@@ -364,7 +379,7 @@ export const Kpi = z.object({
 });
 /** The "Ripple angle" every team dashboard carries: what the v1 sunset means for this team. */
 export const RippleAngle = z.object({
-  decisionId: id,
+  decisionId: id.nullable(),
   affected: z.boolean(),
   involved: z.boolean(),
   acked: z.boolean(),

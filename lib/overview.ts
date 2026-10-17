@@ -17,11 +17,13 @@ export async function computeOverview(g: Graph, now: number): Promise<Overview> 
   const edges = z.array(z.object({ type: z.string(), at: n })).parse(
     await roQuery(g, load("overview-activity").text, { since: now - ACTIVITY_DAYS * DAY }),
   );
-  const teamRows = z.array(z.object({ id: z.string(), name: z.string(), people: n })).parse(
-    await roQuery(g, load("overview-teams").text),
+  const sunset = main?.edges.find((e) => e.type === "SUNSETS")?.to ?? null;
+  const teamRows = z.array(z.object({ id: z.string(), name: z.string(), people: n, owner: z.boolean() })).parse(
+    await roQuery(g, load("overview-teams").text, { sunset }),
   );
   const blockers = z.array(Blocker).parse(await roQuery(g, load("overview-blockers").text));
-  const told = (id: string) => main && (id === "eng" || !main.teams.some((t) => t.teamId === id) || main.teams.find((t) => t.teamId === id)!.involved || main.teams.find((t) => t.teamId === id)!.acked);
+  const ripTeam = (id: string) => main?.teams.find((t) => t.teamId === id);
+  const told = (id: string) => !ripTeam(id) || ripTeam(id)!.involved || ripTeam(id)!.acked;
   return Overview.parse({
     now,
     kpis: main ? [
@@ -35,10 +37,10 @@ export async function computeOverview(g: Graph, now: number): Promise<Overview> 
     blockers,
     recentChanges: (await diff(g, now - 30 * DAY)).data.slice(0, 8),
     activity: activitySeries(edges, now),
-    whoKnows: z.array(WhoKnowsRow).parse((await whoKnows(g, main?.edges.find((e) => e.type === "SUNSETS")?.to ?? "api-v1")).data),
+    whoKnows: sunset ? z.array(WhoKnowsRow).parse((await whoKnows(g, sunset)).data) : [],
     teams: TEAM_IDS.map((id) => {
       const t = teamRows.find((x) => x.id === id);
-      return { teamId: id, name: t?.name ?? id, people: t?.people ?? 0, affected: !!main?.teams.some((x) => x.teamId === id) || id === "eng", told: !!told(id) };
+      return { teamId: id, name: t?.name ?? id, people: t?.people ?? 0, affected: !!ripTeam(id) || !!t?.owner, told: !!told(id) };
     }),
   });
 }

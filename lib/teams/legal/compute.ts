@@ -3,7 +3,7 @@ import type { Graph } from "@/lib/graph/client";
 import { rippleAngle, teamRows } from "../run";
 import { buildLegal, LegalRows, type LegalPayload } from "./schema";
 
-export async function computeLegal(g: Graph, now: number): Promise<LegalPayload> {
+export async function computeLegal(g: Graph, now: number, decisionId: string | null): Promise<LegalPayload> {
   const rows = await teamRows(g, "legal", LegalRows);
-  return buildLegal(rows, await rippleAngle(g, "legal", now), now);
+  return buildLegal(rows, await rippleAngle(g, "legal", now, decisionId), now);
 }

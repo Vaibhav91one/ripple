@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { query, roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
+import { claimsBody, claimsFor } from "../briefs";
 import type { Source } from "../schemas";
 
 export type Row = Record<string, unknown>;
@@ -133,7 +134,7 @@ export const TOOLS = {
       if (!demo) throw new Error("create_tasks only runs on the demo graph");
       const r = await ripple(g, decisionId, now);
       const c = load("create-tasks");
-      const rows = r.gap.map((teamId) => ({ id: `task-${decisionId}-${teamId}`, teamId, title: `Review: ${r.decision.title}` }));
+      const rows = r.gap.map((teamId) => ({ id: `task-${decisionId}-${teamId}`, teamId, decisionId, title: `Review: ${r.decision.title}`, body: claimsBody(claimsFor(r, teamId)) }));
       const created = rows.length ? await query(g, c.text, { rows, now }) : [];
       return { rows: created as Row[], sources: [], cypher: [c] };
     },

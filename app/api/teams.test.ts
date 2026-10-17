@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "@/lib/graph/client";
 import { seed } from "@/lib/ingest/seed";
+import { describeEdge } from "@/lib/changes";
 import * as s from "@/lib/schemas";
 import { TEAM_IDS, TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import { DevRelPayload } from "@/lib/teams/devrel/schema";
@@ -81,6 +82,25 @@ describe("GET /api/teams/[team]", () => {
     }
     for (const id of ["eng", "support", "sales"] as const)
       expect(TeamDashboard.parse(await dash(id)).angle, id).toMatchObject({ affected: true, involved: true });
+  });
+
+  t("leadership is affected: its goal is BLOCKED_BY the decision", async () => {
+    const a = TeamDashboard.parse(await dash("leadership")).angle;
+    expect(a).toMatchObject({ decisionId: "d-1", affected: true });
+    expect(a.facts.map((f) => f.text).join(" ")).toContain("is blocked by");
+  });
+
+  t("changes stay inside the decision's ripple and read as sentences", async () => {
+    const a = TeamDashboard.parse(await dash("support")).angle;
+    expect(a.changes.length).toBeGreaterThan(0);
+    const now = Math.floor(Date.parse("2026-10-17T09:00:00Z") / 1000);
+    const inside = new Set([...(await (await import("@/lib/graph/queries")).ripple(g, "d-1", now)).nodes.map((n) => n.id), "d-1"]);
+    for (const c of a.changes) {
+      const e = `${c.edge.from} ${c.edge.type} ${c.edge.to}`;
+      expect([c.edge.from, c.edge.to].includes("d-1") || (inside.has(c.edge.from) && inside.has(c.edge.to)), e).toBe(true);
+      expect(describeEdge(c.edge, (id) => id), e).not.toMatch(/[A-Z]{3,}/);
+    }
+    expect(a.changes.some((c) => ["mobile-app", "web-app"].includes(c.edge.to))).toBe(false);
   });
 
   t("eng: ~30 PRs incl. the v1 ones, a couple merged without review, incidents and on-call", async () => {

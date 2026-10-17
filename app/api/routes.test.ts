@@ -78,12 +78,20 @@ describe("route handlers (in order: /api/change mutates the graph)", () => {
   });
 
   t("GET /api/inbox?p=p-priya", async () => {
-    const items = await ok(z.array(s.InboxItem), await get("inbox", "/api/inbox?p=p-priya"));
-    const briefs = items.flatMap((i) => (i.kind === "brief" ? [i.teamId] : []));
-    expect(briefs.sort()).toEqual(["devrel", "legal", "security"]);
-    expect(items.find((i) => i.kind === "review")).toMatchObject({ taskId: "task-2", from: "p-prod" });
-    expect(items.filter((i) => i.kind === "waiting")).toHaveLength(2);
-    expect(await ok(z.array(s.InboxItem), await get("inbox", "/api/inbox?p=nobody"))).toEqual([]);
+    const { forMe, sent } = await ok(s.Inbox, await get("inbox", "/api/inbox?p=p-priya"));
+    // the briefs she sends are not hers to acknowledge
+    expect(forMe.filter((i) => i.kind === "brief")).toEqual([]);
+    expect(sent.map((i) => [i.teamId, i.status])).toEqual(
+      expect.arrayContaining([["devrel", "pending"], ["legal", "pending"], ["security", "pending"], ["support", "acked"], ["sales", "acked"]]),
+    );
+    expect(sent).toHaveLength(5);
+    expect(forMe.find((i) => i.kind === "review")).toMatchObject({ taskId: "task-2", from: "p-prod" });
+    expect(forMe.filter((i) => i.kind === "waiting")).toHaveLength(2);
+    expect(await ok(s.Inbox, await get("inbox", "/api/inbox?p=nobody"))).toEqual({ forMe: [], sent: [] });
+    // a team in the gap gets the brief in forMe and has sent nothing
+    const mei = await ok(s.Inbox, await get("inbox", "/api/inbox?p=p-mei"));
+    expect(mei.forMe.filter((i) => i.kind === "brief")).toHaveLength(1);
+    expect(mei.sent).toEqual([]);
   });
 
   t("GET /api/source/[id]", async () => {

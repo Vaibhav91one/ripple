@@ -6,10 +6,9 @@ import { Resend } from "resend";
 import { BriefEmail } from "@/components/email/BriefEmail";
 import { encodeAckToken } from "./ack-token";
 import { env as readEnv, type Env as AppEnv } from "./env";
-import { buildBrief } from "./briefs";
+import { buildBrief, claimsBody } from "./briefs";
 import { query, roQuery, type Graph } from "./graph/client";
-import { detectConflicts, ripple } from "./graph/queries";
-import { artifacts } from "./mock/ledgerly";
+import { detectConflicts, load, ripple } from "./graph/queries";
 import type { Ack } from "./schemas";
 
 type Env = Partial<Pick<AppEnv, "RESEND_API_KEY" | "RESEND_FROM" | "GITHUB_APP_ID" | "GITHUB_APP_INSTALLATION_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_REPO">>;
@@ -88,19 +87,21 @@ export async function notifyGaps(
     const member = await firstMember(g, teamId);
     const refs = new Set(r.teams.find((t) => t.teamId === teamId)?.why.map((w) => w.ref));
     const conflict = r.conflicts.find((c) => c.contractIds.some((id) => refs.has(id)));
+    const titles = new Map((await roQuery<{ id: string; title: string }>(
+      g, "MATCH (a:Artifact) WHERE a.id IN $ids RETURN a.id AS id, a.title AS title",
+      { ids: [...brief.claims, ...(conflict ? [conflict] : [])].flatMap((c) => c.sources.map((s) => s.artifactId)) },
+    )).map((a) => [a.id, a.title]));
     const html = (await renderHtml())(createElement(BriefEmail, {
       brief, teamName: teamName(teamId), decisionTitle: r.decision.title, conflict, token, baseUrl,
-      sourceTitle: (id: string) => artifacts.find((a) => a.id === id)?.title ?? id,
+      sourceTitle: (id: string) => titles.get(id) ?? id,
     }));
     const subject = `Ripple: ${r.decision.title} affects ${teamName(teamId)}`;
 
-    await query(g, `MERGE (t:Task {id: $taskId})
-      SET t.title = $title, t.teamId = $teamId, t.status = 'open', t.createdAt = $now
-      WITH t MATCH (tm:Team {id: $teamId}) MERGE (t)-[n:NOTIFIES]->(tm)
-      SET n.valid_from = $now, n.valid_to = null`, { taskId, title, teamId, now });
+    const body = claimsBody(brief.claims);
+    await query(g, load("create-tasks").text, { rows: [{ id: taskId, teamId, decisionId, title, body }], now });
 
     const email = await sendEmail(env, member?.email ?? null, subject, html);
-    const github = await createIssue(env, title, brief.claims.map((c) => `- ${c.text}`).join("\n") + `\n\nAcknowledge: ${baseUrl}/ack/${token}`);
+    const github = await createIssue(env, title, body + `\n\nAcknowledge: ${baseUrl}/ack/${token}`);
 
     await query(g, `MERGE (o:Outbox {id: $id})
       SET o.teamId = $teamId, o.decisionId = $decisionId, o.to = $to, o.subject = $subject, o.html = $html,

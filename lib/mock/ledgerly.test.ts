@@ -77,7 +77,8 @@ describe("ledgerly mocks", () => {
     expect((await getRipple("d-1")).gap).toHaveLength(3);
     await expect(getRipple("nope")).rejects.toThrow();
     expect((await getSource("art-rfc14")).docKind).toBe("rfc");
-    expect(await getInbox("p-priya")).toHaveLength(3);
+    const inbox = await getInbox("p-priya");
+    expect([inbox.forMe.length, inbox.sent.length]).toEqual([2, 1]);
     expect((await getWhoKnows("api-v1"))[0].personId).toBe("p-priya");
     expect((await getChanges(0)).length).toBe(m.changes.length);
     // askStream parses the /api/ask SSE body (frames split mid-chunk)

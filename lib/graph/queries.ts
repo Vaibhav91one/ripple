@@ -6,7 +6,7 @@ import { z } from "zod";
 import { query, roQuery, type Graph } from "./client";
 import {
   Artifact, BottleneckRow, Change, Conflict, Decision, Person, WhoKnowsRow,
-  type EdgeType, type InboxItem, type RippleResult, type Source,
+  type EdgeType, type Inbox, type InboxItem, type RippleResult, type SentItem, type Source,
 } from "../schemas";
 
 const DIR = path.join(process.cwd(), "lib/graph/queries");
@@ -307,28 +307,35 @@ const ReviewRow = z.object({ id: z.string(), title: z.string(), at: n, fromId: z
 const WaitRow = z.object({ id: z.string(), name: z.string(), at: n });
 
 /**
- * brief: one per team the person's team has not told, for each decision it sunsets
- * review: tasks in review assigned to the person; waiting: teams with an open request on the person's team.
+ * forMe: briefs addressed to the person's team (it is in a decision's gap), reviews assigned to the person,
+ * teams with an open request on the person's team. sent: briefs the person's team owes or sent to other teams
+ * for the decisions it owns, pending until that team acknowledges.
  */
-export async function inbox(g: Graph, personId: string, now: number): Promise<Result<InboxItem[]>> {
+export async function inbox(g: Graph, personId: string, now: number): Promise<Result<Inbox>> {
   const who = await run(g, "inbox-person", { id: personId }, Who);
-  if (!who.rows[0]) return { data: [], cypher: [who.c] };
+  if (!who.rows[0]) return { data: { forMe: [], sent: [] }, cypher: [who.c] };
   const { team, decisions: owned } = who.rows[0];
   const rv = await run(g, "inbox-reviews", { id: personId }, ReviewRow);
   const wt = await run(g, "inbox-waiting", { team }, WaitRow);
-  const items: InboxItem[] = [];
+  const forMe: InboxItem[] = [];
+  const sent: SentItem[] = [];
   const cypher = [who.c, rv.c, wt.c];
-  for (const d of owned) {
-    const r = await ripple(g, d, now);
+  for (const dec of (await decisions(g)).data.filter((x) => x.status !== "superseded")) {
+    const r = await ripple(g, dec.id, now);
     cypher.push(...r.cypher);
-    for (const t of r.gap) {
-      const name = r.nodes.find((x) => x.id === t)?.label ?? t;
-      items.push({ id: `brief-${d}-${t}`, kind: "brief", title: `Brief: ${name} on "${r.decision.title}"`, at: r.decision.decidedAt, teamId: t, decisionId: d });
-    }
+    const name = (id: string) => r.nodes.find((x) => x.id === id)?.label ?? id;
+    if (r.gap.includes(team))
+      forMe.push({ id: `brief-${dec.id}-${team}`, kind: "brief", title: `Brief: ${r.decision.title}`, at: r.decision.decidedAt, teamId: team, decisionId: dec.id });
+    if (!owned.includes(dec.id)) continue;
+    for (const t of r.teams.filter((x) => x.teamId !== team && (x.acked || r.gap.includes(x.teamId))))
+      sent.push({
+        id: `sent-${dec.id}-${t.teamId}`, kind: "sent", title: `Brief to ${name(t.teamId)}`,
+        at: r.decision.decidedAt, teamId: t.teamId, decisionId: dec.id, status: t.acked ? "acked" : "pending",
+      });
   }
   for (const k of rv.rows)
-    items.push({ id: `review-${k.id}`, kind: "review", title: k.title, at: k.at, taskId: k.id, from: k.fromId ?? personId });
+    forMe.push({ id: `review-${k.id}`, kind: "review", title: k.title, at: k.at, taskId: k.id, from: k.fromId ?? personId });
   for (const w of wt.rows)
-    items.push({ id: `wait-${w.id}-${team}`, kind: "waiting", title: `${w.name} is waiting on you`, at: w.at, waitingOn: w.id });
-  return { data: items, cypher };
+    forMe.push({ id: `wait-${w.id}-${team}`, kind: "waiting", title: `${w.name} is waiting on you`, at: w.at, waitingOn: w.id });
+  return { data: { forMe, sent }, cypher };
 }

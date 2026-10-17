@@ -49,6 +49,18 @@ describe("notify and ack on a temp graph (in order)", () => {
     for (const r of res) expect(decodeAckToken(r.token, NOW).state).toBe("ok");
   });
 
+  t("tasks carry an owner (the team lead), a due date 14 days before the effective date, and the brief's claims", async () => {
+    const rows = await query<{ team: string; owner: string; due: number; body: string }>(
+      g, "MATCH (k:Task)-[:NOTIFIES]->(tm:Team) RETURN tm.id AS team, k.assigneeId AS owner, k.dueAt AS due, k.body AS body ORDER BY team",
+    );
+    expect(rows.map((r) => [r.team, r.owner])).toEqual([["devrel", "p-maya"], ["legal", "p-mei"], ["security", "p-tara"]]);
+    const eff = (await query<{ on: number }>(g, "MATCH (:Decision {id: 'd-1'})-[s:SUNSETS]->() RETURN s.on AS on"))[0].on;
+    for (const r of rows) {
+      expect(Number(r.due)).toBe(Number(eff) - 14 * 86400);
+      expect(r.body).toContain("(art-");
+    }
+  });
+
   t("notify is idempotent", async () => {
     await notifyGaps(g, "d-1", { now: NOW, model: null, env: {}, baseUrl: "http://x" });
     const n = await query<{ n: number }>(g, "MATCH (:Task)-[r:NOTIFIES]->(:Team) RETURN count(r) AS n");
