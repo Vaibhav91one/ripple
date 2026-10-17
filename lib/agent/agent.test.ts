@@ -6,6 +6,7 @@ import { closeClient, graphFor, query, type Graph } from "../graph/client";
 import { seed } from "../ingest/seed";
 import { StreamEvent } from "../schemas";
 import { runAgent } from "./loop";
+import { load } from "../graph/queries";
 import { TOOLS } from "./tools";
 
 const name = `test_a_${randomUUID().replaceAll("-", "")}`;
@@ -85,6 +86,51 @@ describe("agent loop with a scripted model", () => {
     expect(cites).toEqual(["pr-v1-1"]);
     expect(JSON.stringify(events)).not.toContain("art-invented");
     expect(tokens).toBeGreaterThan(0);
+  });
+});
+
+describe("answer validation in the loop (#211)", () => {
+  const ask = async (graph: Graph, calls: [string, object][], answer: string, audit?: (e: { action: string }) => Promise<void>) => {
+    const model = new MockLanguageModelV4({
+      doStream: [
+        step([...calls.map(([toolName, input], i) => ({ type: "tool-call", toolCallId: `c${i}`, toolName, input: JSON.stringify(input) })), finish("tool-calls")]),
+        step([...text(answer), finish("stop")]),
+      ],
+    });
+    const events = [];
+    for await (const e of runAgent({ model, question: "q", g: graph, now: NOW, audit: audit as never })) events.push(StreamEvent.parse(e));
+    return events;
+  };
+  const said = (ev: StreamEvent[]) => ev.flatMap((e) => (e.type === "text_delta" ? [e.text] : [])).join("");
+
+  t("a team the rows do not contain is rejected, replaced from the rows, and audited", async () => {
+    const audited: string[] = [];
+    const ev = await ask(g, [["ripple", { decisionId: "d-1" }]], "Leadership is affected by the v1 sunset [[art-msa-northwind]].", async (e) => void audited.push(e.action));
+    expect(said(ev)).toMatch(/^Ripple found \d+ teams?:/);
+    expect(said(ev)).not.toContain("Leadership");
+    const done = ev.at(-1);
+    expect(done).toMatchObject({ type: "done", outcome: { outcome: "path" }, rejected: [expect.stringContaining("Leadership")] });
+    expect(audited).toContain("agent.answer_rejected");
+    expect(ev.some((e) => e.type === "citation")).toBe(false);
+  });
+
+  t("a grounded answer passes untouched and the trace has duration and row count", async () => {
+    const ev = await ask(g, [["ripple", { decisionId: "d-1" }]], "Legal and Security are hit but were never told [[art-msa-northwind]].");
+    expect(said(ev)).toContain("Legal and Security are hit");
+    const res = ev.find((e) => e.type === "tool_result");
+    expect(res).toMatchObject({ ms: expect.any(Number), rowCount: expect.any(Number) });
+    expect(res?.type === "tool_result" && res.rowCount).toBeGreaterThan(0);
+    expect(ev.at(-1)).toMatchObject({ type: "done", outcome: { outcome: "path" } });
+    expect(ev.at(-1)).not.toHaveProperty("rejected");
+  });
+
+  t("an unknown system gives unknown_entity and no ripple traversal runs", async () => {
+    const seen: string[] = [];
+    const spy = new Proxy(g, { get: (tg, p) => (p === "roQuery" ? (q: string, o: unknown) => (seen.push(q), tg.roQuery(q, o as never)) : Reflect.get(tg, p, tg) instanceof Function ? (Reflect.get(tg, p, tg) as (...a: unknown[]) => unknown).bind(tg) : Reflect.get(tg, p, tg)) });
+    const ev = await ask(spy, [["who_knows", { systemId: "fax-gateway" }], ["ripple", { decisionId: "fax-gateway" }]], "Retiring the fax-gateway breaks billing.");
+    expect(ev.at(-1)).toMatchObject({ outcome: { outcome: "unknown_entity", rowCount: 0 }, rejected: expect.any(Array) });
+    expect(said(ev)).toContain('does not know "fax-gateway');
+    expect(seen).not.toContain(load("ripple").text);
   });
 });
 

@@ -125,7 +125,7 @@ export async function getRun(orgId: string, id: string, v: Viewer): Promise<RunD
   ]);
   return {
     run: { ...toRun(r), input: r.input, output: r.output },
-    steps: steps.map((s) => ({ n: s.n, kind: s.kind, tool: s.tool, args: s.args, cypher: s.cypher, sources: s.sourceIds, tokens: s.tokens })),
+    steps: steps.map((s) => ({ n: s.n, kind: s.kind, tool: s.tool, args: s.args, cypher: s.cypher, sources: s.sourceIds, tokens: s.tokens, durationMs: s.durationMs, rowCount: s.rowCount })),
     proposals: props.map((p) => ({ id: p.a.id, kind: p.a.kind, status: p.a.status, summary: toRow(p, v).summary, subject: toRow(p, v).subject })),
   };
 }

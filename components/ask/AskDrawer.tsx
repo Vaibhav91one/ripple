@@ -10,6 +10,7 @@ import { ThinkingLive } from "@/components/kit/beautifului/thinking";
 import ToolChips, { type ToolRowData } from "@/components/kit/beautifului/tool-chips";
 import { askStream, getSource } from "@/lib/api";
 import { duration, ease, sec } from "@/lib/motion";
+import type { Outcome } from "@/lib/schemas";
 import { addText, parseStream } from "./parseStream";
 
 export const SUGGESTIONS = [
@@ -18,9 +19,14 @@ export const SUGGESTIONS = [
   "What changed since Monday?",
 ];
 
-type Tool = { tool: string; cypher: string; rows?: number };
+type Tool = { tool: string; cypher: string; rows?: number; ms?: number };
 // glue: the last token is a word still being streamed, so a delta that starts mid-word joins it.
-type Turn = { question: string; tools: Tool[]; tokens: Token[]; sources: SourceRef[]; done: boolean; glue?: boolean };
+type Turn = { question: string; tools: Tool[]; tokens: Token[]; sources: SourceRef[]; done: boolean; glue?: boolean; outcome?: Outcome["outcome"]; rejected?: boolean };
+const OUTCOME_NOTE: Partial<Record<Outcome["outcome"], string>> = {
+  not_in_graph: "Not in the graph: nothing connects to this, which is not the same as no impact.",
+  unknown_entity: "Unknown entity: that name does not resolve, so no traversal ran.",
+  memory: "Answered from memory, not from a live traversal.",
+};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -32,7 +38,7 @@ const toolRow = (t: Tool): ToolRowData => ({
   detailMono: true,
   detail: [],
   body: <CodeBlock code={t.cypher} language="Cypher" title={t.tool} />,
-  meta: t.rows === undefined ? "running…" : `${t.rows} ${t.rows === 1 ? "row" : "rows"}`,
+  meta: t.rows === undefined ? "running…" : `${t.rows} ${t.rows === 1 ? "row" : "rows"}${t.ms === undefined ? "" : ` · ${t.ms}ms`}`,
 });
 
 function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
@@ -72,12 +78,12 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
           let next = t;
           if (e.type === "tool_call") next = { ...t, tools: [...t.tools, { tool: e.tool, cypher: e.cypher }] };
           else if (e.type === "tool_result")
-            next = { ...t, tools: t.tools.map((x) => (x.tool === e.tool && x.rows === undefined ? { ...x, rows: e.rows.length } : x)) };
+            next = { ...t, tools: t.tools.map((x) => (x.tool === e.tool && x.rows === undefined ? { ...x, rows: e.rowCount ?? e.rows.length, ms: e.ms } : x)) };
           else if (e.type === "text_delta")
             next = addText(t, e.text);
           else if (e.type === "citation") {
             next = { ...t, tokens: [...t.tokens, ...refs.map((cite) => ({ text: "", cite }))], sources: [...t.sources, ...refs], glue: false };
-          } else if (e.type === "done") next = { ...t, done: true };
+          } else if (e.type === "done") next = { ...t, done: true, outcome: e.outcome?.outcome, rejected: !!e.rejected };
           return [...ts.slice(0, -1), next];
         });
       }
@@ -160,9 +166,15 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
                   {t.tools.length > 0 && (
                     <ToolChips live rows={t.tools.map(toolRow)} diffs={[]} summary={`${t.tools.length} ${t.tools.length === 1 ? "query" : "queries"}`} />
                   )}
-                  {streaming && t.tokens.length === 0 && t.tools.length === 0 && <ThinkingLive />}
+                  {streaming && t.tokens.length === 0 && !t.done && <ThinkingLive label={t.tools.length ? "Checking the answer against the graph…" : "Thinking"} />}
                   {t.tokens.length > 0 && (
                     <StreamingText tokens={t.tokens} sources={t.sources} followUps={[]} streaming={streaming && !t.done} />
+                  )}
+                  {t.done && (t.rejected || (t.outcome && OUTCOME_NOTE[t.outcome])) && (
+                    <p className="text-[11.5px] leading-normal text-faint">
+                      {t.rejected && "Rewritten from the graph rows: the draft named something the graph didn't return. "}
+                      {t.outcome && OUTCOME_NOTE[t.outcome]}
+                    </p>
                   )}
                 </div>
               );

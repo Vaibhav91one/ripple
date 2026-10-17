@@ -78,7 +78,8 @@ describe("ripple MCP server (tests run in order: ack_brief mutates the graph)", 
     expect(out.rows[0].counts).toMatchObject({ customers: 40, tickets: 12, deals: 3, contracts: 2, arrAtRisk: 180_000 });
     expect(out.sources.length).toBeGreaterThan(0);
     expect(out.cypher.length).toBeGreaterThan(0);
-    expect(out.trace).toMatchObject({ tool: "ripple_impact", rows: 1 });
+    expect(out.trace).toMatchObject({ tool: "ripple_impact", rows: 1, rowCount: expect.any(Number) });
+    expect(out.outcome).toMatchObject({ outcome: "path", rowCount: expect.any(Number) });
   });
 
   t("who_wasnt_told d-1 = devrel, legal, security", async () => {

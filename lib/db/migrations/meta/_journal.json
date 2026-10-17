@@ -85,6 +85,13 @@
       "when": 1792260067633,
       "tag": "0011_agent_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792262988035,
+      "tag": "0012_run_step_trace",
+      "breakpoints": true
     }
   ]
 }

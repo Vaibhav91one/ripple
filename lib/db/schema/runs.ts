@@ -7,7 +7,7 @@ export const agentSettings = pgTable(
   (t) => [primaryKey({ columns: [t.orgId, t.agent] })],
 );
 
-export const RUN_STATUSES = ["queued", "running", "done", "failed", "budget"] as const;
+export const RUN_STATUSES = ["queued", "running", "done", "failed", "budget", "rejected"] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];
 
 // no FK to orgs: the run log outlives a deleted org (like audit_log and event)
@@ -35,12 +35,15 @@ export const runSteps = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     runId: uuid("run_id").notNull().references(() => agentRuns.id, { onDelete: "cascade" }),
     n: integer("n").notNull(),
-    kind: text("kind", { enum: ["tool", "text"] }).notNull(),
+    kind: text("kind", { enum: ["tool", "text", "validation"] }).notNull(),
     tool: text("tool"),
     args: jsonb("args"),
     cypher: text("cypher").array().notNull().default([]),
     sourceIds: text("source_ids").array().notNull().default([]),
     tokens: integer("tokens").notNull().default(0),
+    /** Execution trace of a tool call (#211): wall time and rows returned. */
+    durationMs: integer("duration_ms"),
+    rowCount: integer("row_count"),
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("run_step_run_idx").on(t.runId, t.n)],

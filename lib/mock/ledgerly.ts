@@ -519,11 +519,13 @@ export const askEvents: StreamEvent[] = [
       { personId: "p-sam", n: 12 },
     ],
     sourceIds: ["art-pr-auth", "art-secreview"],
+    ms: 38,
+    rowCount: 2,
   },
   { type: "text_delta", text: "Priya (Eng) knows it best: she wrote most of the original v1 auth handlers. " },
   { type: "citation", claimId: "claim-1", sources: [priyaSrc] },
   { type: "text_delta", text: "Sam (Security) holds the threat model for the legacy token path." },
   { type: "citation", claimId: "claim-2", sources: [samSrc] },
-  { type: "done" },
+  { type: "done", outcome: { outcome: "path", entities: ["Priya", "Sam"], paths: [], rowCount: 2 } },
 ];
 
