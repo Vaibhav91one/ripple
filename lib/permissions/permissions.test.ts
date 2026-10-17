@@ -109,6 +109,8 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "mcp": [{ url: "/api/mcp" }],
   "org/keys": [{ url: "/api/org/keys" }], // admin only: 403 for the demo viewers
   "teams/[team]": TEAMS.map((x) => ({ url: `/api/teams/${x}`, params: { team: x } })),
+  "slack/install": [{ url: "/api/slack/install" }], // admin only: 403 for the demo viewers
+  "slack/oauth": [{ url: "/api/slack/oauth" }], // no code/state: redirects back with an error
   "source/[id]": [] , // filled in beforeAll from the graph: every artifact
 };
 
