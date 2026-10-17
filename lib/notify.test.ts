@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { decodeAckToken } from "./ack-token";
 import { closeClient, graphFor, query, type Graph } from "./graph/client";
 import { ripple } from "./graph/queries";
@@ -12,6 +12,7 @@ let g: Graph;
 let up = false;
 
 beforeAll(async () => {
+  vi.stubEnv("DATABASE_URL", ""); // this file covers the DB-less demo path; the engine path is in notify.engine.test.ts
   try {
     g = await graphFor(name);
     await query(g, "RETURN 1");
