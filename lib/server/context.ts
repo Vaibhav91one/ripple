@@ -6,6 +6,7 @@ import { env } from "../env";
 import { LENS_COOKIE, LENS_TEAM, parseLens } from "../lens";
 import { sessionViewer } from "../auth";
 import { ensureSchema } from "../graph/schema";
+import { healDemo } from "../graph/bootstrap";
 import { graphFor, readOnly, type Graph } from "../graph/client";
 
 /** The demo tenant's graph; the only default name in the codebase. */
@@ -84,6 +85,7 @@ export async function getContext(req?: Request): Promise<Context> {
     }
   }
   const org: Org = { id: viewer.orgId, graphName, isDemo: !session };
+  if (org.isDemo && !e.RIPPLE_GRAPH) healDemo(graphName); // throttled, never awaited
   return {
     viewer,
     org,

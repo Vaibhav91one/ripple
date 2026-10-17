@@ -10,6 +10,7 @@ const shape = {
   FALKORDB_HOST: z.string().default("localhost"),
   FALKORDB_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
   FALKORDB_PASSWORD: str,
+  FALKORDB_QUERY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10_000), // a query with no reply by then fails and resets the client
   FALKORDB_TLS: z.stringbool().default(false), // 1/true = TLS socket (FalkorDB Cloud)
   LLM_PROVIDER: z.string().refine((p) => (PROVIDERS as readonly string[]).includes(p), `must be one of ${PROVIDERS.join(", ")}`).optional(),
   LLM_API_KEY: str,

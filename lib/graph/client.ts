@@ -8,32 +8,31 @@ export type Params = Record<string, unknown>;
 
 let db: Promise<FalkorDB> | undefined;
 
-/** A query that gets no reply in this long means a dead connection: fail it and rebuild the client. */
-export const QUERY_TIMEOUT_MS = Number(process.env.FALKORDB_QUERY_TIMEOUT_MS) || 30_000;
-
 /** Drop the cached client (best effort close) so the next call reconnects from scratch. */
 function resetClient(p: Promise<FalkorDB>): void {
   if (db === p) db = undefined;
   void p.then((c) => c.close()).catch(() => {});
 }
 
+function timeout<T>(p: Promise<T>, ms: number, what: string, onTimeout?: () => void): Promise<T> {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    p,
+    new Promise<never>((_, rej) => {
+      timer = setTimeout(() => {
+        onTimeout?.();
+        rej(new Error(`${what} timed out after ${ms}ms`));
+      }, ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+export type QueryOpts = { timeoutMs?: number };
+
 /** Fail fast instead of hanging forever when the connection died without a clean close (FalkorDB restart). */
-async function guard<T>(run: () => Promise<T>): Promise<T> {
+export function guard<T>(run: () => Promise<T>, ms = env().FALKORDB_QUERY_TIMEOUT_MS): Promise<T> {
   const p = client();
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      run(),
-      new Promise<never>((_, rej) => {
-        timer = setTimeout(() => {
-          resetClient(p);
-          rej(new Error(`FalkorDB query timed out after ${QUERY_TIMEOUT_MS}ms`));
-        }, QUERY_TIMEOUT_MS);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
+  return timeout(run(), ms, "FalkorDB query", () => resetClient(p));
 }
 
 export function client(): Promise<FalkorDB> {
@@ -67,7 +66,8 @@ export async function closeClient(): Promise<void> {
 
 /** One graph per tenant; the demo tenant is `demo`. */
 export async function graphFor(tenant: string): Promise<Graph> {
-  return (await client()).selectGraph(tenant);
+  // The first connect retries forever (reconnectStrategy), so bound the wait; the pending connect stays cached.
+  return (await timeout(client(), env().FALKORDB_QUERY_TIMEOUT_MS, "FalkorDB connect")).selectGraph(tenant);
 }
 
 /** Parameterised query; never interpolate values into `cypher`. */
@@ -75,8 +75,9 @@ export async function query<T = Record<string, unknown>>(
   graph: Graph,
   cypher: string,
   params: Params = {},
+  opts: QueryOpts = {},
 ): Promise<T[]> {
-  const res = await guard(() => graph.query<T>(cypher, { params: params as never }));
+  const res = await guard(() => graph.query<T>(cypher, { params: params as never }), opts.timeoutMs);
   return res.data ?? [];
 }
 
@@ -85,9 +86,10 @@ export async function roQuery<T = Record<string, unknown>>(
   graph: Graph,
   cypher: string,
   params: Params = {},
+  opts: QueryOpts = {},
 ): Promise<T[]> {
   try {
-    const res = await guard(() => graph.roQuery<T>(cypher, { params: params as never }));
+    const res = await guard(() => graph.roQuery<T>(cypher, { params: params as never }), opts.timeoutMs);
     return res.data ?? [];
   } catch (e) {
     // A graph that was never written (new org, fresh volume) has no key; RO_QUERY then errors instead of
