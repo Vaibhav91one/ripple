@@ -10,6 +10,7 @@ import type { Graph } from "../graph/client";
 import type { Cypher } from "../graph/queries";
 import { pickModel, roleFor } from "../llm";
 import { redactToolOut } from "../permissions/redact";
+import { propose as proposeAction } from "../actions/propose";
 import { agent as findAgent } from "./registry";
 import { TOOLS, type Ctx, type ToolName, type ToolOut, type Viewer } from "./tools";
 
@@ -32,8 +33,6 @@ export type RunResult = { runId: string; status: RunStatus; output?: unknown; to
 
 /** The permission layer (#99): every tool output passes through this before the model sees it. */
 export const redactToolOutput = (out: ToolOut, viewer: Viewer, g: Graph): Promise<ToolOut> => redactToolOut(g, viewer, out);
-
-const propose: NonNullable<Ctx["propose"]> = () => Promise.reject(new Error("not_implemented"));
 
 /** Tool output as untrusted data. A literal "</data" in the payload cannot close the wrapper. */
 const wrapData = (name: string, rows: unknown, sourceIds: string[]) =>
@@ -67,7 +66,7 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
     const parsed = def.input.safeParse(input);
     if (!parsed.success) return await finish("failed", { error: `invalid input: ${parsed.error.message}` });
 
-    const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose };
+    const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose: (kind, payload, evidence) => proposeAction({ org: ctx.org, viewer: ctx.viewer, runId }, kind, payload, evidence) };
     const outs = new Map<string, ToolOut>(); // toolCallId -> output, for the step log
     const allowed = new Set<string>(def.tools);
     // Only the allowlist exists as far as the model is concerned; execute re-checks anyway.
