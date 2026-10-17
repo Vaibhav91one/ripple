@@ -1,7 +1,7 @@
 // Agent tools = the Cypher templates. The model picks a tool and fills params; it never writes Cypher.
 import { z } from "zod";
 import { query, roQuery, type Graph } from "../graph/client";
-import { bottleneck, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
+import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import type { Source } from "../schemas";
 
 export type Row = Record<string, unknown>;
@@ -26,6 +26,11 @@ async function sourcesFor(g: Graph, ids: string[]): Promise<{ sources: Source[];
 }
 /** Honest empty answer: one row the model can report plainly instead of guessing. */
 export const notInGraph = (what: string): Row[] => [{ found: false, note: `Nothing in the graph connects to ${what}. The dependency may not be modelled.` }];
+/** An unknown decision id: say so, and list the real ids so the model can retry instead of guessing again. */
+const unknownDecision = async (g: Graph, id: string): Promise<Row[]> => {
+  const known = (await decisions(g)).data.map((d) => ({ id: d.id, title: d.title }));
+  return [{ ...notInGraph(`decision ${id}`)[0], knownDecisions: known, hint: "Retry with one of knownDecisions[].id if it matches." }];
+};
 const dedupe = (xs: Source[]) => [...new Map(xs.map((s) => [s.artifactId, s])).values()];
 
 export const TOOLS = {
@@ -48,7 +53,7 @@ export const TOOLS = {
     templates: ["decision", "ripple", "gap", "conflicts-detect"],
     run: async ({ g, now }, { decisionId, depth = 3 }) => {
       const r = await ripple(g, decisionId, now, depth).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
-      if (!r) return { rows: notInGraph(`decision ${decisionId}`), sources: [], cypher: [] };
+      if (!r) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
       const rows: Row[] = [{
         decision: r.decision, counts: r.counts, gap: r.gap,
         teams: r.teams.map((t) => ({ teamId: t.teamId, involved: t.involved, acked: t.acked, why: t.why.map((w) => w.reason) })),
@@ -77,7 +82,7 @@ export const TOOLS = {
       const dc = load("decision");
       const tc = load("trace-decision");
       const [d] = await roQuery<{ id: string; title: string; status: string; src: string | null; quote: string | null }>(g, dc.text, { id: decisionId });
-      if (!d) return { rows: notInGraph(`decision ${decisionId}`), sources: [], cypher: [dc] };
+      if (!d) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [dc] };
       const sup = await roQuery<{ sourceId: string | null; sourceTitle: string | null; quote: string | null }>(g, tc.text, { id: decisionId });
       const supported = sup.filter((x) => x.sourceId);
       const s = await sourcesFor(g, supported.map((x) => x.sourceId!));
@@ -105,7 +110,11 @@ export const TOOLS = {
     templates: ["why-affected", "why-affected-any", "artifact-text"],
     run: async ({ g }, { decisionId, teamId }) => {
       const w = await whyAffected(g, decisionId, teamId);
-      if (!w.data) return { rows: [{ found: false, note: `No path from decision ${decisionId} to team ${teamId} in the graph.` }], sources: [], cypher: w.cypher };
+      if (!w.data) {
+        const known = (await decisions(g)).data;
+        if (!known.some((d) => d.id === decisionId)) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: w.cypher };
+        return { rows: [{ found: false, note: `No path from decision ${decisionId} to team ${teamId} in the graph.` }], sources: [], cypher: w.cypher };
+      }
       const { nodes, rels } = w.data;
       const sources = dedupe(rels.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : [])));
       return { rows: [{ found: true, hops: rels.length, nodes, rels }], sources, cypher: w.cypher };
