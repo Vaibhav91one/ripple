@@ -1,3 +1,4 @@
+import { env } from "../env";
 // In-memory per-IP rate limit and daily token budget.
 // ponytail: per-process state; move to Redis/KV if the app runs on more than one instance.
 export const RATE_LIMIT = 20;
@@ -21,7 +22,7 @@ function roll(now: number) {
 
 export function budgetLeft(now = Date.now()): boolean {
   roll(now);
-  return used < Number(process.env.DAILY_TOKEN_BUDGET ?? 2_000_000);
+  return used < env().DAILY_TOKEN_BUDGET;
 }
 export function spend(tokens: number, now = Date.now()): void {
   roll(now);

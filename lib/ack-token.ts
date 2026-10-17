@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { env } from "./env";
 
 // Signed token: base64url(JSON payload) + "." + base64url(HMAC-SHA256). Secret: ACK_TOKEN_SECRET.
 const Payload = z.object({
@@ -18,7 +19,7 @@ export type AckTokenState =
 
 let warned = false;
 function secret(): string {
-  const s = process.env.ACK_TOKEN_SECRET;
+  const s = env().ACK_TOKEN_SECRET;
   if (s) return s;
   if (!warned) {
     warned = true;

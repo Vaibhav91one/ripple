@@ -5,13 +5,14 @@ import { createElement } from "react";
 import { Resend } from "resend";
 import { BriefEmail } from "@/components/email/BriefEmail";
 import { encodeAckToken } from "./ack-token";
+import { env as readEnv, type Env as AppEnv } from "./env";
 import { buildBrief } from "./briefs";
 import { query, roQuery, type Graph } from "./graph/client";
 import { ripple } from "./graph/queries";
 import { artifacts } from "./mock/ledgerly";
 import type { Ack } from "./schemas";
 
-type Env = Record<string, string | undefined>;
+type Env = Partial<Pick<AppEnv, "RESEND_API_KEY" | "RESEND_FROM" | "GITHUB_APP_ID" | "GITHUB_APP_INSTALLATION_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_REPO">>;
 // Next rejects a static react-dom/server import in route code; a runtime import by variable name is fine in a route handler.
 const SERVER = "react-dom/server";
 const renderHtml = async () => (await import(/* webpackIgnore: true */ SERVER) as typeof import("react-dom/server")).renderToStaticMarkup;
@@ -72,7 +73,7 @@ export async function notifyGaps(
   o: { now?: number; baseUrl?: string; env?: Env; model?: LanguageModel | null } = {},
 ): Promise<NotifyResult[]> {
   const now = o.now ?? Math.floor(Date.now() / 1000);
-  const env = o.env ?? process.env;
+  const env = o.env ?? readEnv();
   const baseUrl = o.baseUrl ?? "";
   const r = await ripple(g, decisionId, now);
   const teamName = (id: string) => r.nodes.find((n) => n.id === id)?.label ?? id;

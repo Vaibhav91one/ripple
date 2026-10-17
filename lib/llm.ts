@@ -6,11 +6,12 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { LanguageModel } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
+import { env as readEnv, PROVIDERS, type Env } from "./env";
 
-export const PROVIDERS = ["anthropic", "openai", "google", "openrouter", "openai-compatible", "ollama"] as const;
+export { PROVIDERS };
 export type Role = "extract" | "agent";
 
-export function pickModel(role: Role, env: Record<string, string | undefined> = process.env): LanguageModel | null {
+export function pickModel(role: Role, env: Partial<Pick<Env, "LLM_PROVIDER" | "LLM_API_KEY" | "LLM_BASE_URL" | "MODEL_AGENT" | "MODEL_EXTRACT">> = readEnv()): LanguageModel | null {
   const provider = env.LLM_PROVIDER;
   const modelId = role === "extract" ? env.MODEL_EXTRACT : env.MODEL_AGENT;
   const apiKey = env.LLM_API_KEY;
