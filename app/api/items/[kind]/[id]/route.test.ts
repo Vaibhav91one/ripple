@@ -45,7 +45,7 @@ const ISOLATED = new Set(["doc", "message"]);
 const SEEDED: Record<string, [id: string, title?: RegExp]> = {
   pr: ["art-pr-auth"], ticket: ["art-tkt-1"], doc: ["art-rfc14", /RFC/i], message: ["art-msg-lost"], contract: ["ctr-1"], clause: ["clause-g1"],
   customer: ["cust-1"], deal: ["deal-1"], system: ["api-v1"], person: ["p-priya", /Priya/], team: ["eng"], control: ["ctl-1"],
-  finding: ["finding-1"], task: ["task-1"], change: ["d-1"],
+  finding: ["finding-1"], task: ["task-1"], change: ["d-1"], decision: ["d-1"], incident: ["inc-1"],
 };
 
 describe("GET /api/items/[kind]/[id]", () => {

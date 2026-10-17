@@ -15,6 +15,8 @@ export interface ItemAdapter {
   /** team or person id that owns the item */
   owner: (n: Props) => string | null;
   sourceUrl: (n: Props) => string | null;
+  /** optional extra section on the item page: the node's out-edges of this type, listed with their quotes (a contract's clauses) */
+  extra?: { title: string; edgeType: string };
 }
 
 const s = (v: unknown) => (typeof v === "string" && v ? v : null);
@@ -31,7 +33,7 @@ export const ITEM_KINDS: Record<ItemKind, ItemAdapter> = Object.fromEntries(
     a("ticket", "Ticket", "ticket", "Ticket", artifact),
     a("doc", "Document", "file-text", "Doc", { ...artifact, status: pick("docKind") }),
     a("message", "Message", "message-square", "Message", artifact),
-    a("contract", "Contract", "file-signature", "Contract", { status: pick("approvalState"), owner: () => "legal" }),
+    a("contract", "Contract", "file-signature", "Contract", { status: pick("approvalState"), owner: () => "legal", extra: { title: "Clauses", edgeType: "HAS_CLAUSE" } }),
     a("clause", "Clause", "scroll-text", "Clause", { status: pick("risk"), owner: () => "legal" }),
     a("customer", "Customer", "building-2", "Customer", { status: pick("tier") }),
     a("deal", "Deal", "handshake", "Deal", { status: pick("stage"), owner: pick("ownerId") }),
@@ -41,6 +43,8 @@ export const ITEM_KINDS: Record<ItemKind, ItemAdapter> = Object.fromEntries(
     a("control", "Control", "shield-check", "Control", { owner: pick("ownerId") }),
     a("finding", "Finding", "search-check", "Finding", { owner: pick("ownerId") }),
     a("task", "Task", "square-check", "Task", { owner: pick("assigneeId", "teamId") }),
+    a("decision", "Decision", "scale", "Decision", { status: pick("status") }),
+    a("incident", "Incident", "siren", "Incident", { status: pick("status") }),
     a("change", "Change", "git-commit-horizontal", "Change"),
     // placeholder: access requests are not in the graph yet, so every id is a 404 until they are
     a("access-request", "Access request", "key-round", "AccessRequest"),
