@@ -4,8 +4,8 @@ Record on the live URL. Two windows: Claude Code (terminal, large font) with the
 
 Setup before recording:
 ```bash
-claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
-curl -s -X POST https://web-2fa0-3000.prg1.zerops.app/api/reset -H "x-reset-token: $RESET_TOKEN"   # clean baseline
+claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
+curl -s -X POST https://ripple.vaibhav.quest/api/reset -H "x-reset-token: $RESET_TOKEN"   # clean baseline
 ```
 
 | # | Time | Screen | Do | Say |

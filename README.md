@@ -2,7 +2,7 @@
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
-- **Live:** https://web-2fa0-3000.prg1.zerops.app (custom domain `ripple.vaibhav.quest` coming)
+- **Live:** https://ripple.vaibhav.quest (on Zerops)
 - **Track:** Track 03: Company Brain, WeMakeDevs x FalkorDB Graph Hacks
 - **Pitch:** before you ship a breaking change, ask the graph who it hits and who was never told.
 - **Modelling:** Telling a team is an edge (INVOLVED_IN / ACKED), so a missing edge is the finding.
@@ -19,7 +19,7 @@ Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (12 tools) o
 
 ```bash
 # Claude Code, hosted demo
-claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
+claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
 # local stdio: FalkorDB on :6379 with the seed loaded (this repo's .mcp.json already wires it)
 claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
 ```
@@ -27,7 +27,7 @@ claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm -
 Cursor and other clients (`mcp.json`):
 
 ```json
-{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }
+{ "mcpServers": { "ripple": { "url": "https://ripple.vaibhav.quest/api/mcp" } } }
 ```
 
 **Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). Install by copying the folder into `~/.claude/skills/` (all projects) or `.claude/skills/` (one project):
