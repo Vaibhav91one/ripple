@@ -4,7 +4,6 @@ import { LensArea } from "@/components/shell/LensArea";
 import { AppShell } from "@/components/shell/AppShell";
 import { AskDrawer } from "@/components/ask/AskDrawer";
 import { SourcePanel } from "@/components/panels/SourcePanel";
-import { ConflictDialog } from "@/components/ripple/ConflictDialog";
 
 // Dashboard shell around every app route. Overlays are URL-driven and live here so they work on every page.
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -15,11 +14,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Suspense>{children}</Suspense>
         </AppShell>
       </Suspense>
-      {/* Overlays driven by URL state: ?ask=1, ?src=<artifact>, ?conflict=open */}
+      {/* Overlays driven by URL state: ?ask=1, ?src=<artifact> */}
       <Suspense>
         <AskDrawer />
         <SourcePanel />
-        <ConflictDialog />
       </Suspense>
     </div>
   );

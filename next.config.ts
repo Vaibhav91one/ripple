@@ -14,8 +14,11 @@ const nextConfig: NextConfig = {
   // v1 URLs: /ripple?d=X opens that decision, bare /ripple opens the overview
   async redirects() {
     return [
+      // /decisions became /changes (one page per change)
+      { source: "/decisions", destination: "/changes", permanent: true },
+      { source: "/decisions/:id", destination: "/changes/:id", permanent: true },
       { source: "/inbox", destination: "/home", permanent: true }, // Home shows everything the inbox did
-      { source: "/ripple", has: [{ type: "query", key: "d", value: "(?<d>.+)" }], destination: "/decisions/:d", permanent: false },
+      { source: "/ripple", has: [{ type: "query", key: "d", value: "(?<d>.+)" }], destination: "/changes/:d", permanent: false },
       { source: "/ripple", destination: "/overview", permanent: false },
     ];
   },

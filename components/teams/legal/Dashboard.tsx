@@ -1,5 +1,6 @@
 "use client";
 
+import { V1_DECISION_ID } from "@/components/ripple/useDecisionId";
 import Link from "next/link";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { ContextCard } from "@/components/kit/beautifului/context-cards";
@@ -123,7 +124,7 @@ export function LegalDashboard() {
                     {conflict && (
                       <p className="text-xs text-conflict">
                         Conflicts with the sunset decision.{" "}
-                        <Link href="?conflict=open" className="underline underline-offset-2">Open the conflict</Link>
+                        <Link href={`/changes/${V1_DECISION_ID}?conflict=open`} className="underline underline-offset-2">Open the conflict</Link>
                       </p>
                     )}
                   </div>

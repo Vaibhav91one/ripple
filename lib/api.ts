@@ -3,7 +3,7 @@
 import { z } from "zod";
 import {
   AgentList, ApprovalList, DecideResult, RunDetail, RunList, type SettingsPatch,
-  Artifact, BottleneckRow, Change, Decision, Home, Inbox, ItDecided, ItQueue, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
+  Artifact, BottleneckRow, Campaign, Change, ChangeApproval, Decision, Home, Inbox, ItDecided, ItQueue, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import * as mock from "@/lib/mock/api";
@@ -41,6 +41,19 @@ export const getDecisions = (): Promise<Decision[]> =>
 /** `depth` 1-4 = dependency hops followed from the sunset system (default 3). The offline mock has one fixed depth. */
 export const getRipple = (decisionId: string, depth = 3): Promise<RippleResult> =>
   OFFLINE ? mock.getRipple(decisionId) : call(RippleResult, `/api/ripple?${qs({ d: decisionId, depth })}`);
+
+/** Per-team campaign of one change: ledger stages, Slack evidence, tasks, access. No offline mock: the demo without FalkorDB has no ledger. */
+export const getCampaign = (changeId: string): Promise<Campaign> =>
+  OFFLINE ? Promise.reject(new Error("campaign needs the server")) : call(Campaign, `/api/changes/${encodeURIComponent(changeId)}/campaign`);
+
+export const getChangeApprovals = (changeId: string): Promise<ChangeApproval[]> =>
+  OFFLINE ? Promise.resolve([]) : call(z.array(ChangeApproval), `/api/changes/${encodeURIComponent(changeId)}/approvals`);
+
+/** Propose a reminder to one team's owner; it lands in the change's Approvals tab. */
+export const chaseTeam = (changeId: string, teamId: string): Promise<{ id: string; status: string }> =>
+  call(z.object({ id: z.string(), status: z.string() }), `/api/changes/${encodeURIComponent(changeId)}/chase`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ teamId }),
+  });
 
 /** `since` is epoch seconds. */
 export const getChanges = (since: number): Promise<Change[]> =>

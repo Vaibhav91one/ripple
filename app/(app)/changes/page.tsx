@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import { ChangesScreen } from "@/components/changes/ChangesScreen";
+import { ChangesList } from "@/components/changes/ChangesList";
 
 export default function ChangesPage() {
-  return (
-    <Suspense>
-      <ChangesScreen />
-    </Suspense>
-  );
+  return <ChangesList />;
 }

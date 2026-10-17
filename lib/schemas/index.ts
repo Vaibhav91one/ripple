@@ -10,3 +10,4 @@ export { RestrictedSummary } from "./common";
 export * from "./items";
 export * from "./approvals";
 export * from "./it";
+export * from "./campaign";
