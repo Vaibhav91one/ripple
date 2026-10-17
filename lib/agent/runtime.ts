@@ -66,7 +66,7 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
     const parsed = def.input.safeParse(input);
     if (!parsed.success) return await finish("failed", { error: `invalid input: ${parsed.error.message}` });
 
-    const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose: (kind, payload, evidence) => proposeAction({ org: ctx.org, viewer: ctx.viewer, runId }, kind, payload, evidence) };
+    const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose: (kind, payload, evidence) => proposeAction({ org: ctx.org, viewer: { kind: ctx.viewer.kind ?? "agent", id: ctx.viewer.id }, runId }, kind, payload, evidence) };
     const outs = new Map<string, ToolOut>(); // toolCallId -> output, for the step log
     const allowed = new Set<string>(def.tools);
     // Only the allowlist exists as far as the model is concerned; execute re-checks anyway.
