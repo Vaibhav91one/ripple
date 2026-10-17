@@ -19,8 +19,12 @@ function Form() {
 
 export default function Page() {
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center p-6">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 p-6">
       <Suspense><Form /></Suspense>
+      <p className="flex gap-4 text-xs text-faint">
+        <Link href="/privacy" className="transition-colors hover:text-body">Privacy</Link>
+        <Link href="/terms" className="transition-colors hover:text-body">Terms</Link>
+      </p>
     </main>
   );
 }
