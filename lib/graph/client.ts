@@ -1,5 +1,6 @@
 // FalkorDB client. No `server-only` import so vitest and tsx (seed CLI) can load it.
 import { FalkorDB } from "falkordb";
+import { env } from "../env";
 import type Graph from "falkordb/dist/src/graph";
 
 export type { Graph };
@@ -8,12 +9,10 @@ export type Params = Record<string, unknown>;
 let db: Promise<FalkorDB> | undefined;
 
 export function client(): Promise<FalkorDB> {
+  const e = env();
   db ??= FalkorDB.connect({
-    password: process.env.FALKORDB_PASSWORD || undefined,
-    socket: {
-      host: process.env.FALKORDB_HOST ?? "localhost",
-      port: Number(process.env.FALKORDB_PORT ?? 6379),
-    },
+    password: e.FALKORDB_PASSWORD,
+    socket: { host: e.FALKORDB_HOST, port: e.FALKORDB_PORT },
   }).catch((e) => {
     db = undefined; // don't cache a failed connect: the next request retries
     throw e;
