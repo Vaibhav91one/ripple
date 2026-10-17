@@ -59,6 +59,6 @@ The data is synthetic, there are no live connectors yet, and there's no auth. Ne
 
 ## Links
 
-- Live: https://web-2fa0-3000.prg1.zerops.app
+- Live: https://ripple.vaibhav.quest
 - Code and every Cypher query: https://github.com/Vaibhav91one/ripple
 - Built with Claude Code (AI-use disclosure in the README).
