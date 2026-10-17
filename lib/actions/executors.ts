@@ -18,6 +18,11 @@ export const GraphMerge = z.object({
   props: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).refine((p) => !("id" in p), "props.id is not allowed").default({}),
 });
 
+export const SuggestMerge = z.object({
+  op: z.literal("suggest_merge"), kind: z.enum(["Person", "Team", "System", "Customer"]), aliasNorm: z.string().min(1), nodeId: z.string().min(1),
+  mention: z.string(), score: z.number(), newId: z.string(), src: z.string().optional(), quote: z.string().optional(),
+});
+
 export type GithubEnv = Partial<Pick<Env, "GITHUB_APP_ID" | "GITHUB_APP_INSTALLATION_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_REPO">>;
 export const CreateIssue = z.object({ title: z.string().min(1), body: z.string() });
 
@@ -53,8 +58,16 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
     if (r.status === "failed") throw new Error(r.error ?? "create issue failed");
     return r;
   },
-  graph_merge: async (payload, { writer, now }) => {
-    if (payload && typeof payload === "object" && "op" in payload) return applyProposal(writer(), payload, now); // a connector proposal
+  graph_merge: async (payload, { org, writer, now }) => {
+    if (payload && typeof payload === "object" && "op" in payload) {
+      if (payload.op !== "suggest_merge") return applyProposal(writer(), payload, now); // a connector or ingest proposal
+      // "These two names are the same node": approving records the alias so later ingests resolve it exactly. Never rewrites the graph.
+      const p = SuggestMerge.parse(payload);
+      const { db } = await import("../db"); // lazy: keeps lib/db (server-only) out of the pure-executor import graph
+      const { entityAliases } = await import("../db/schema");
+      await db().insert(entityAliases).values({ orgId: org.id, kind: p.kind, aliasNorm: p.aliasNorm, nodeId: p.nodeId }).onConflictDoNothing();
+      return { aliased: p.aliasNorm, nodeId: p.nodeId };
+    }
     const { label, id, props } = GraphMerge.parse(payload);
     return query(writer(), `MERGE (n:${label} {id: $id}) SET n += $props, n.updatedAt = $now RETURN n.id AS id`, { id, props, now });
   },
