@@ -39,6 +39,7 @@
     "next": "16.4.2",
     "nuqs": "^2.10.2",
     "ollama-ai-provider-v2": "^4.0.1",
+    "onnxruntime-node": "1.30.0",
     "radix-ui": "^1.8.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
