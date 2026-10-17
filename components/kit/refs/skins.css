@@ -2,19 +2,10 @@
    same component renders as a faithful replica inside .skin-* and as Ripple outside it.
    Extra tokens the reference components use: --hatch (loss/fail stripes), --chart (primary bars), --chart-2,
    --accent-ink (text on accent), --ref-radius (card radius),
-   --glow-a/--glow-b/--glow-ink (gradient highlight card: dark end, bright end, text on it). Ripple defaults are on .skin-ripple.
+   --glow-a/--glow-b/--glow-ink (gradient highlight card: dark end, bright end, text on it). Ripple defaults are on :root (app/globals.css).
    This file is the only place hex colours are allowed in components/kit/refs. */
 
-.skin-ripple {
-  --hatch: var(--conflict);
-  --chart: var(--ripple);
-  --chart-2: var(--gap);
-  --accent-ink: var(--page);
-  --ref-radius: 12px;
-  --glow-a: var(--raised);
-  --glow-b: var(--gap);
-  --glow-ink: var(--strong);
-}
+.skin-ripple {} /* alias: Ripple's values are the :root defaults in app/globals.css */
 
 /* Nizam (fivecorner, margin, Clearbill): light, white cards on a cool grey ground, one blue, pink loss hatch. */
 .skin-nizam {
@@ -46,9 +37,8 @@
 }
 
 /* margin's Pattern card gradient, fitted to colours sampled on a 6x8 grid of the reference (mean error about 8 per channel).
-   The Ripple pane uses the same one. */
-.skin-nizam,
-.skin-ripple {
+   The Ripple default (:root) uses the same one. */
+.skin-nizam {
   --pattern-bg:
     radial-gradient(40% 34% at 100% 100%, #F58F4A 0%, #F2A066 35%, rgb(242 160 102 / 0) 100%),
     radial-gradient(45% 50% at 100% 72%, #EED1A1 0%, #E6CDAE 40%, rgb(230 205 174 / 0) 100%),
