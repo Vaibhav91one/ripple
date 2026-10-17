@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "../graph/client";
-import { defineConnector, type GraphProposal } from "./define";
+import { BadSignature, defineConnector, type GraphProposal } from "./define";
 
 vi.mock("server-only", () => ({}));
 vi.mock("../queue", () => ({ enqueue: vi.fn(async () => "job") }));
@@ -29,7 +29,7 @@ const fake = defineConnector({
     { op: "merge_node", label: "Task", id: `t-${n}`, props: { title: `T${n}` }, src: `fake:${n}`, quote: "inferred", confidence: 0.6, structured: false },
   ],
   webhook: async (req, acct) => {
-    if (req.headers.get("x-sig") !== "ok") throw new Error("bad signature");
+    if (req.headers.get("x-sig") !== "ok") throw new BadSignature();
     const id = req.headers.get("x-delivery") ?? "";
     return [{ type: "pr.opened", orgId: acct.orgId, subject: { kind: "pr", id }, payload: { url: "https://example.com/pr/1" }, dedupeKey: `fake:${id}` }];
   },

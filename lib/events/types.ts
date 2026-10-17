@@ -11,6 +11,12 @@ const ev = <T extends string, P extends z.ZodRawShape>(type: T, payload: P) =>
     dedupeKey: id,
   });
 
+// Only url is required; the GitHub webhook fills the rest (changed paths feed PR Guard / Change Scout).
+const prPayload = {
+  url: z.url(), repo: z.string().optional(), number: z.number().optional(), action: z.string().optional(),
+  title: z.string().optional(), body: z.string().optional(), author: z.string().optional(), paths: z.array(z.string()).optional(),
+};
+
 export const RippleEvent = z.discriminatedUnion("type", [
   ev("change.spotted", { changeId: id }),
   ev("change.confirmed", { changeId: id }),
@@ -26,8 +32,8 @@ export const RippleEvent = z.discriminatedUnion("type", [
   ev("approval.requested", { changeId: id, approverId: id }),
   ev("access.needed", { userId: id, resource: id }),
   ev("access.granted", { userId: id, resource: id }),
-  ev("pr.opened", { url: z.url() }),
-  ev("pr.updated", { url: z.url() }),
+  ev("pr.opened", prPayload),
+  ev("pr.updated", prPayload),
   ev("digest.weekly", { weekStart: id }),
   ev("slack.inbound", { kind: z.enum(["event", "interactive", "command"]), teamId: id, body: z.unknown() }),
 ]);
