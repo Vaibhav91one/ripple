@@ -50,3 +50,20 @@ export async function roQuery<T = Record<string, unknown>>(
   const res = await graph.roQuery<T>(cypher, { params: params as never });
   return res.data ?? [];
 }
+
+export class ReadOnlyGraphError extends Error {
+  constructor() {
+    super("write attempted on a read-only graph");
+  }
+}
+
+/** Wrap a graph so only `roQuery` works: `query()` (and so every write helper) throws ReadOnlyGraphError. */
+export function readOnly(g: Graph): Graph {
+  return new Proxy(g, {
+    get(t, p) {
+      if (p === "query") return () => { throw new ReadOnlyGraphError(); };
+      const v = Reflect.get(t, p, t);
+      return typeof v === "function" ? v.bind(t) : v;
+    },
+  });
+}

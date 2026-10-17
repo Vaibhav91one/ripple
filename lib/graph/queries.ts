@@ -53,24 +53,40 @@ const ConflictRow = z.object({
   detectedAt: n, sources: z.string(),
 });
 
-/** Detect sunset-vs-guarantee conflicts, MERGE them as Conflict nodes, resolve the ones no longer true. */
-export async function conflicts(g: Graph, decisionId: string, now: number): Promise<Result<Conflict[]>> {
-  const det = await run(g, "conflicts-detect", { id: decisionId }, Detected);
-  const keep: string[] = [];
-  const merge = load("conflicts-merge");
-  for (const r of det.rows) {
-    const cid = `conf-${decisionId}-${r.systemId}`;
-    keep.push(cid);
-    const sources: Source[] = [
-      ...(r.sunsetSrc && r.sunsetQuote ? [{ artifactId: r.sunsetSrc, quote: r.sunsetQuote }] : []),
-      ...r.guaranteeSources.flatMap((s) => (s.artifactId && s.quote ? [{ artifactId: s.artifactId, quote: s.quote }] : [])),
-    ];
-    await query(g, merge.text, { cid, id: decisionId, now, contractIds: r.contractIds, sources: JSON.stringify(sources) });
-  }
-  const resolve = await run(g, "conflicts-resolve", { id: decisionId, keep }, z.object({ n }), undefined, true);
+/** Read the stored Conflict nodes for a decision. Never writes. */
+async function listConflicts(g: Graph, decisionId: string): Promise<Result<Conflict[]>> {
   const list = await run(g, "conflicts-list", { id: decisionId }, ConflictRow);
-  const data = list.rows.map((r) => Conflict.parse({ ...r, sources: JSON.parse(r.sources) }));
-  return { data, cypher: [det.c, merge, resolve.c, list.c] };
+  return { data: list.rows.map((r) => Conflict.parse({ ...r, sources: JSON.parse(r.sources) })), cypher: [list.c] };
+}
+
+/**
+ * Detect sunset-vs-guarantee conflicts, MERGE them as Conflict nodes, resolve the ones no longer true.
+ * The only conflict writer: call it where state changes (seed, change-sunset), never on a read path.
+ * Covers every decision unless `decisionId` is given.
+ */
+export async function detectConflicts(g: Graph, now: number, decisionId?: string): Promise<Result<Conflict[]>> {
+  const ids = decisionId ? [decisionId] : (await decisions(g)).data.map((d) => d.id);
+  const merge = load("conflicts-merge");
+  const data: Conflict[] = [];
+  const cypher: Cypher[] = [];
+  for (const id of ids) {
+    const det = await run(g, "conflicts-detect", { id }, Detected);
+    const keep: string[] = [];
+    for (const r of det.rows) {
+      const cid = `conf-${id}-${r.systemId}`;
+      keep.push(cid);
+      const sources: Source[] = [
+        ...(r.sunsetSrc && r.sunsetQuote ? [{ artifactId: r.sunsetSrc, quote: r.sunsetQuote }] : []),
+        ...r.guaranteeSources.flatMap((s) => (s.artifactId && s.quote ? [{ artifactId: s.artifactId, quote: s.quote }] : [])),
+      ];
+      await query(g, merge.text, { cid, id, now, contractIds: r.contractIds, sources: JSON.stringify(sources) });
+    }
+    const resolve = await run(g, "conflicts-resolve", { id, keep }, z.object({ n }), undefined, true);
+    const list = await listConflicts(g, id);
+    data.push(...list.data);
+    cypher.push(det.c, merge, resolve.c, ...list.cypher);
+  }
+  return { data, cypher };
 }
 
 // ---------- ripple ----------
@@ -128,7 +144,7 @@ export async function ripple(g: Graph, decisionId: string, now: number, depth = 
   const names = new Map(gp.teams.map((t) => [t.team, t.name]));
   for (const t of teamIds) nodes.set(t, { id: t, label: names.get(t) ?? t, kind: "team", hop: maxHop + 1 });
 
-  const cf = await conflicts(g, decisionId, now);
+  const cf = await listConflicts(g, decisionId);
   const open = cf.data.filter((c) => c.status === "open");
   const contractIds = new Set(open.flatMap((c) => c.contractIds));
   const rows = (k: string) => new Map(rp.rows.filter((r) => r.kind === k).map((r) => [r.ref, r]));
@@ -257,7 +273,7 @@ export async function whyAffected(g: Graph, decisionId: string, teamId: string):
 export async function changeSunset(g: Graph, decisionId: string, newOn: number, now: number): Promise<Result<Conflict[]>> {
   const c = load("change-sunset");
   await query(g, c.text, { id: decisionId, newOn, now });
-  const cf = await conflicts(g, decisionId, now);
+  const cf = await detectConflicts(g, now, decisionId);
   return { data: cf.data, cypher: [c, ...cf.cypher] };
 }
 

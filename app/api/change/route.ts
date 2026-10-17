@@ -15,5 +15,5 @@ export async function POST(req: Request) {
     await ripple(g, decisionId, now); // 404 for an unknown decision before anything is written
     await changeSunset(g, decisionId, newOn, now);
     return ripple(g, decisionId, now);
-  });
+  }, true);
 }

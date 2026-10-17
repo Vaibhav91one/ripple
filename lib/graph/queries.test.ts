@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeClient, graphFor, query, roQuery, type Graph } from "./client";
 import { seed } from "../ingest/seed";
-import { bottleneck, changeSunset, conflicts, diff, gap, ripple, search, searchVector, whoKnows, whyAffected } from "./queries";
+import { bottleneck, changeSunset, detectConflicts, diff, gap, ripple, search, searchVector, whoKnows, whyAffected } from "./queries";
 
 const name = `test_q_${randomUUID().replaceAll("-", "")}`;
 const day = (d: string) => Math.floor(Date.parse(`${d}T09:00:00Z`) / 1000);
@@ -85,12 +85,12 @@ describe("queries on the ledgerly seed (in order: later tests mutate the graph)"
   });
 
   t("exactly one open conflict, idempotent", async () => {
-    const a = await conflicts(g, "d-1", NOW);
-    const b = await conflicts(g, "d-1", NOW + 60);
+    const a = await detectConflicts(g, NOW, "d-1");
+    const b = await detectConflicts(g, NOW + 60, "d-1");
     expect(a.data.filter((c) => c.status === "open")).toHaveLength(1);
     expect(b.data).toHaveLength(1);
     expect(b.data[0]).toMatchObject({ severity: "high", status: "open", contractIds: ["ctr-1", "ctr-2"] });
-    expect(b.data[0].detectedAt).toBe(NOW);
+    expect(b.data[0].detectedAt).toBe(a.data[0].detectedAt);
     expect(b.data[0].sources.length).toBeGreaterThan(1);
   });
 

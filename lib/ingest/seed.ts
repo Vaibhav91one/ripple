@@ -2,6 +2,7 @@
 // Dates are epoch seconds. valid_to absent = current edge. Embeddings come from the committed cache (pnpm embed).
 import { closeClient, graphFor, query, type Graph } from "../graph/client";
 import { readEmbedding } from "./embed";
+import { detectConflicts } from "../graph/queries";
 import { ensureSchema } from "../graph/schema";
 import * as m from "../mock/ledgerly";
 import * as v2 from "../mock/ledgerly-v2";
@@ -161,6 +162,7 @@ export async function seed(graphName: string): Promise<void> {
       { rows },
     );
   }
+  await detectConflicts(g, Math.floor(Date.now() / 1000)); // reads never write Conflict nodes, so seed creates them
 }
 
 if (process.argv[1]?.endsWith("lib/ingest/seed.ts")) {

@@ -8,7 +8,7 @@ import { encodeAckToken } from "./ack-token";
 import { env as readEnv, type Env as AppEnv } from "./env";
 import { buildBrief } from "./briefs";
 import { query, roQuery, type Graph } from "./graph/client";
-import { ripple } from "./graph/queries";
+import { detectConflicts, ripple } from "./graph/queries";
 import { artifacts } from "./mock/ledgerly";
 import type { Ack } from "./schemas";
 
@@ -75,6 +75,7 @@ export async function notifyGaps(
   const now = o.now ?? Math.floor(Date.now() / 1000);
   const env = o.env ?? readEnv();
   const baseUrl = o.baseUrl ?? "";
+  await detectConflicts(g, now, decisionId); // ripple() only reads stored conflicts
   const r = await ripple(g, decisionId, now);
   const teamName = (id: string) => r.nodes.find((n) => n.id === id)?.label ?? id;
   const results: NotifyResult[] = [];
