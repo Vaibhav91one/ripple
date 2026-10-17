@@ -65,7 +65,7 @@ export default function FivecornerSection() {
               { title: "A depth-4 dependency was found", sub: "Data reaches api-v1 via reporting-export, billing-sync and api-gateway.", count: 1, unit: "team", pct: 20 },
               { title: "Three teams were never told", sub: "Security, Legal and DevRel have no acknowledgement.", count: 3, unit: "teams", pct: 60 },
             ]}
-            rescored={{ title: "Re-checked 5 teams on 12 Oct 2026", sub: "Each one was looked up in the graph again." }}
+            rescored={{ title: "Conflict found on 6 Oct 2026", sub: "Northwind's contract guarantees v1 past the sunset date." }}
             trust={rpTrust} closeLabel="Close" primaryLabel="See affected teams"
           />
         }
