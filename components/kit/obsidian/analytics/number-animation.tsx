@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI (obsidianui.dev) Analytics Dashboard, MIT, see ../LICENSE. Slot-machine reels; motion.* converted to m.* (strict LazyMotion).
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -34,7 +35,7 @@ const DIGITS = "0123456789";
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
 const UPPER = LOWER.toUpperCase();
 /** Fast out, long soft landing, never past the target. */
-const LANDING = [.12, .8, .16, 1] as const;
+const LANDING = mo.ease.enter;
 const subscribe = () => () => {};
 /** Cell pitch in em. Keep in sync with .cell in the stylesheet. */
 const CELL = 1.6;
@@ -121,17 +122,17 @@ function Reel({ char, order, entering, rising, duration, stagger, spins, reduced
       return;
     }
     pos.jump(reel.from);
-    const spin = animate(pos, last, { duration: last === 0 ? .2 : reel.time, ease: [...LANDING] });
+    const spin = animate(pos, last, { duration: last === 0 ? mo.sec(mo.duration.enter) : reel.time, ease: [...LANDING] });
     if (reel.grow) width.jump(0);
     if (width.get() === "auto") { width.jump(measured); return () => spin.stop(); }
-    const size = animate(width, measured, { type: "spring", visualDuration: Math.min(reel.time, .6), bounce: 0 });
+    const size = animate(width, measured, { type: "spring", visualDuration: Math.min(reel.time, mo.sec(mo.duration.long)), bounce: 0 });
     return () => { spin.stop(); size.stop(); };
   }, [reel, pos, width, reduced]);
 
   useLayoutEffect(() => {
     if (isPresent) return;
     if (reduced) { safeToRemove(); return; }
-    const exit = animate(width, 0, { type: "spring", visualDuration: .35, bounce: 0, onComplete: safeToRemove });
+    const exit = animate(width, 0, { type: "spring", visualDuration: mo.sec(mo.duration.medium), bounce: 0, onComplete: safeToRemove });
     return () => exit.stop();
   }, [isPresent, safeToRemove, width, reduced]);
 
@@ -145,7 +146,7 @@ function Reel({ char, order, entering, rising, duration, stagger, spins, reduced
   </m.span>;
 }
 
-export function NumberAnimation({ value, format, duration = .9, stagger = .07, spins = 1, align, announce = false, className, style }: NumberAnimationProps) {
+export function NumberAnimation({ value, format, duration = mo.sec(mo.duration.draw), stagger = mo.sec(mo.stagger.item), spins = 1, align, announce = false, className, style }: NumberAnimationProps) {
   const reduced = useReducedFlag();
   const text = typeof value === "number" ? (format ? format(value) : value.toLocaleString("en-US")) : value;
   const fromEnd = (align ?? (typeof value === "number" ? "end" : "start")) === "end";

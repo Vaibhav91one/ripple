@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI Dashboard Shell (obsidianui.dev), MIT, see ../LICENSE. Prop-driven as shipped; motion switched to m.* (strict LazyMotion), palette remapped to Ripple tokens in ./dashboard-shell.css.
 
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
@@ -13,13 +14,13 @@ import type { ComponentProps, CSSProperties, ElementType, FocusEvent, KeyboardEv
 import { cn } from "@/lib/utils";
 import "./dashboard-shell.css";
 
-const EASE_OUT = [0.25, 1, 0.5, 1] as const;
+const EASE_OUT = mo.ease.enter;
 /** The hover highlight glides after the pointer. */
-const FOLLOW_SPRING = { type: "spring", stiffness: 650, damping: 45, mass: 0.5 } as const;
+const FOLLOW_SPRING = { type: "spring", ...mo.spring.stiff, mass: 0.5 } as const;
 /** The active pill slides to the chosen item. */
-const PILL_SPRING = { type: "spring", stiffness: 520, damping: 38, mass: 0.7 } as const;
+const PILL_SPRING = { type: "spring", ...mo.spring.snappy, mass: 0.7 } as const;
 /** Menus and popovers settle from a slight squash with a small overshoot. */
-const LAYER_SPRING = { type: "spring", stiffness: 560, damping: 26, mass: 0.7 } as const;
+const LAYER_SPRING = { type: "spring", ...mo.spring.bouncy, mass: 0.7 } as const;
 const RESIZE_STEP = 10;
 /** The sidebar docks beside the content from this container width, in rem. Keep in sync with `@2xl/dashboard-shell`. */
 const DOCKED_SIDEBAR_REM = 42;
@@ -71,9 +72,9 @@ function layerMotion(reduceMotion: boolean) {
       scaleX: 1,
       scaleY: 1,
       filter: "blur(0px)",
-      transition: { ...LAYER_SPRING, opacity: { duration: 0.16, ease: EASE_OUT }, filter: { duration: 0.24, ease: EASE_OUT } },
+      transition: { ...LAYER_SPRING, opacity: { duration: mo.sec(mo.duration.fast), ease: EASE_OUT }, filter: { duration: mo.sec(mo.duration.enter), ease: EASE_OUT } },
     },
-    exit: { opacity: 0, scaleX: 0.96, scaleY: 0.94, filter: "blur(4px)", transition: { duration: 0.14, ease: EASE_OUT } },
+    exit: { opacity: 0, scaleX: 0.96, scaleY: 0.94, filter: "blur(4px)", transition: { duration: mo.sec(mo.duration.fast), ease: EASE_OUT } },
   };
 }
 
@@ -280,8 +281,8 @@ export function DashboardConfirmDialog({
               <AlertDialogPrimitive.Content forceMount asChild>
                 <m.div
                   initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 6, filter: "blur(6px)" }}
-                  animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)", transition: reduceMotion ? { duration: 0 } : { ...LAYER_SPRING, opacity: { duration: 0.16, ease: EASE_OUT }, filter: { duration: 0.2, ease: EASE_OUT } } }}
-                  exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.97, y: 4, filter: "blur(4px)", transition: { duration: 0.14, ease: EASE_OUT } }}
+                  animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)", transition: reduceMotion ? { duration: 0 } : { ...LAYER_SPRING, opacity: { duration: mo.sec(mo.duration.fast), ease: EASE_OUT }, filter: { duration: mo.sec(mo.duration.enter), ease: EASE_OUT } } }}
+                  exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.97, y: 4, filter: "blur(4px)", transition: { duration: mo.sec(mo.duration.fast), ease: EASE_OUT } }}
                   className={cn(
                     "obsidian-dashboard-shell-layer pointer-events-auto flex w-full max-w-sm flex-col gap-4 rounded-xl bg-(--obsidian-dashboard-shell-background) p-4 text-(--obsidian-dashboard-shell-foreground) shadow-(--obsidian-dashboard-shell-menu-shadow) outline-none",
                     isDark && "dark",
@@ -529,7 +530,7 @@ export function DashboardShell({
     const controls = animate(
       content,
       { opacity: [0, 1], y: [6, 0], filter: ["blur(4px)", "blur(0px)"] },
-      { duration: 0.32, ease: EASE_OUT },
+      { duration: mo.sec(mo.duration.medium), ease: EASE_OUT },
     );
     // A leftover transform or filter would make the scroll area the containing block for fixed-position content.
     controls.then(() => {
@@ -850,7 +851,7 @@ function HoverHighlightList({
           style={{ x, y, width, height }}
           initial={false}
           animate={{ opacity: isVisible ? 1 : 0 }}
-          transition={{ duration: isVisible ? 0.12 : 0.15, ease: "easeOut" }}
+          transition={{ duration: isVisible ? 0.12 : 0.15, ease: mo.ease.enter }}
         />
         {children}
       </div>

@@ -120,7 +120,7 @@ export function SalesDashboard() {
                   <button
                     type="button"
                     onClick={() => panel.open(src.artifactId, src.quote)}
-                    className="rounded-md border border-hairline bg-surface px-2 py-1.5 text-left text-body hover:border-ripple"
+                    className="rounded-md border border-hairline bg-surface px-2 py-1.5 text-left text-body hover:border-ripple transition-colors"
                     title={`Open ${name(src.artifactId)}`}
                   >
                     <span className="block text-faint">Promise, {name(src.artifactId)}</span>

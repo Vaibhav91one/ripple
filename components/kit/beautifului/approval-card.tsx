@@ -111,7 +111,7 @@ export default function ApprovalCard({
             <span className="text-[13px] font-medium text-strong" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) 100ms both" }}>
               {sentLabel}
             </span>
-            <button type="button" onClick={reset} className="text-[12px] font-medium text-ripple hover:underline">
+            <button type="button" onClick={reset} className="text-[12px] font-medium text-ripple hover:underline transition-colors">
               Start over
             </button>
           </div>

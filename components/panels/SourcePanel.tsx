@@ -58,7 +58,7 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
                 </p>
               )}
             </div>
-            <Dialog.Close aria-label="Close" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple">
+            <Dialog.Close aria-label="Close" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
               <X className="size-4" />
             </Dialog.Close>
           </header>
@@ -71,7 +71,7 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
                     s.hit ? <mark key={i} className="rounded-sm bg-ripple-soft px-0.5 text-strong">{s.text}</mark> : <span key={i}>{s.text}</span>,
                   )}
                 </p>
-                <a href={a.uri} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple">
+                <a href={a.uri} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
                   Open in source <ExternalLink className="size-3.5" />
                 </a>
               </>

@@ -1,5 +1,6 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 'use client'
+import * as mo from "@/lib/motion";
 
 import {
     AnimatePresence,
@@ -40,15 +41,15 @@ const WAVE_PROGRESS = [0, 0.007, 0.028, 0.061, 0.104, 0.156, 0.216, 0.282, 0.352
 const DRAW_END = 0.7
 const HOLD_END = 0.85
 const SCRIBBLE: Transition = {
-    duration: 2.4,
+    duration: mo.sec(mo.duration.loop * 2),
     ease: 'linear',
     repeat: Infinity,
     times: [...WAVE_PROGRESS.map((_, i) => (i / (WAVE_PROGRESS.length - 1)) * DRAW_END), HOLD_END, 1],
 }
 const TWINKLE_PATH = 'M18 2Q18.4 4.6 21 5Q18.4 5.4 18 8Q17.6 5.4 15 5Q17.6 4.6 18 2Z'
 
-const SWAP: Transition = { type: 'spring', duration: 0.5, bounce: 0.15 }
-const ICON: Transition = { type: 'spring', duration: 0.55, bounce: 0.35 }
+const SWAP: Transition = { type: 'spring', duration: mo.sec(mo.duration.slow), bounce: 0.15 }
+const ICON: Transition = { type: 'spring', duration: mo.sec(mo.duration.slow), bounce: 0.35 }
 const INSTANT: Transition = { duration: 0 }
 
 const swapVariants: Variants = {
@@ -73,7 +74,7 @@ const STROKE = {
     strokeLinejoin: 'round',
 } as const
 
-const LOOP = { repeat: Infinity, ease: 'easeInOut' } as const
+const LOOP = { repeat: Infinity, ease: mo.ease.inOut } as const
 
 const isBuiltIn = (state: string): state is AiStatusState => Object.hasOwn(DEFAULT_STATES, state)
 
@@ -248,13 +249,13 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                         d={SPARKLE_PATH}
                         fill="currentColor"
                         animate={reduced ? undefined : { rotate: [0, 90], scale: [1, 0.8, 1] }}
-                        transition={loop({ duration: 2.4, ...LOOP })}
+                        transition={loop({ duration: mo.sec(mo.duration.loop * 2), ...LOOP })}
                     />
                     <m.path
                         d={TWINKLE_PATH}
                         fill="currentColor"
                         animate={reduced ? undefined : { scale: [0.4, 1, 0.4], opacity: [0.3, 1, 0.3] }}
-                        transition={loop({ duration: 1.2, ...LOOP })}
+                        transition={loop({ duration: mo.sec(mo.duration.loop), ...LOOP })}
                     />
                 </svg>
             )
@@ -263,7 +264,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                 <svg viewBox="0 0 24 24" width={18} height={18} className="text-faint">
                     <m.g
                         animate={reduced ? undefined : { x: [0, 2, 0, -2, 0], y: [-2, 0, 2, 0, -2] }}
-                        transition={loop({ duration: 2, repeat: Infinity, ease: 'linear' })}
+                        transition={loop({ duration: mo.sec(mo.duration.loop * 2), repeat: Infinity, ease: 'linear' })}
                     >
                         <circle {...STROKE} cx={10.5} cy={10.5} r={5.5} strokeWidth={2.25} />
                         <path {...STROKE} d="M14.75 14.75L19 19" strokeWidth={2.5} />
@@ -283,7 +284,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                             y2={19}
                             strokeWidth={3}
                             animate={reduced ? undefined : { y1: [15, 5, 15] }}
-                            transition={loop({ duration: 0.9, delay: i * 0.15, ...LOOP })}
+                            transition={loop({ duration: mo.sec(mo.duration.draw), delay: mo.sec(i * mo.stagger.hop), ...LOOP })}
                         />
                     ))}
                 </svg>
@@ -326,7 +327,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                         strokeWidth={2.5}
                         initial={{ pathLength: reduced ? 1 : 0 }}
                         animate={{ pathLength: 1 }}
-                        transition={reduced ? INSTANT : { type: 'spring', duration: 0.6, bounce: 0, delay: 0.1 }}
+                        transition={reduced ? INSTANT : { type: 'spring', duration: mo.sec(mo.duration.long), bounce: 0, delay: mo.sec(mo.duration.hover) }}
                     />
                 </svg>
             )
@@ -338,7 +339,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                         d="M7 7L17 17M17 7L7 17"
                         strokeWidth={2.5}
                         animate={reduced ? undefined : { x: [0, -3, 3, -2, 2, 0] }}
-                        transition={{ duration: 0.45, delay: 0.1 }}
+                        transition={{ duration: mo.sec(mo.duration.slow), delay: mo.sec(mo.duration.hover) }}
                     />
                 </svg>
             )
@@ -347,7 +348,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
                 <m.span
                     className="size-2.5 rounded-full bg-faint"
                     animate={reduced ? undefined : { scale: [1, 0.7, 1], opacity: [1, 0.5, 1] }}
-                    transition={loop({ duration: 1.2, ...LOOP })}
+                    transition={loop({ duration: mo.sec(mo.duration.loop), ...LOOP })}
                 />
             )
     }
@@ -363,7 +364,7 @@ function Shimmer({ reduced, children }: { reduced: boolean; children: React.Reac
             style={{ backgroundImage: SHIMMER, backgroundSize: '250% 100%' }}
             initial={{ backgroundPosition: '100% 0' }}
             animate={{ backgroundPosition: '0% 0' }}
-            transition={{ duration: 1.6, ease: 'linear', repeat: Infinity }}
+            transition={{ duration: mo.sec(mo.duration.loop * 1.5), ease: 'linear', repeat: Infinity }}
         >
             {children}
         </m.span>

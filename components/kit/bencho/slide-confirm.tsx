@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Bencho (bencho.dev) free block, MIT, see ./LICENSE. Restyled to Ripple tokens.
 import "./bencho.css";
 import { useEffect, useRef, useState } from "react";
@@ -176,7 +177,7 @@ export function SlideConfirm({
   const spring = {
     type: "spring" as const,
     stiffness: stiff,
-    damping: 2 * Math.sqrt(stiff * 0.9),
+    damping: Math.sqrt(stiff * 0.9) * 2,
     mass: 0.9,
   };
   /* ── the RETURN is not ───────────────────────────────────
@@ -185,7 +186,7 @@ export function SlideConfirm({
      movement — `seen` clamps the position at the wall — it
      shows as the squash above, which is the same energy
      spent somewhere it fits. */
-  const home = { ...spring, damping: 2 * Math.sqrt(stiff * 0.9) * 0.62 };
+  const home = { ...spring, damping: Math.sqrt(stiff * 0.9) * 2 * 0.62 };
 
   useEffect(() => () => {
     window.clearTimeout(beat.current);
@@ -341,25 +342,25 @@ export function SlideConfirm({
        spring, which is what keeps them in step frame by frame
        rather than merely landing together. */
     anchor.set(x.get());
-    animate(shown, 0, { duration: 0.16 });
+    animate(shown, 0, { duration: mo.sec(mo.duration.fast) });
     animate(x, 0, spring);
     animate(pulse, [1, 0.974, 1], {
-      duration: 0.42,
+      duration: mo.sec(mo.duration.slow),
       times: [0, 0.62, 1],
-      ease: [0.33, 0.55, 0.2, 1],
+      ease: mo.ease.enter,
       /* a beat behind the unfurl, so it is the landing that
          dips rather than the take-off */
-      delay: 0.1,
+      delay: mo.sec(mo.duration.hover),
     });
     beat.current = window.setTimeout(() => {
       setDone(false);
-      animate(shown, 1, { duration: 0.22, delay: 0.12 });
+      animate(shown, 1, { duration: mo.sec(mo.duration.enter), delay: mo.sec(mo.duration.hover) });
       /* and the reset is the anchor coming home with x already
          at zero: the width shrinks from the full track back to
          the handle, so the RIGHT edge sweeps left to the start.
          The unfurl played backwards, which is what it should
          look like. */
-      animate(anchor, 0, { type: "spring", stiffness: 380, damping: 34, mass: 0.9 });
+      animate(anchor, 0, { type: "spring", ...mo.spring.soft, mass: 0.9 });
     }, HOLD);
   };
 
@@ -458,7 +459,7 @@ export function SlideConfirm({
             width: wide,
             borderRadius: gripR,
           }}
-          transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.7 }}
+          transition={{ type: "spring", ...mo.spring.soft, mass: 0.7 }}
           aria-label={done ? doneLabel : label}
         >
           <m.span className="sld-arrow" style={{ opacity: arrow }} aria-hidden="true">
@@ -472,7 +473,7 @@ export function SlideConfirm({
             aria-hidden="true"
             initial={false}
             animate={{ opacity: done ? 1 : 0, scale: done ? 1 : 0.7 }}
-            transition={{ duration: 0.16, ease: [0.33, 0.55, 0.2, 1] }}
+            transition={{ duration: mo.sec(mo.duration.fast), ease: mo.ease.enter }}
           >
             <Check size={20} strokeWidth={2} />
             {doneLabel}

@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // AgentCard: a sandbox (or tool call) with a timer pill, a folder row, progress, the agent and what it is doing.
 // CubeCard: the small dark meter card with a price pill and a folder row.
 import { Box, Folder } from "lucide-react";
@@ -40,7 +41,7 @@ export function AgentCard(p: AgentCardProps) {
           <span className="font-mono text-lg text-faint">{p.folderNote}</span>
         </div>
         <div className="mt-3 h-[11px] overflow-hidden rounded-full bg-hairline" role="progressbar" aria-valuenow={Math.round(p.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-          <m.div className="h-full origin-left rounded-full bg-faint" initial={{ scaleX: 0 }} animate={{ scaleX: p.progress }} transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }} />
+          <m.div className="h-full origin-left rounded-full bg-faint" initial={{ scaleX: 0 }} animate={{ scaleX: p.progress }} transition={{ duration: mo.sec(mo.duration.medium), ease: mo.ease.enter }} />
         </div>
         <p className="mt-6 flex items-center gap-3 text-xl font-semibold tracking-[-0.01em] text-strong">
           <span className="size-5 rounded-full bg-gap" aria-hidden />{p.agent}

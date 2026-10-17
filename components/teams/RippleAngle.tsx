@@ -22,9 +22,9 @@ export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: strin
         <h2 className="text-sm font-semibold text-strong">Changes affecting {teamName}</h2>
         <StatusPill tone={status.tone} label={status.label} />
       </header>
-      <Link href={`/decisions/${angle.decisionId}`} className="group flex items-center justify-between rounded-md border border-hairline bg-raised px-3 py-2 text-sm text-strong hover:border-ripple">
+      <Link href={`/decisions/${angle.decisionId}`} className="group flex items-center justify-between rounded-md border border-hairline bg-raised px-3 py-2 text-sm text-strong hover:border-ripple transition-colors">
         <span>{name(angle.decisionId)}</span>
-        <ArrowUpRight className="size-4 text-faint group-hover:text-ripple" aria-hidden />
+        <ArrowUpRight className="size-4 text-faint group-hover:text-ripple transition-colors" aria-hidden />
       </Link>
       {angle.facts.length > 0 && (
         <section className="flex flex-col gap-2">

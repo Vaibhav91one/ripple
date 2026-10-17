@@ -1,5 +1,6 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 "use client";
+import * as mo from "@/lib/motion";
 
 import { useRef, useState, type ComponentProps } from "react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
@@ -50,10 +51,10 @@ const SIZES = {
 const SLOT_CLASS =
   "bg-strong bg-raised text-center font-medium text-transparent caret-transparent outline-none transition-shadow duration-200 selection:bg-transparent disabled:cursor-not-allowed disabled:opacity-50";
 
-const ROLL_SPRING = { type: "spring", stiffness: 500, damping: 34 } as const;
-const CARET_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
+const ROLL_SPRING = { type: "spring", ...mo.spring.snappy } as const;
+const CARET_SPRING = { type: "spring", ...mo.spring.snappy } as const;
 const BLINK = {
-  duration: 1.1,
+  duration: mo.sec(mo.duration.loop),
   times: [0, 0.5, 0.5, 1],
   repeat: Infinity,
   ease: "linear" as const,
@@ -259,7 +260,7 @@ export function OtpInput({
         animate={{
           x: status === "error" && !reduceMotion ? SHAKE : 0,
         }}
-        transition={{ duration: 0.32, ease: "easeOut" }}
+        transition={{ duration: mo.sec(mo.duration.medium), ease: mo.ease.enter }}
         data-slot="otp-input-row"
         className={cn("relative flex items-center", scale.gap)}
       >
@@ -308,7 +309,7 @@ export function OtpInput({
                   data-slot="otp-input-ring"
                   viewBox={`0 0 ${scale.px} ${scale.px}`}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: mo.sec(mo.duration.fast) }}
                   className="pointer-events-none absolute inset-0 size-full"
                 >
                   <m.rect
@@ -326,9 +327,9 @@ export function OtpInput({
                       reduceMotion
                         ? { duration: 0 }
                         : {
-                            duration: 0.45,
-                            ease: "easeOut",
-                            delay: 0.15 + index * 0.05,
+                            duration: mo.sec(mo.duration.slow),
+                            ease: mo.ease.enter,
+                            delay: mo.sec(mo.duration.fast + index * mo.stagger.item),
                           }
                     }
                   />
@@ -369,7 +370,7 @@ export function OtpInput({
             animate={{ x: caretX - 1, y: "-50%", opacity: [1, 1, 0, 0] }}
             transition={{
               x: reduceMotion ? { duration: 0 } : CARET_SPRING,
-              opacity: BLINK,
+              opacity: reduceMotion ? { duration: 0 } : BLINK,
             }}
             className={cn(
               "pointer-events-none absolute left-0 top-1/2 w-0.5 rounded-full bg-strong",

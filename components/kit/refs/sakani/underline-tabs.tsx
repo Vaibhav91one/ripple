@@ -20,7 +20,7 @@ export function UnderlineTabs({ items, value, onChange, searchPlaceholder }: {
           const on = t.value === value;
           return (
             <button key={t.value} role="tab" type="button" aria-selected={on} onClick={() => onChange?.(t.value)}
-              className={`relative px-2 pb-[10px] text-sm leading-5 font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-ripple ${on ? "text-strong" : "text-faint hover:text-strong"}`}>
+              className={`transition-colors relative px-2 pb-[10px] text-sm leading-5 font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-ripple ${on ? "text-strong" : "text-faint hover:text-strong"}`}>
               {t.label}
               {on && <m.span aria-hidden layoutId={id} transition={{ duration: reduce ? 0 : 0.2 }} className="absolute inset-x-0 bottom-0 h-0.5 rounded-chip bg-ripple" />}
             </button>

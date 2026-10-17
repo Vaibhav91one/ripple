@@ -25,7 +25,7 @@ export function RefRow({ n, name, from, post, license, img, crop = "center", ski
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-md text-strong"><span className="mr-2 font-mono text-faint">{n}</span>{name}</h3>
         <p className="text-xs text-faint">
-          {from} · <a href={post} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-body">source</a> · {license}
+          {from} · <a href={post} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-body transition-colors">source</a> · {license}
         </p>
       </header>
       <div className={`grid grid-cols-1 gap-4 ${wide ? "" : "lg:grid-cols-[1fr_2fr_2fr]"}`}>
@@ -35,7 +35,7 @@ export function RefRow({ n, name, from, post, license, img, crop = "center", ski
             // eslint-disable-next-line @next/next/no-img-element -- local-only screenshot, not optimised on purpose
             <img src={`/refs/${img}`} alt={`${from} reference`} className={`w-full rounded-control border border-hairline object-cover ${wide ? "max-h-[420px]" : "h-72"}`} style={{ objectPosition: crop }} />
           ) : (
-            <a href={post} target="_blank" rel="noreferrer" className="flex h-24 items-center justify-center rounded-control border border-dashed border-hairline text-faint hover:text-body">
+            <a href={post} target="_blank" rel="noreferrer" className="transition-colors flex h-24 items-center justify-center rounded-control border border-dashed border-hairline text-faint hover:text-body">
               Open the reference post
             </a>
           )}

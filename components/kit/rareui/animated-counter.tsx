@@ -1,5 +1,6 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 "use client";
+import * as mo from "@/lib/motion";
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps, ReactNode, Ref } from "react";
@@ -34,9 +35,9 @@ const FADE = `linear-gradient(to bottom,
   color-mix(in oklab, var(--page) 6%, transparent) 94.5%,
   color-mix(in oklab, var(--page) 0%, transparent) 100%)`;
 
-const EASE = [0.22, 1, 0.36, 1] as const;
+const EASE = mo.ease.enter;
 const BOUNCE = 0.18;
-const LEAVE = { duration: 0.18, ease: EASE } as const;
+const LEAVE = { duration: mo.sec(mo.duration.fast), ease: EASE } as const;
 const INSTANT = { duration: 0 } as const;
 
 const spring = (duration: number): Transition => ({
@@ -304,7 +305,7 @@ export type AnimatedCounterProps = Omit<
 export function AnimatedCounter({
   value,
   decimals = 0,
-  duration = 0.6,
+  duration = mo.sec(mo.duration.long),
   padStart = 1,
   separator = ",",
   decimalSeparator = ".",

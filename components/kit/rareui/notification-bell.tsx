@@ -1,5 +1,6 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 "use client";
+import * as mo from "@/lib/motion";
 
 import { useEffect, useRef } from "react";
 import type { ComponentProps, ReactNode } from "react";
@@ -41,15 +42,14 @@ const ORBIT = 0.9;
 // low damping so it keeps swinging for a bit
 const SWING_SPRING = {
   type: "spring",
-  stiffness: 220,
-  damping: 10,
+  ...mo.spring.wobble,
   mass: 1,
   restDelta: 0.01,
 } as const;
-const CLAPPER_SPRING = { stiffness: 300, damping: 14, mass: 1 };
-const COLUMN_SPRING = { stiffness: 400, damping: 30, mass: 0.9 };
-const ENTER_SPRING = { type: "spring", stiffness: 600, damping: 20 } as const;
-const FADE = { duration: 0.15 } as const;
+const CLAPPER_SPRING = { ...mo.spring.wobble, mass: 1 };
+const COLUMN_SPRING = { ...mo.spring.soft, mass: 0.9 };
+const ENTER_SPRING = { type: "spring", ...mo.spring.bouncy } as const;
+const FADE = { duration: mo.sec(mo.duration.fast) } as const;
 
 // degrees per second
 const IMPULSE = 500;

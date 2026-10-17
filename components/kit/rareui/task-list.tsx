@@ -1,24 +1,25 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 "use client";
+import * as mo from "@/lib/motion";
 
 import { useState } from "react";
 import type { ComponentProps, CSSProperties } from "react";
 import { m, useReducedMotion, type Transition } from "motion/react";
 import { cn } from "@/lib/utils";
 
-const EASE_OUT = [0.22, 1, 0.36, 1] as const;
-const EASE_IN_OUT = [0.65, 0, 0.35, 1] as const;
+const EASE_OUT = mo.ease.enter;
+const EASE_IN_OUT = mo.ease.inOut;
 
 const POP_SCALE = [1, 1.08, 1];
 const FLICK = [0, 8, -2, 0];
 const FLICK_TIMES = [0, 0.35, 0.7, 1];
 
-const FILL: Transition = { duration: 0.24, ease: EASE_OUT };
-const POP: Transition = { duration: 0.34, ease: EASE_OUT, times: [0, 0.4, 1] };
-const TICK: Transition = { duration: 0.22, ease: EASE_OUT, delay: 0.06 };
-const STRIKE: Transition = { duration: 0.38, ease: EASE_IN_OUT };
-const NUDGE: Transition = { duration: 0.3, ease: EASE_OUT, times: FLICK_TIMES };
-const REORDER: Transition = { type: "spring", stiffness: 320, damping: 30 };
+const FILL: Transition = { duration: mo.sec(mo.duration.enter), ease: EASE_OUT };
+const POP: Transition = { duration: mo.sec(mo.duration.medium), ease: EASE_OUT, times: [0, 0.4, 1] };
+const TICK: Transition = { duration: mo.sec(mo.duration.enter), ease: EASE_OUT, delay: mo.sec(mo.duration.hover) };
+const STRIKE: Transition = { duration: mo.sec(mo.duration.slow), ease: EASE_IN_OUT };
+const NUDGE: Transition = { duration: mo.sec(mo.duration.medium), ease: EASE_OUT, times: FLICK_TIMES };
+const REORDER: Transition = { type: "spring", ...mo.spring.soft };
 const INSTANT: Transition = { duration: 0 };
 
 // dashes divide the circumference, so the ring closes without a seam

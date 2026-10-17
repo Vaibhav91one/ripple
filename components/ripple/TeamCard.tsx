@@ -45,7 +45,7 @@ export function TeamCard({ name, status, team, cypher }: { name: string; status:
       </ul>
       {status === "conflict" && (
         <div className="border-t border-hairline px-3 py-2">
-          <button type="button" onClick={() => setConflict("open")} className="rounded-md bg-conflict-soft px-2.5 py-1 text-xs font-medium text-conflict hover:opacity-90">
+          <button type="button" onClick={() => setConflict("open")} className="rounded-md bg-conflict-soft px-2.5 py-1 text-xs font-medium text-conflict hover:opacity-90 transition-opacity">
             Resolve conflict
           </button>
         </div>

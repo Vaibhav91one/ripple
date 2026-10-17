@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI (obsidianui.dev) Status Bars, MIT, see ../LICENSE. The original draws a 90-day uptime strip with a tooltip;
 // this keeps its strip look (segmented cells, hover dims the rest, rise on mount) but takes rows of label + percent + tone.
 import { m, useReducedMotion } from "motion/react";
@@ -31,7 +32,7 @@ export function StatusBars({ rows, cells = 30, className }: { rows: StatusBarRow
                   data-on={i < on || undefined}
                   initial={reduce ? false : { scaleY: 0.3, opacity: 0 }}
                   animate={{ scaleY: 1, opacity: 1 }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: row * 0.08 + i * 0.012 }}
+                  transition={{ duration: mo.sec(mo.duration.slow), ease: mo.ease.enter, delay: mo.sec(row * mo.stagger.item + i * mo.stagger.tick) }}
                 />
               ))}
             </div>

@@ -8,7 +8,7 @@ export function SummaryLine({ date, summary, onRefresh }: { date: string; summar
       <div className="flex items-center gap-2">
         <span className="text-sm leading-5 font-medium text-strong">{date}</span>
         <button type="button" onClick={onRefresh} aria-label="Refresh summary"
-          className="inline-flex size-4 items-center justify-center rounded-control text-body hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple">
+          className="transition-colors inline-flex size-4 items-center justify-center rounded-control text-body hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple">
           <RotateCw size={14} strokeWidth={1.75} aria-hidden />
         </button>
       </div>

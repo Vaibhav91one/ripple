@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react";
 export type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string };
 export type NavGroupItem = { id: string; label: string; icon: LucideIcon; color: string };
 
-const item = "flex h-8 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm leading-5 font-medium focus-visible:outline-2 focus-visible:outline-ripple";
+const item = "transition-colors flex h-8 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm leading-5 font-medium focus-visible:outline-2 focus-visible:outline-ripple";
 const idle = "text-faint hover:text-strong";
 const label = "mt-8 px-[22px] pb-1 text-xs leading-4 font-medium text-faint";
 

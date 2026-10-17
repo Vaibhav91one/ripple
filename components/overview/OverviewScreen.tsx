@@ -79,11 +79,11 @@ function Dashboard({ o }: { o: Overview }) {
               <ul className="flex flex-col divide-y divide-hairline">
                 {o.openDecisions.map(({ decision: d, notTold: gap }, i) => (
                   <li key={d.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-2.5 ${sel?.decision.id === d.id ? "rounded-md bg-raised" : ""}`}>
-                    <Link href={`/decisions/${d.id}`} className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong hover:underline">{d.title}</Link>
+                    <Link href={`/decisions/${d.id}`} className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong hover:underline transition-colors">{d.title}</Link>
                     {/* conflicts are counted per graph, tied to the first (main) decision */}
                     {i === 0 && conflicts > 0 && <StatusPill tone="conflict" label={`${conflicts} conflict${conflicts > 1 ? "s" : ""}`} />}
                     {gap.map((t) => <StatusPill key={t} tone="gap" label={`${name(t)} not told`} />)}
-                    <button type="button" onClick={() => setSelected(d.id)} className="text-xs text-faint hover:text-strong" aria-pressed={sel?.decision.id === d.id}>Details</button>
+                    <button type="button" onClick={() => setSelected(d.id)} className="text-xs text-faint hover:text-strong transition-colors" aria-pressed={sel?.decision.id === d.id}>Details</button>
                   </li>
                 ))}
               </ul>
@@ -109,7 +109,7 @@ function Dashboard({ o }: { o: Overview }) {
               <Leaderboard rows={leaders} unit="touches" />
             </Widget>
 
-            <Widget title="Recent changes" meta={<Link href="/changes" className="hover:text-strong">See all</Link>}>
+            <Widget title="Recent changes" meta={<Link href="/changes" className="hover:text-strong transition-colors">See all</Link>}>
               <ul className="flex flex-col divide-y divide-hairline text-[13px]">
                 {o.recentChanges.slice(0, 6).map((c, i) => (
                   <li key={i} className="flex items-center gap-3 py-2">
@@ -149,7 +149,7 @@ function Dashboard({ o }: { o: Overview }) {
                   <dt className="text-faint">Decided</dt><dd className="text-body">{fmtDay(sel.decision.decidedAt)}</dd>
                   <dt className="text-faint">Not told</dt><dd className="text-body">{sel.notTold.map(name).join(", ") || "nobody"}</dd>
                 </dl>
-                <Link href={`/decisions/${sel.decision.id}`} className="text-xs text-strong underline-offset-2 hover:underline">Open decision</Link>
+                <Link href={`/decisions/${sel.decision.id}`} className="text-xs text-strong underline-offset-2 hover:underline transition-colors">Open decision</Link>
               </>
             ) : <p className="text-sm text-faint">Select an open decision to see its summary.</p>}
           </div>

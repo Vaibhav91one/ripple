@@ -319,7 +319,7 @@ export function MagneticSelect({
   const swing = (k: number, mass: number) => ({
     type: "spring" as const,
     stiffness: k,
-    damping: 2 * Math.sqrt(k * mass) * zeta,
+    damping: Math.sqrt(k * mass) * 2 * zeta,
     mass,
   });
 
