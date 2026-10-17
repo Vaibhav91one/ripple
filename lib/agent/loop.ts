@@ -22,6 +22,7 @@ export type LoopOpts = {
   g: Graph;
   now: number;
   demo?: boolean;
+  readonly?: boolean;
   maxSteps?: number;
   onUsage?: (tokens: number) => void;
   audit?: (ev: AuditEvent) => Promise<void>;
@@ -29,7 +30,7 @@ export type LoopOpts = {
 
 export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   const returned = new Map<string, Source>(); // ids returned by tools this turn
-  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false };
+  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly };
 
   const tools = Object.fromEntries(
     (Object.keys(TOOLS) as ToolName[]).map((name) => {
@@ -39,7 +40,10 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
         inputSchema: d.input as z.ZodType,
         execute: async (args: unknown) => {
           const ev = { action: "agent.tool", resourceType: "tool", resourceId: name, read: name !== "create_tasks" };
-          const out = await (d.run as (c: typeof ctx, a: unknown) => ReturnType<typeof d.run>)(ctx, args);
+          const out = await (d.run as (c: typeof ctx, a: unknown) => ReturnType<typeof d.run>)(ctx, args).catch(async (e) => {
+            if (e instanceof Error && e.message === "demo_readonly") await o.audit?.({ ...ev, outcome: "deny" });
+            throw e;
+          });
           if (ev.read) void o.audit?.(ev); else await o.audit?.(ev); // tool name only, never the payload
           for (const s of out.sources) if (!returned.has(s.artifactId)) returned.set(s.artifactId, s);
           return { rows: out.rows, sourceIds: out.sources.map((s) => s.artifactId), cypher: out.cypher };

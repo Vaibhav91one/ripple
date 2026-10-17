@@ -4,11 +4,21 @@ import { roQuery } from "../graph/client";
 import { NotFound } from "../graph/queries";
 import { getContext, type Context } from "./context";
 
+export const DEMO_READONLY = "demo_readonly";
+
+/** 403 + a `deny` audit event for anonymous demo viewers; null when the write may go ahead. Call before any state changes. */
+export async function denyIfReadonly(ctx: Context, action: string, resourceId?: string): Promise<Response | null> {
+  if (!ctx.readonly) return null;
+  await ctx.audit({ action, resourceType: "decision", resourceId, outcome: "deny" });
+  return Response.json({ error: DEMO_READONLY }, { status: 403 });
+}
+
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
 export async function handle<S extends z.ZodType>(
   schema: S,
   fn: (ctx: Context) => Promise<unknown>,
+  write?: { action: string; resourceId?: string },
 ): Promise<Response> {
   let ctx: Context;
   try {
@@ -16,6 +26,10 @@ export async function handle<S extends z.ZodType>(
     await roQuery(ctx.graph, "RETURN 1");
   } catch {
     return json({ error: "graph_down" }, 503);
+  }
+  if (write) {
+    const denied = await denyIfReadonly(ctx, write.action, write.resourceId);
+    if (denied) return denied;
   }
   try {
     return json(schema.parse(await fn(ctx))); // a route that changes state (POST /api/change) calls ctx.writer()

@@ -1,7 +1,9 @@
 // The one place a request (or script) learns which graph it is on, who is asking and what "now" is.
 // Demo org only for now; multi-tenancy swaps the body of getContext, not its callers.
+import { cookies } from "next/headers";
 import { audit, type AuditEvent } from "../audit";
 import { env } from "../env";
+import { LENS_COOKIE, LENS_TEAM, parseLens } from "../lens";
 import { sessionViewer } from "../auth";
 import { ensureSchema } from "../graph/schema";
 import { graphFor, readOnly, type Graph } from "../graph/client";
@@ -16,6 +18,8 @@ export type Viewer =
 export type Context = {
   viewer: Viewer;
   org: Org;
+  /** True for anonymous viewers of the shared demo: every write is refused (`denyIfReadonly`). Tests on a temp graph (RIPPLE_GRAPH) are not locked. */
+  readonly: boolean;
   /** Read-only: `query()` (and every write helper) throws. */
   graph: Graph;
   /** Epoch seconds. RIPPLE_NOW (ISO) pins the clock so the seeded wait times stay put. */
@@ -29,6 +33,15 @@ export type Context = {
 /** Per-org graph name: `t_` + the Clerk org id lowercased, non-alphanumerics as `_`. */
 export const graphNameFor = (orgId: string) => `t_${orgId.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
 
+/** The demo lens cookie -> one team id; no request scope (scripts, tests) -> the default lens. */
+async function lensTeam(): Promise<string> {
+  try {
+    return LENS_TEAM[parseLens((await cookies()).get(LENS_COOKIE)?.value)];
+  } catch {
+    return LENS_TEAM[parseLens(undefined)];
+  }
+}
+
 const ready = new Set<string>(); // org graphs whose schema this process has already created
 const knownOrgs = new Set<string>(); // orgs already upserted into Postgres by this process
 
@@ -37,7 +50,7 @@ export async function getContext(req?: Request): Promise<Context> {
   void req;
   const e = env();
   const session = await sessionViewer();
-  const viewer: Viewer = session ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: [], role: "member" };
+  const viewer: Viewer = session ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: [await lensTeam()], role: "member" };
   const graphName = e.RIPPLE_GRAPH || (session ? graphNameFor(session.orgId) : DEMO_GRAPH);
   const raw = await graphFor(graphName);
   if (session && !e.RIPPLE_GRAPH) {
@@ -61,6 +74,7 @@ export async function getContext(req?: Request): Promise<Context> {
   return {
     viewer,
     org,
+    readonly: !session && !e.RIPPLE_GRAPH,
     graph: readOnly(raw),
     now: Math.floor((e.RIPPLE_NOW ? Date.parse(e.RIPPLE_NOW) : Date.now()) / 1000),
     audit: (ev) => audit({ org, viewer: { kind: viewer.kind, id: viewer.kind === "user" ? viewer.userId : undefined } }, ev),
