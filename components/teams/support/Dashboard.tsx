@@ -46,15 +46,16 @@ export function SupportDashboard() {
   ];
 
   const accounts = d.customers
-    .map((c) => ({ c, v1: d.v1CustomerIds.includes(c.id), risk: (c.arr * (100 - c.healthScore)) / 100 }))
+    .map((c) => ({ c, v1: d.v1CustomerIds.includes(c.id), risk: ((c.arr ?? 0) * (100 - c.healthScore)) / 100 }))
     .filter((x) => x.c.healthScore < 60 || (x.v1 && x.c.tier === "enterprise"))
     .sort((a, b) => b.risk - a.risk)
     .slice(0, 7);
-  const arrAtRisk = accounts.reduce((s, x) => s + x.c.arr, 0);
+  const arrHidden = accounts.some((x) => x.c.arr === null); // customer ARR is restricted to Sales
+  const arrAtRisk = accounts.reduce((s, x) => s + (x.c.arr ?? 0), 0);
   const csat = d.csat;
 
   return (
-    <TeamFrame title="Support" subtitle="Queue, SLAs and customer health" kpis={d.kpis} angle={d.angle} teamName="Support">
+    <TeamFrame title="Support" subtitle="Queue, SLAs and customer health" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="Support">
       <Widget
         title="Queue"
         wide
@@ -89,7 +90,7 @@ export function SupportDashboard() {
         </div>
       </Widget>
 
-      <Widget title="At-risk ARR and renewals" meta={`${formatKpi("usd", arrAtRisk)} ARR`}>
+      <Widget title="At-risk ARR and renewals" meta={arrHidden ? "ARR restricted to Sales" : `${formatKpi("usd", arrAtRisk)} ARR`}>
         <ul className="flex flex-col divide-y divide-hairline">
           {accounts.map(({ c, v1 }) => (
             <li key={c.id} className="flex items-center gap-3 py-2 text-xs">
@@ -109,7 +110,7 @@ export function SupportDashboard() {
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-0.5 tabular-nums">
-                <span className="text-body">{formatKpi("usd", c.arr)}</span>
+                <span className="text-body">{c.arr === null ? "ARR restricted" : formatKpi("usd", c.arr)}</span>
                 <span className="text-faint">renews {fmtDay(c.renewalDate)}</span>
               </span>
             </li>

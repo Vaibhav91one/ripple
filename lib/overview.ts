@@ -30,7 +30,7 @@ export async function computeOverview(g: Graph, now: number): Promise<Overview> 
       { id: "teams-affected", label: "Teams affected", value: main.counts.teamsAffected, unit: "count" },
       { id: "not-told", label: "Teams not told", value: main.counts.notTold, unit: "count", tone: main.counts.notTold ? "bad" : "ok" },
       { id: "conflicts", label: "Open conflicts", value: main.counts.conflicts, unit: "count", tone: main.counts.conflicts ? "bad" : "ok" },
-      { id: "arr-at-risk", label: "ARR at risk", value: main.counts.arrAtRisk, unit: "usd", tone: main.counts.arrAtRisk ? "bad" : "ok" },
+      { id: "arr-at-risk", label: "ARR at risk", value: main.counts.arrAtRisk ?? 0, unit: "usd", tone: main.counts.arrAtRisk ? "bad" : "ok" },
       { id: "customers", label: "Customers on API v1", value: main.counts.customers, unit: "count", tone: "warn" },
     ] : [],
     openDecisions: dec.map((d, i) => ({ decision: d, notTold: rips[i].gap })).filter((x) => x.notTold.length > 0),

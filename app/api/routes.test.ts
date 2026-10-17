@@ -13,6 +13,7 @@ let up = false;
 beforeAll(async () => {
   process.env.RIPPLE_GRAPH = name;
   process.env.RIPPLE_NOW = "2026-10-17T09:00:00Z";
+  process.env.RIPPLE_VIEW_AS = "legal,sales,security,leadership"; // sees every payload; lib/permissions tests the restricted views
   try {
     g = await graphFor(name);
     await query(g, "RETURN 1");

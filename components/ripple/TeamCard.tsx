@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ContextCard, ContextChip } from "@/components/kit/beautifului/context-cards";
 import { getSource } from "@/lib/api";
 import type { RippleResult } from "@/lib/schemas";
+import { restrictedLine, teamName } from "@/lib/permissions/classify";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import { parseAsString, useQueryState } from "nuqs";
 
@@ -19,7 +20,11 @@ const BADGE: Record<TeamStatus, { label: string; cls: string }> = {
 const KIND = { doc: "DOC", ticket: "TKT", message: "MSG", pr: "PR" } as const;
 
 /** Source chip showing the artifact title; the verbatim quote is the tooltip. */
-export function SourceChip({ artifactId, quote }: { artifactId: string; quote: string }) {
+export function SourceChip({ artifactId, quote, restricted }: { artifactId: string; quote: string; restricted?: string }) {
+  if (restricted) return <span className="text-xs text-faint">Source restricted to {teamName(restricted)}</span>;
+  return <OpenSourceChip artifactId={artifactId} quote={quote} />;
+}
+function OpenSourceChip({ artifactId, quote }: { artifactId: string; quote: string }) {
   const { data } = useQuery({ queryKey: ["source", artifactId], queryFn: () => getSource(artifactId) });
   const panel = useSourcePanel();
   return (
@@ -29,7 +34,7 @@ export function SourceChip({ artifactId, quote }: { artifactId: string; quote: s
   );
 }
 
-export function TeamCard({ name, status, team, cypher }: { name: string; status: TeamStatus; team: RippleResult["teams"][number]; cypher?: RippleResult["cypher"][number] }) {
+export function TeamCard({ name, status, team, cypher, restricted = [] }: { name: string; status: TeamStatus; team: RippleResult["teams"][number]; cypher?: RippleResult["cypher"][number]; /** what this viewer may not see about this team, e.g. 2 contracts restricted to Legal */ restricted?: NonNullable<RippleResult["restricted"]> }) {
   const [open, setOpen] = useState(false);
   const [, setConflict] = useQueryState("conflict", parseAsString);
   const badge = BADGE[status];
@@ -39,8 +44,11 @@ export function TeamCard({ name, status, team, cypher }: { name: string; status:
         {team.why.map((w) => (
           <li key={w.ref + w.reason} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-body">
             <p>{w.reason}</p>
-            <SourceChip artifactId={w.source.artifactId} quote={w.source.quote} />
+            <SourceChip artifactId={w.source.artifactId} quote={w.source.quote} restricted={w.source.restricted} />
           </li>
+        ))}
+        {restricted.filter((r) => r.kind !== "source").map((r) => (
+          <li key={r.kind} className="text-sm text-faint">{restrictedLine(r)}</li>
         ))}
       </ul>
       {status === "conflict" && (

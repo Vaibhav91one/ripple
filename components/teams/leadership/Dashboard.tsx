@@ -42,7 +42,7 @@ export function LeadershipDashboard() {
   };
 
   return (
-    <TeamFrame title="Leadership" subtitle="Company goals, blockers, risks and open decisions" kpis={d.kpis} angle={d.angle} teamName="Leadership">
+    <TeamFrame title="Leadership" subtitle="Company goals, blockers, risks and open decisions" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="Leadership">
       <Widget title="Goals" wide meta={`${d.goals.length} goals`}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {d.goals.map((g) => {

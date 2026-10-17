@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { id, ts } from "./common";
+import { id, restrictedField, ts } from "./common";
 import { Decision, Source } from "./core";
 import { Change } from "./ripple";
 import { Blocker, WhoKnowsRow } from "./teams";
@@ -36,6 +36,7 @@ export const Overview = z.object({
   activity: z.array(z.object({ day: ts, changes: z.number().int(), acks: z.number().int() })),
   whoKnows: z.array(WhoKnowsRow),
   teams: z.array(TeamStripItem),
+  ...restrictedField,
 });
 
 export type Kpi = z.infer<typeof Kpi>;

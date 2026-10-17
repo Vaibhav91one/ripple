@@ -23,3 +23,9 @@ Ripple is a company brain on FalkorDB for the WeMakeDevs x FalkorDB Graph Hacks 
 - **Data:** every shape comes from `lib/schemas.ts` (Zod 4). Screens read through `lib/api.ts` (mocks until Phase 3).
 - **Cypher (FalkorDB 6.0.2):** `//` comments only (`--` fails). Full-text: `CREATE FULLTEXT INDEX FOR (a:Artifact) ON (a.text)`. Vector: `CREATE VECTOR INDEX … OPTIONS {dimension:384, similarityFunction:'cosine'}`. No label OR in MATCH (`(:A|:B)`); relationship OR (`-[:A|B]->`) works. Dates are epoch ints; pass `$now`.
 - **Local FalkorDB:** Apple container, `container run -d --name falkor -p 6379:6379 -p 3000:3000 falkordb/falkordb:6.0.2`.
+
+## Permissions (share the topology, redact the details)
+- Contracts, clauses, deals, findings, controls, customer ARR and the quote text behind them belong to the owning team (`lib/permissions/classify.ts`). Everyone sees the topology (teams hit, acks, gap, counts). Leadership sees counts and totals, never text.
+- Redaction is server-side, in `handle()` before the schema parse, and in every agent tool (`runAgent`) and MCP tool output, so restricted text never reaches a model prompt. A new route or tool must go through them.
+- `lib/permissions/permissions.test.ts` (the sentinel-leak test) is required: it fails when a GET route, agent tool or MCP tool is not listed, and when any of them leaks a seeded sentinel to a non-owner. Add new routes and tools there.
+- Never wrap viewer-dependent data in `use cache` (or any shared cache): the response differs per viewer.

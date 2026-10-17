@@ -23,7 +23,8 @@ export const System = z.object({
 export const Customer = z.object({
   id,
   name: z.string(),
-  arr: z.number().int(),
+  /** null = restricted to Sales (see lib/permissions) */
+  arr: z.number().int().nullable(),
   tier: z.enum(["enterprise", "growth", "starter"]),
   region: z.string().optional(),
   monthlyCalls: z.number().int().optional(),
@@ -69,9 +70,16 @@ export const Artifact = z.object({
   ts,
   uri: z.string(),
   authorId: id,
+  /** owner team id when title, text and uri are withheld from this viewer */
+  restricted: id.optional(),
 });
 /** quote must be a verbatim substring of the artifact's text (enforced by `src()` in the mock and by tests). */
-export const Source = z.object({ artifactId: id, quote: z.string().min(1) });
+export const Source = z.object({
+  artifactId: id,
+  quote: z.string().min(1),
+  /** owner team id when the quote is restricted: `quote` is then a placeholder, never the text */
+  restricted: id.optional(),
+});
 export const EdgeType = z.enum([
   "MEMBER_OF", "OWNS", "CARES_ABOUT", "MAINTAINS", "AUTHORED", "REVIEWED",
   "ASSIGNED", "ABOUT", "RAISED_BY", "HANDLED_BY", "DEPENDS_ON", "USES",

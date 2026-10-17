@@ -6,6 +6,7 @@ import type { z } from "zod";
 import type { AuditEvent } from "../audit";
 import type { Graph } from "../graph/client";
 import type { Source, StreamEvent } from "../schemas";
+import { redactToolOut, type PermViewer } from "../permissions/redact";
 import { templateText, TOOLS, type Row, type ToolName } from "./tools";
 
 export const SYSTEM = `You are Ripple's analyst for a company knowledge graph. Answer only from tool results.
@@ -23,6 +24,7 @@ export type LoopOpts = {
   now: number;
   demo?: boolean;
   readonly?: boolean;
+  viewer?: PermViewer;
   maxSteps?: number;
   onUsage?: (tokens: number) => void;
   audit?: (ev: AuditEvent) => Promise<void>;
@@ -30,7 +32,7 @@ export type LoopOpts = {
 
 export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   const returned = new Map<string, Source>(); // ids returned by tools this turn
-  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly };
+  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer };
 
   const tools = Object.fromEntries(
     (Object.keys(TOOLS) as ToolName[]).map((name) => {
@@ -40,13 +42,14 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
         inputSchema: d.input as z.ZodType,
         execute: async (args: unknown) => {
           const ev = { action: "agent.tool", resourceType: "tool", resourceId: name, read: name !== "create_tasks" };
-          const out = await (d.run as (c: typeof ctx, a: unknown) => ReturnType<typeof d.run>)(ctx, args).catch(async (e) => {
+          const raw = await (d.run as (c: typeof ctx, a: unknown) => ReturnType<typeof d.run>)(ctx, args).catch(async (e) => {
             if (e instanceof Error && e.message === "demo_readonly") await o.audit?.({ ...ev, outcome: "deny" });
             throw e;
           });
+          const out = await redactToolOut(o.g, o.viewer, raw); // before the model (and the stream) sees a row
           if (ev.read) void o.audit?.(ev); else await o.audit?.(ev); // tool name only, never the payload
           for (const s of out.sources) if (!returned.has(s.artifactId)) returned.set(s.artifactId, s);
-          return { rows: out.rows, sourceIds: out.sources.map((s) => s.artifactId), cypher: out.cypher };
+          return { rows: out.rows, sourceIds: out.sources.map((s) => s.artifactId), cypher: out.cypher, restricted: out.restricted };
         },
       })];
     }),

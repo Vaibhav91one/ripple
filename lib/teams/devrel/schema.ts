@@ -2,12 +2,14 @@
 // Pure (zod only) so lib/api.ts and the offline mock can import it in the browser.
 import { z } from "zod";
 import { Kpi, Person, RippleAngle, DocsStats, Page, System, Task } from "@/lib/schemas";
+import { restrictedField } from "@/lib/schemas/common";
 import { kpi, type Rows } from "../util";
 
 export const DevRelPayload = z.object({
   team: z.literal("devrel"),
   kpis: z.array(Kpi),
   angle: RippleAngle,
+  ...restrictedField,
   pages: z.array(Page),
   docsStats: DocsStats,
   sdks: z.array(System),
@@ -16,7 +18,7 @@ export const DevRelPayload = z.object({
 });
 export type DevRelPayload = z.infer<typeof DevRelPayload>;
 /** The rows the cypher in lib/graph/queries/teams-devrel.cypher returns, by kind. */
-export const DevRelRows = DevRelPayload.omit({ team: true, kpis: true, angle: true });
+export const DevRelRows = DevRelPayload.omit({ team: true, restricted: true, kpis: true, angle: true });
 export type DevRelRows = Rows<DevRelPayload>;
 
 /** Share of each SDK's users off its oldest listed line (the v1-era major), averaged over SDKs. */

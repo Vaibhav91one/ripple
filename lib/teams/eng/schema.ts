@@ -2,6 +2,7 @@
 // Pure (zod only) so lib/api.ts and the offline mock can import it in the browser.
 import { z } from "zod";
 import { Kpi, Person, RippleAngle, Incident, PrRow, System } from "@/lib/schemas";
+import { restrictedField } from "@/lib/schemas/common";
 import { kpi, median } from "../util";
 
 export const CycleWeek = z.object({ label: z.string(), coding: z.number(), pickup: z.number(), review: z.number(), deploy: z.number(), merged: z.number() });
@@ -11,6 +12,7 @@ export const EngPayload = z.object({
   team: z.literal("eng"),
   kpis: z.array(Kpi),
   angle: RippleAngle,
+  ...restrictedField,
   prs: z.array(PrRow),
   incidents: z.array(Incident),
   services: z.array(System),
@@ -24,7 +26,7 @@ export const EngPayload = z.object({
 });
 export type EngPayload = z.infer<typeof EngPayload>;
 /** The rows the cypher in lib/graph/queries/teams-eng.cypher returns, by kind (the rest is derived below). */
-export const EngRows = EngPayload.omit({ team: true, kpis: true, angle: true, now: true, cycle: true, quality: true, incidentStats: true });
+export const EngRows = EngPayload.omit({ team: true, restricted: true, kpis: true, angle: true, now: true, cycle: true, quality: true, incidentStats: true });
 export type EngRows = z.infer<typeof EngRows>;
 
 const H = 3600;

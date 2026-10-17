@@ -10,7 +10,7 @@ export function EngDashboard() {
   if (!q.data) return <TeamState error={q.error} onRetry={() => q.refetch()} />;
   const d = q.data;
   return (
-    <TeamFrame title="Engineering" subtitle="Pull requests, delivery and incidents" kpis={d.kpis} angle={d.angle} teamName="Engineering">
+    <TeamFrame title="Engineering" subtitle="Pull requests, delivery and incidents" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="Engineering">
       <ReviewTable d={d} />
       <CycleBreakdown d={d} />
       <PrQuality d={d} />

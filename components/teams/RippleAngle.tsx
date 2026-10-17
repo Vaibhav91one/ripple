@@ -6,6 +6,7 @@ import { StatusPill } from "@/components/kit/obsidian/analytics/status-pill";
 import { SourceChip } from "@/components/ripple/TeamCard";
 import { describeEdge } from "@/lib/changes";
 import type { RippleAngle as Angle } from "@/lib/schemas";
+import { teamName as ownerName } from "@/lib/permissions/classify";
 import { fmtDay } from "./format";
 import { useNames } from "./useTeamDashboard";
 
@@ -37,8 +38,8 @@ export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: strin
           <ul className="flex flex-col gap-2">
             {angle.facts.map((f, i) => (
               <li key={i} className="flex flex-col gap-1.5 text-sm text-body">
-                <p>{f.text}</p>
-                <span className="self-start"><SourceChip artifactId={f.source.artifactId} quote={f.source.quote} /></span>
+                <p className={f.source.restricted ? "text-faint" : undefined}>{f.source.restricted ? "Details restricted to " + ownerName(f.source.restricted) : f.text}</p>
+                <span className="self-start"><SourceChip artifactId={f.source.artifactId} quote={f.source.quote} restricted={f.source.restricted} /></span>
               </li>
             ))}
           </ul>

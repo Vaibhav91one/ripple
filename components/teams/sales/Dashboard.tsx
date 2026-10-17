@@ -6,6 +6,7 @@ import { Avatar } from "@/components/kit/obsidian/analytics/avatar";
 import { StatusPill } from "@/components/kit/obsidian/analytics/status-pill";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import type { Deal } from "@/lib/schemas";
+import { teamName } from "@/lib/permissions/classify";
 import { TeamFrame, TeamState, Widget } from "../TeamFrame";
 import { fmtDay, formatKpi } from "../format";
 import { useNames, useTeamDashboard } from "../useTeamDashboard";
@@ -44,7 +45,7 @@ export function SalesDashboard() {
   ];
 
   return (
-    <TeamFrame title="Sales" subtitle="Pipeline, forecast and deal desk" kpis={d.kpis} angle={d.angle} teamName="Sales">
+    <TeamFrame title="Sales" subtitle="Pipeline, forecast and deal desk" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="Sales">
       <Widget title="Pipeline" wide meta={`${open.length} open deals · ${usd(f.bestCase)}`}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {STAGES.map((s) => {
@@ -116,7 +117,8 @@ export function SalesDashboard() {
                   </span>
                   <span className="tabular-nums text-strong">{usd(x.amount)}</span>
                 </div>
-                {src && (
+                {src?.restricted && <p className="text-faint">Promise restricted to {teamName(src.restricted)}</p>}
+                {src && !src.restricted && (
                   <button
                     type="button"
                     onClick={() => panel.open(src.artifactId, src.quote)}

@@ -4,10 +4,13 @@ import { query, roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import { claimsBody, claimsFor } from "../briefs";
 import type { Source } from "../schemas";
+import type { RestrictedSummary } from "../schemas/common";
+import type { PermViewer } from "../permissions/redact";
 
 export type Row = Record<string, unknown>;
-export type ToolOut = { rows: Row[]; sources: Source[]; cypher: Cypher[] };
-export type Viewer = { kind: string; id?: string };
+export type ToolOut = { rows: Row[]; sources: Source[]; cypher: Cypher[]; /** what redaction withheld from this viewer */ restricted?: RestrictedSummary[] };
+/** Who is asking. Tool output is redacted for them; teamIds missing = no teams = nothing restricted is shown. */
+export type Viewer = PermViewer & { kind?: string; id?: string };
 /** Background runs only: who the run acts for and a stub for proposing writes. Interactive /api/ask leaves them unset. */
 export type RunCtx = {
   viewer: Viewer;
@@ -16,7 +19,7 @@ export type RunCtx = {
   /** TODO(approvals issue): stub until proposals land. */
   propose: (kind: string, payload: unknown) => Promise<never>;
 };
-export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean } & Partial<RunCtx>;
+export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean; viewer?: Viewer } & Partial<Omit<RunCtx, "viewer">>;
 type Def<I extends z.ZodType> = {
   description: string;
   input: I;

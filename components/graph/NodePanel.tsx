@@ -3,6 +3,7 @@
 import { AnimatePresence, m } from "motion/react";
 import { X } from "lucide-react";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
+import { teamName } from "@/lib/permissions/classify";
 import { duration, ease, sec } from "@/lib/motion";
 import { STATUS_LABEL, type Inspected } from "./model";
 
@@ -79,7 +80,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
                         className="block w-full rounded-md border border-hairline bg-page p-2 text-left hover:border-ripple focus-visible:outline-2 focus-visible:outline-ripple transition-colors"
                       >
                         <span className="font-mono text-xs text-ripple">{src.artifactId}</span>
-                        <span className="mt-0.5 line-clamp-2 block text-xs text-body">“{src.quote}”</span>
+                        <span className="mt-0.5 line-clamp-2 block text-xs text-body">{src.restricted ? `Restricted to ${teamName(src.restricted)}` : `“${src.quote}”`}</span>
                       </button>
                     ))}
                   </li>

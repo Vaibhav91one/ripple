@@ -10,6 +10,7 @@ import type { Tone } from "@/components/kit/obsidian/analytics/tone";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import type { Clause, Contract } from "@/lib/schemas";
 import { obligations, renewalsWithin } from "@/lib/teams/legal/schema";
+import { teamName } from "@/lib/permissions/classify";
 import { TeamFrame, TeamState, Widget } from "../TeamFrame";
 import { fmtDay, formatKpi } from "../format";
 import { useNames, useTeamDashboard } from "../useTeamDashboard";
@@ -43,7 +44,7 @@ export function LegalDashboard() {
   const flagged = d.clauses.filter((c) => c.risk !== "low").sort((a, b) => RISK_RANK[b.risk] - RISK_RANK[a.risk] || Number(b.v1Related) - Number(a.v1Related));
 
   return (
-    <TeamFrame title="Legal" subtitle="Contracts, renewals, obligations and clause risk" kpis={d.kpis} angle={d.angle} teamName="Legal">
+    <TeamFrame title="Legal" subtitle="Contracts, renewals, obligations and clause risk" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="Legal">
       <Widget
         title="Renewal window"
         wide
@@ -110,6 +111,7 @@ export function LegalDashboard() {
                 <ContextCard index={i} title={`${c.number} ${c.title}`} meta={<StatusPill tone={RISK_TONE[c.risk]} label={c.risk} />}>
                   <div className="flex flex-col gap-2 p-3">
                     <p className="text-xs text-faint">{contractOf(c.contractId)?.name}{c.dueAt && ` · due ${fmtDay(c.dueAt)}`}</p>
+                    {c.src.restricted ? <p className="text-xs text-faint">Source restricted to {teamName(c.src.restricted)}</p> : (
                     <button
                       type="button"
                       onClick={() => panel.open(c.src.artifactId, c.src.quote)}
@@ -117,6 +119,7 @@ export function LegalDashboard() {
                     >
                       &ldquo;{c.src.quote}&rdquo;
                     </button>
+                    )}
                     {conflict && (
                       <p className="text-xs text-conflict">
                         Conflicts with the sunset decision.{" "}

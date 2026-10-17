@@ -4,7 +4,8 @@ import { KpiCard } from "@/components/kit/obsidian/analytics/kpi-card";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
 import { GraphDownError } from "@/lib/api";
-import type { Kpi, RippleAngle as Angle } from "@/lib/schemas";
+import type { Kpi, RippleAngle as Angle, RestrictedSummary } from "@/lib/schemas";
+import { restrictedLine } from "@/lib/permissions/classify";
 import { formatKpi } from "./format";
 import { RippleAngle } from "./RippleAngle";
 
@@ -17,6 +18,7 @@ export function TeamFrame({
   subtitle,
   kpis,
   angle,
+  restricted = [],
   teamName,
   actions,
   children,
@@ -25,10 +27,13 @@ export function TeamFrame({
   subtitle: string;
   kpis: Kpi[];
   angle: Angle;
+  /** what the server withheld from this viewer */
+  restricted?: RestrictedSummary[];
   teamName: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const hidden = restricted.filter((r) => r.kind !== "source"); // payload this viewer may not see
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 p-6">
       <PageHeader title={title} subtitle={subtitle}>{actions}</PageHeader>
@@ -38,7 +43,18 @@ export function TeamFrame({
         ))}
       </section>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">{children}</div>
+        {hidden.length > 0 ? (
+          <section className="flex min-w-0 flex-col gap-2 rounded-lg border border-hairline bg-surface p-4" aria-label="Restricted">
+            <h2 className="text-sm font-semibold text-strong">Details are restricted</h2>
+            <ul className="flex flex-col gap-1 text-sm text-faint">
+              {hidden.map((r) => (
+                <li key={r.owner + r.kind}>{restrictedLine(r)}{r.total ? ` (${formatKpi("usd", r.total)} total)` : ""}</li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">{children}</div>
+        )}
         <div className="xl:sticky xl:top-6 xl:self-start">
           <RippleAngle angle={angle} teamName={teamName} />
         </div>
