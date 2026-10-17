@@ -90,7 +90,11 @@ export default function Home() {
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline py-6 text-xs text-faint">
         <span className="flex items-center gap-2"><Mark size={14} />Ripple · built on FalkorDB</span>
-        <a href={DOCS} target="_blank" rel="noreferrer" className="transition-colors hover:text-body">GitHub</a>
+        <span className="flex gap-4">
+          <Link href="/privacy" className="transition-colors hover:text-body">Privacy</Link>
+          <Link href="/terms" className="transition-colors hover:text-body">Terms</Link>
+          <a href={DOCS} target="_blank" rel="noreferrer" className="transition-colors hover:text-body">GitHub</a>
+        </span>
       </footer>
     </main>
   );
