@@ -11,6 +11,7 @@ export type AgentDef<I extends z.ZodType = z.ZodType, O extends z.ZodType = z.Zo
   name: string;
   group: AgentGroup;
   /** Team id this agent serves. */
+  /** Who the agent works for: a team id, "change-owner", or "everyone". */
   team: string;
   /** 'reasoning' -> MODEL_AGENT, 'extract' -> MODEL_EXTRACT (see roleFor in lib/llm.ts). */
   model: "reasoning" | "extract";

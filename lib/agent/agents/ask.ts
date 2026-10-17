@@ -7,7 +7,7 @@ import { TOOLS, type ToolName } from "../tools";
 export const ask = defineAgent({
   name: "ask",
   group: "ask",
-  team: "leadership",
+  team: "everyone",
   model: "reasoning",
   tools: Object.keys(TOOLS) as ToolName[],
   writes: [],
