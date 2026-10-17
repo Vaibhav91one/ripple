@@ -11,7 +11,7 @@ import { GraphProposal, type Account, type Connector } from "./define";
 import { CONNECTORS } from "./index";
 
 /** `graph` and `connector` are test seams. Throws when the sync fails (pg-boss retries; the next run resumes at the saved cursor). */
-export async function runSync(accountId: string, seam: { graph?: Graph; connector?: Connector } = {}): Promise<{ pages: number; applied: number; proposed: number }> {
+export async function runSync(accountId: string, seam: { graph?: Graph; connector?: Connector } = {}): Promise<{ pages: number; applied: number; proposed: number; skipped: number }> {
   const d = db();
   const [row] = await d.select().from(connectorAccounts).where(eq(connectorAccounts.id, accountId));
   if (!row) throw new Error(`unknown connector account ${accountId}`);
@@ -20,14 +20,15 @@ export async function runSync(accountId: string, seam: { graph?: Graph; connecto
   const acct: Account = { id: row.id, orgId: row.orgId, kind: row.kind, externalId: row.externalId, token: row.tokenEnc ? decrypt(row.tokenEnc) : null, scopes: row.scopes };
   const ctx = { org: { id: row.orgId }, viewer: { kind: "system" } };
   const g = seam.graph ?? (await graphFor((await d.select().from(orgs).where(eq(orgs.id, row.orgId)))[0].graphName));
-  const out = { pages: 0, applied: 0, proposed: 0 };
+  const out = { pages: 0, applied: 0, proposed: 0, skipped: 0 };
   try {
     for await (const page of c.sync(acct, row.cursor ?? null)) {
       for (const record of page.records) {
         for (const raw of c.map(record, { acct })) {
           const p = GraphProposal.parse(raw);
           if (p.structured) {
-            await applyProposal(g, p, Math.floor(Date.now() / 1000));
+            const r = await applyProposal(g, p, Math.floor(Date.now() / 1000));
+            if (!r.applied) { out.skipped++; continue; } // endpoint not there yet: counted and logged once below
             await audit(ctx, { action: "connector.graph_write", resourceType: "connector_account", resourceId: row.id, meta: { op: p.op, src: p.src, kind: row.kind } });
             out.applied++;
           } else {
@@ -43,5 +44,6 @@ export async function runSync(accountId: string, seam: { graph?: Graph; connecto
     await d.update(connectorAccounts).set({ status: "error" }).where(eq(connectorAccounts.id, row.id));
     throw e;
   }
+  if (out.skipped) console.warn(`[sync] ${row.kind} ${row.id}: skipped ${out.skipped} edge(s) with a missing endpoint`);
   return out;
 }

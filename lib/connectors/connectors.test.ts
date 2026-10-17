@@ -100,6 +100,16 @@ describe.skipIf(!dbUrl)("connector framework (Postgres + FalkorDB)", () => {
     expect(await idsOf("Task")).toHaveLength(1);
   });
 
+  it("a structured edge with a missing endpoint is skipped, counted and reported in the sync result", async () => {
+    const { runSync } = await import("./sync");
+    const edgeOnly = defineConnector({
+      ...fake,
+      sync: async function* () { yield { records: [1], nextCursor: "e1" }; },
+      map: () => [{ op: "merge_edge", type: "KNOWS", from: { label: "Person", id: "p-1" }, to: { label: "Person", id: "p-nope" }, src: "fake:e", confidence: 1, structured: true, props: {} }],
+    });
+    expect(await runSync(accountId, { graph: g, connector: edgeOnly })).toMatchObject({ applied: 0, skipped: 1 });
+  });
+
   it("a bad label or edge type never reaches Cypher", async () => {
     const { applyProposal } = await import("./apply");
     await expect(applyProposal(g, { ...person(9), label: "Person) DETACH DELETE (x" }, 1)).rejects.toThrow();

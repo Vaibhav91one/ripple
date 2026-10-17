@@ -184,6 +184,31 @@ describe.skipIf(!dbUrl)("ingestDocument (mock model, Postgres + FalkorDB)", () =
     ]);
   }, 60_000);
 
+  it("approving an edge before its new node fails with a clear error; after the node is approved, approving again works", async (c) => {
+    if (!up) c.skip();
+    const { ingestDocument } = await import("./pipeline");
+    const { approve } = await import("../actions/decide");
+    const { executeAction } = await import("../actions/execute");
+    const model = mock([edge({ from: "Initech", to: "API v1", quote: "Initech runs on API v1" })]);
+    const r = await ingestDocument({ org }, { source: "doc", title: "Initech", text: "Initech runs on API v1 since 2024." }, { model, embed, graph: g });
+    const rows = await actions(r.documentId);
+    const node = rows.find((a) => a.p.op === "merge_node")!;
+    const e = rows.find((a) => a.p.op === "merge_edge")!;
+    const admin = { org, viewer: { kind: "user", id: "u1", role: "admin" } };
+    const row = async (id: string) => (await actions()).find((a) => a.id === id)!;
+
+    await approve(admin, e.id);
+    expect(await executeAction(e.id, g)).toBe("failed");
+    expect((await row(e.id)).error).toBe(`Approve the new node Customer customer-initech first (action ${node.id})`);
+
+    await approve(admin, node.id);
+    expect(await executeAction(node.id, g)).toBe("executed");
+    expect(await approve(admin, e.id)).toMatchObject({ status: "approved", changed: true }); // retry the failed action
+    expect(await executeAction(e.id, g)).toBe("executed");
+    expect((await row(e.id)).error).toBeNull();
+    expect(await query(g, "MATCH (:Customer {id: 'customer-initech'})-[r:USES]->(:System {id: 'api-v1'}) RETURN r.src AS s")).toEqual([{ s: r.documentId }]);
+  }, 60_000);
+
   it("no model configured: stores and indexes the document, proposes nothing", async (c) => {
     if (!up) c.skip();
     const { ingestDocument } = await import("./pipeline");

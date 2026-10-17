@@ -1,5 +1,5 @@
 // Approve or reject a pending action. Admin, or the role that owns the action kind. Every outcome is audited.
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { pendingActions } from "../db/schema";
 import { audit } from "../audit";
@@ -24,9 +24,9 @@ async function decide(ctx: DecideCtx, id: string, verb: "approve" | "reject") {
     throw new ActionError(403, "not permitted to decide this action");
   }
   const status = verb === "approve" ? "approved" : "rejected";
-  // The pending guard makes a second decision a no-op: only the first caller wins and enqueues.
-  const [won] = await d.update(pendingActions).set({ status, approver: ctx.viewer.id, decidedAt: new Date() })
-    .where(and(eq(pendingActions.id, id), eq(pendingActions.status, "pending"))).returning({ key: pendingActions.idempotencyKey });
+  // The status guard makes a second decision a no-op: only the first caller wins and enqueues. A failed action may be approved again (retry).
+  const [won] = await d.update(pendingActions).set({ status, approver: ctx.viewer.id, decidedAt: new Date(), error: null })
+    .where(and(eq(pendingActions.id, id), verb === "approve" ? inArray(pendingActions.status, ["pending", "failed"]) : eq(pendingActions.status, "pending"))).returning({ key: pendingActions.idempotencyKey });
   if (!won) return { id, status: row.status, changed: false };
   await audit(ctx, { action: `action.${status}`, ...res, meta: { kind: row.kind } });
   if (verb === "approve") await enqueueExecution(id, won.key);

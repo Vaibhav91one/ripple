@@ -60,7 +60,20 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
   },
   graph_merge: async (payload, { org, writer, now }) => {
     if (payload && typeof payload === "object" && "op" in payload) {
-      if (payload.op !== "suggest_merge") return applyProposal(writer(), payload, now); // a connector or ingest proposal
+      if (payload.op !== "suggest_merge") {
+        const r = await applyProposal(writer(), payload, now); // a connector or ingest proposal
+        if (r.applied) return r;
+        // Fail loudly (the action is marked failed and can be approved again); point at the node proposal from the same source if there is one.
+        const { db } = await import("../db");
+        const { pendingActions } = await import("../db/schema");
+        const { and, eq, sql } = await import("drizzle-orm");
+        const src = (payload as { src?: string }).src;
+        const [node] = await db().select({ id: pendingActions.id }).from(pendingActions).where(and(
+          eq(pendingActions.orgId, org.id), eq(pendingActions.kind, "graph_merge"), eq(pendingActions.status, "pending"),
+          sql`${pendingActions.payload}->>'op' = 'merge_node'`, sql`${pendingActions.payload}->>'id' = ${r.missing.id}`, sql`${pendingActions.payload}->>'src' = ${src ?? ""}`,
+        )).limit(1);
+        throw new Error(`Approve the new node ${r.missing.label} ${r.missing.id} first${node ? ` (action ${node.id})` : ""}`);
+      }
       // "These two names are the same node": approving records the alias so later ingests resolve it exactly. Never rewrites the graph.
       const p = SuggestMerge.parse(payload);
       const { db } = await import("../db"); // lazy: keeps lib/db (server-only) out of the pure-executor import graph
