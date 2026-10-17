@@ -6,6 +6,8 @@ import { applyProposal } from "../apply";
 import { GraphProposal } from "../define";
 import { matchPath, parseCodeowners, resolveOwner, type Directory } from "./codeowners";
 import { github } from "./index";
+import { githubWebhook } from "./webhook";
+import type { RippleEvent } from "../../events/types";
 import { mapGithub } from "./map";
 import { ownedIn, syncGithub, type Octo } from "./sync";
 import { ensureSchema } from "../../graph/schema";
@@ -166,13 +168,57 @@ describe("webhook", () => {
     expect((await POST(req(null))).status).toBe(401);
     vi.unstubAllEnvs();
   });
-  it("a good signature becomes a pr.opened event keyed by the delivery id; a bad one throws", async () => {
+  it("a bad signature throws; non-PR events are ignored", async () => {
     vi.stubEnv("GITHUB_APP_WEBHOOK_SECRET", SECRET);
-    expect(await github.webhook!(req(sign(body)), acct)).toEqual([
-      { type: "pr.opened", orgId: "org-1", subject: { kind: "pr", id: "gh:acme/shop#7" }, payload: { url: "https://github.com/acme/shop/pull/7" }, dedupeKey: "github:d-1" },
-    ]);
     expect(await github.webhook!(req(sign(body), "ping"), acct)).toBe("ignored");
     await expect(github.webhook!(req("sha256=00"), acct)).rejects.toThrow("bad signature");
+    vi.unstubAllEnvs();
+  });
+
+  // Recorded pull_request deliveries (trimmed to the fields we read), one per action.
+  const files = [{ filename: "billing/invoice.ts" }, { filename: "README.md" }];
+  const pages: string[] = [];
+  const fetcher: Octo = { request: async (route, params) => { pages.push(`${route} p${params?.page}`); return { data: files }; } };
+  const delivery = (action: string, event = "pull_request", id = `d-${action}`) => {
+    const b = JSON.stringify({ action, number: 7, installation: { id: 99 }, repository: { full_name: "acme/shop" },
+      pull_request: { html_url: "https://github.com/acme/shop/pull/7", title: "Fix rounding", body: null, user: { login: "ana-gh" } } });
+    return new Request("http://t/w", { method: "POST", body: b, headers: { "x-github-event": event, "x-github-delivery": id, "x-hub-signature-256": sign(b) } });
+  };
+  const payload = (action: string) => ({ url: "https://github.com/acme/shop/pull/7", repo: "acme/shop", number: 7, action, title: "Fix rounding", body: "", author: "ana-gh", paths: ["billing/invoice.ts", "README.md"] });
+
+  it.each([["opened", "pr.opened"], ["reopened", "pr.opened"], ["synchronize", "pr.updated"], ["edited", "pr.updated"], ["closed", "pr.updated"]])(
+    "pull_request %s -> %s with repo, number, title, body, author and changed paths", async (action, type) => {
+      vi.stubEnv("GITHUB_APP_WEBHOOK_SECRET", SECRET);
+      expect(await githubWebhook(delivery(action), acct, fetcher)).toEqual([
+        { type, orgId: "org-1", subject: { kind: "pr", id: "gh:acme/shop#7" }, payload: payload(action), dedupeKey: `github:d-${action}` },
+      ]);
+      vi.unstubAllEnvs();
+    });
+  it("ignores other PR actions without fetching files", async () => {
+    vi.stubEnv("GITHUB_APP_WEBHOOK_SECRET", SECRET);
+    pages.length = 0;
+    expect(await githubWebhook(delivery("labeled"), acct, fetcher)).toBe("ignored");
+    expect(pages).toEqual([]);
+    vi.unstubAllEnvs();
+  });
+  it("pages through more than 100 changed files", async () => {
+    vi.stubEnv("GITHUB_APP_WEBHOOK_SECRET", SECRET);
+    const many: Octo = { request: async (_r, params) => ({ data: Array.from({ length: params?.page === 1 ? 100 : 5 }, (_, i) => ({ filename: `f${params?.page}-${i}` })) }) };
+    const [ev] = (await githubWebhook(delivery("synchronize"), acct, many)) as { payload: { paths: string[] } }[];
+    expect(ev.payload.paths).toHaveLength(105);
+    vi.unstubAllEnvs();
+  });
+  it("a replayed X-GitHub-Delivery lands in the event log once", async () => {
+    vi.stubEnv("GITHUB_APP_WEBHOOK_SECRET", SECRET);
+    vi.stubEnv("DATABASE_URL", "postgres://unused");
+    const keys = new Set<string>();
+    const tx = { insert: () => ({ values: (v: { dedupeKey: string }) => ({ onConflictDoNothing: () => ({ returning: async () => (keys.has(v.dedupeKey) ? [] : (keys.add(v.dedupeKey), [{ id: "e1" }])) }) }) }) };
+    const { emit } = await import("../../events/emit");
+    const results = [];
+    for (const id of ["d-9", "d-9", "d-10"]) {
+      for (const ev of (await githubWebhook(delivery("synchronize", "pull_request", id), acct, fetcher)) as RippleEvent[]) results.push((await emit(tx as never, ev)).inserted);
+    }
+    expect(results).toEqual([true, false, true]);
     vi.unstubAllEnvs();
   });
 });

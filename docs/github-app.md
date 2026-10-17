@@ -71,7 +71,7 @@ One URL for every installation: `POST /api/connectors/github/webhook`.
 
 - The `X-Hub-Signature-256` HMAC is checked with `@octokit/webhooks` against `GITHUB_APP_WEBHOOK_SECRET`. Bad or missing signature -> **401**.
 - The account is found from `payload.installation.id`. An installation nobody connected is acknowledged and ignored.
-- `pull_request` -> `pr.opened` (opened, reopened) or `pr.updated` event, deduped by `X-GitHub-Delivery`.
+- `pull_request` opened/reopened -> `pr.opened`; synchronize/edited/closed -> `pr.updated` (other actions ignored). The payload carries repo, number, title, body, author and changed paths (fetched). Deduped by `X-GitHub-Delivery` through the event log's dedupe_key.
 - `push`, `installation`, `installation_repositories` -> a queued re-sync (one per account at a time).
 
 ## Sync notes
