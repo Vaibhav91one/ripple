@@ -8,10 +8,11 @@ import noop from "./handlers/noop";
 import deliver from "./handlers/deliver";
 import reminder from "./handlers/reminder";
 import routeEvent from "./handlers/route-event";
+import sync from "./handlers/sync";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Handlers = Record<string, (jobs: Job<any>[]) => Promise<unknown>>;
-export const handlers: Handlers = { noop, "route-event": routeEvent, deliver, reminder, agent, "execute-action": executeAction };
+export const handlers: Handlers = { noop, "route-event": routeEvent, deliver, reminder, agent, "execute-action": executeAction, sync };
 
 /** Start a worker against `url`; returns the graceful stop function. */
 export async function startWorker(url: string, use: Handlers = handlers) {
