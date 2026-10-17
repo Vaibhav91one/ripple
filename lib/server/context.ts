@@ -1,5 +1,6 @@
 // The one place a request (or script) learns which graph it is on, who is asking and what "now" is.
 // Demo org only for now; multi-tenancy swaps the body of getContext, not its callers.
+import { audit, type AuditEvent } from "../audit";
 import { env } from "../env";
 import { graphFor, readOnly, type Graph } from "../graph/client";
 
@@ -15,7 +16,8 @@ export type Context = {
   graph: Graph;
   /** Epoch seconds. RIPPLE_NOW (ISO) pins the clock so the seeded wait times stay put. */
   now: number;
-  audit: (event: string, detail?: Record<string, unknown>) => void;
+  /** Awaited for writes, fire-and-forget for reads (`read: true`); never throws. */
+  audit: (ev: AuditEvent) => Promise<void>;
   /** The writable graph, for the few routes that change state. */
   writer: () => Graph;
 };
@@ -26,12 +28,14 @@ export async function getContext(req?: Request): Promise<Context> {
   const e = env();
   const graphName = e.RIPPLE_GRAPH || DEMO_GRAPH;
   const raw = await graphFor(graphName);
+  const viewer: Viewer = { kind: "anon", orgId: DEMO_GRAPH, teamIds: [], role: "member" };
+  const org: Org = { id: DEMO_GRAPH, graphName, isDemo: true };
   return {
-    viewer: { kind: "anon", orgId: DEMO_GRAPH, teamIds: [], role: "member" },
-    org: { id: DEMO_GRAPH, graphName, isDemo: true },
+    viewer,
+    org,
     graph: readOnly(raw),
     now: Math.floor((e.RIPPLE_NOW ? Date.parse(e.RIPPLE_NOW) : Date.now()) / 1000),
-    audit: () => {}, // stub, filled by #98
+    audit: (ev) => audit({ org, viewer }, ev),
     writer: () => raw,
   };
 }

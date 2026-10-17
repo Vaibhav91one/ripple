@@ -14,7 +14,9 @@ export async function POST(req: Request) {
   if (t.state === "expired") return Response.json({ error: "token expired" }, { status: 410 });
   try {
     const { teamId, decisionId } = t.payload;
-    const { gap, by } = await recordAck((await getContext(req)).writer(), { teamId, decisionId, kind: body.data.kind });
+    const ctx = await getContext(req);
+    const { gap, by } = await recordAck(ctx.writer(), { teamId, decisionId, kind: body.data.kind });
+    await ctx.audit({ action: "ack", resourceType: "decision", resourceId: decisionId, meta: { teamId, kind: body.data.kind } });
     return Response.json({ ack: { teamId, decisionId, kind: body.data.kind, by }, gap });
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 500 });

@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     const { now } = ctx;
     await ripple(ctx.graph, decisionId, now); // 404 for an unknown decision before anything is written
     await changeSunset(ctx.writer(), decisionId, newOn, now);
+    await ctx.audit({ action: "change", resourceType: "decision", resourceId: decisionId, meta: { newOn } });
     return ripple(ctx.graph, decisionId, now);
   });
 }
