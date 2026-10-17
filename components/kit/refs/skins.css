@@ -1,7 +1,8 @@
 /* Reference skins for /styleguide/refs. Each skin redefines Ripple's tokens with one reference's look, so the
    same component renders as a faithful replica inside .skin-* and as Ripple outside it.
    Extra tokens the reference components use: --hatch (loss/fail stripes), --chart (primary bars), --chart-2,
-   --accent-ink (text on accent), --ref-radius (card radius). Ripple defaults are on .skin-ripple.
+   --accent-ink (text on accent), --ref-radius (card radius),
+   --glow-a/--glow-b/--glow-ink (gradient highlight card: dark end, bright end, text on it). Ripple defaults are on .skin-ripple.
    This file is the only place hex colours are allowed in components/kit/refs. */
 
 .skin-ripple {
@@ -10,6 +11,9 @@
   --chart-2: var(--gap);
   --accent-ink: var(--page);
   --ref-radius: 10px;
+  --glow-a: var(--raised);
+  --glow-b: var(--gap);
+  --glow-ink: var(--strong);
 }
 
 /* Nizam (fivecorner, margin, Clearbill): light, white cards on a cool grey ground, one blue, pink loss hatch. */
@@ -36,6 +40,9 @@
   --chart-2: #9DB0F5;
   --accent-ink: #FFFFFF;
   --ref-radius: 16px;
+  --glow-a: #16257A;
+  --glow-b: #F59A5B;
+  --glow-ink: #FFFFFF;
 }
 
 /* SakaniUI CRM: near-black, white text, orange active underline, green/red delta pills. */
@@ -62,6 +69,9 @@
   --chart-2: #3B6FD8;
   --accent-ink: #FFFFFF;
   --ref-radius: 12px;
+  --glow-a: #2A1A12;
+  --glow-b: var(--ripple);
+  --glow-ink: #FFFFFF;
 }
 
 /* Gr8r task app: dark with a violet accent and per-task colours. */
@@ -88,6 +98,9 @@
   --chart-2: #46A758;
   --accent-ink: #FFFFFF;
   --ref-radius: 6px;
+  --glow-a: #241B4D;
+  --glow-b: var(--gap);
+  --glow-ink: #FFFFFF;
 }
 
 /* Proton: light dotted ground, black type, green money, red timer, mono details. */
@@ -114,6 +127,9 @@
   --chart-2: #161616;
   --accent-ink: #FFFFFF;
   --ref-radius: 18px;
+  --glow-a: #1B2A1F;
+  --glow-b: var(--gap);
+  --glow-ink: #FFFFFF;
   background-image: radial-gradient(rgb(0 0 0 / 9%) 1px, transparent 1px);
   background-size: 14px 14px;
 }
@@ -142,6 +158,9 @@
   --chart-2: #111317;
   --accent-ink: #FFFFFF;
   --ref-radius: 10px;
+  --glow-a: #111317;
+  --glow-b: var(--chart);
+  --glow-ink: #FFFFFF;
 }
 
 /* Push: pure black, white pill, muscle-map greens and yellows. CollectUI search shares it. */
@@ -168,4 +187,7 @@
   --chart-2: #FFD60A;
   --accent-ink: #000000;
   --ref-radius: 22px;
+  --glow-a: #0A2A5C;
+  --glow-b: var(--chart-2);
+  --glow-ink: #FFFFFF;
 }
