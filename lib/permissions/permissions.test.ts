@@ -105,6 +105,10 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "home": [{ url: "/api/home" }],
   "inbox/notifications": [{ url: "/api/inbox/notifications" }],
   "who-knows": [{ url: "/api/who-knows?system=api-v1" }],
+  "approvals": [{ url: "/api/approvals" }, { url: "/api/approvals?scope=decided" }],
+  "agents": [{ url: "/api/agents" }],
+  "agents/runs": [{ url: "/api/agents/runs" }],
+  "agents/runs/[id]": [{ url: "/api/agents/runs/00000000-0000-4000-8000-00000000b001", params: { id: "00000000-0000-4000-8000-00000000b001" } }],
   "health": [{ url: "/api/health" }],
   "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
   "search": [{ url: "/api/search?q=SENTINEL_SRC" }],

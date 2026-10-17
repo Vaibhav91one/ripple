@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getApprovals } from "@/lib/api";
 import { parseAsString, useQueryState } from "nuqs";
 import { Sparkles } from "lucide-react";
 import { DashboardButton, DashboardShell } from "@/components/kit/obsidian/dashboard-shell/dashboard-shell";
@@ -15,11 +18,17 @@ export function AppShell({ status, authSlot, lensSlot, children }: { status?: st
   const pathname = usePathname();
   const { activeId, title } = routeInfo(pathname);
   const [, setAsk] = useQueryState("ask", parseAsString);
+  // The Approvals badge: how many open actions this viewer may decide. Shares the /approvals query, so a decision there updates it.
+  const { data } = useQuery({ queryKey: ["approvals", "open"], queryFn: () => getApprovals("open"), refetchInterval: 60_000, retry: false });
+  const navigation = useMemo(
+    () => NAV.map((s) => ({ ...s, items: s.items.map((i) => (i.id === "/approvals" && data?.open && !data.sample ? { ...i, count: data.open } : i)) })),
+    [data],
+  );
   return (
     <DashboardShell
       className="h-full"
       brand={{ name: "Ripple", logo: <Mark /> }}
-      navigation={NAV}
+      navigation={navigation}
       activeItemId={activeId}
       linkComponent={Link}
       title={title}

@@ -17,7 +17,7 @@ export function EvidenceDiff({ title, found, action, docLine, groups }: {
 }) {
   const bar = "h-[3px] rounded-full bg-hairline";
   return (
-    <section className="min-w-[520px] max-w-[620px] rounded-[var(--ref-radius)] border border-hairline bg-surface p-[3px] shadow-[0_0_0_3px_var(--raised)]">
+    <section className="min-w-0 sm:min-w-[520px] max-w-[620px] rounded-[var(--ref-radius)] border border-hairline bg-surface p-[3px] shadow-[0_0_0_3px_var(--raised)]">
       <div className="rounded-[calc(var(--ref-radius)-3px)] border border-hairline px-5 pb-5 pt-4">
         <header className="flex items-baseline justify-between border-b border-dotted border-hairline pb-4">
           <h3 className="text-md font-medium text-strong">{title}</h3>
@@ -29,7 +29,7 @@ export function EvidenceDiff({ title, found, action, docLine, groups }: {
           </p>
         </header>
         <div className="mt-5 flex gap-5">
-          <div aria-hidden className="h-[138px] w-[180px] shrink-0 rounded-control border border-hairline bg-raised px-3 pt-3">
+          <div aria-hidden className="hidden h-[138px] w-[180px] shrink-0 sm:block rounded-control border border-hairline bg-raised px-3 pt-3">
             <div className="h-full space-y-2.5 rounded-t-control border border-b-0 border-hairline bg-surface px-3 pt-3 shadow-sm">
               <div className="space-y-1.5">
                 <div className={`${bar} w-1/2 bg-faint/40`} />

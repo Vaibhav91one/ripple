@@ -1,4 +1,11 @@
-import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+// Per-org agent switch. No row = on. runBackground refuses a run when enabled is false.
+export const agentSettings = pgTable(
+  "agent_setting",
+  { orgId: text("org_id").notNull(), agent: text("agent").notNull(), enabled: boolean("enabled").notNull().default(true) },
+  (t) => [primaryKey({ columns: [t.orgId, t.agent] })],
+);
 
 export const RUN_STATUSES = ["queued", "running", "done", "failed", "budget"] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];

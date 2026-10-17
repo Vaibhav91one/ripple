@@ -5,7 +5,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { env } from "../env";
 import { db } from "../db";
-import { agentRuns, runSteps, type RunStatus } from "../db/schema";
+import { agentRuns, agentSettings, runSteps, type RunStatus } from "../db/schema";
 import type { Graph } from "../graph/client";
 import type { Cypher } from "../graph/queries";
 import { pickModel, roleFor } from "../llm";
@@ -52,6 +52,8 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
   };
 
   try {
+    const [off] = await d.select().from(agentSettings).where(and(eq(agentSettings.orgId, ctx.org.id), eq(agentSettings.agent, def.name), eq(agentSettings.enabled, false)));
+    if (off) return await finish("failed", { error: "agent is switched off for this org" });
     // org daily cap: tokens spent today by this org's runs
     const [{ spent }] = await d.select({ spent: sql<number>`coalesce(sum(${agentRuns.tokens}), 0)::int` }).from(agentRuns)
       .where(and(eq(agentRuns.orgId, ctx.org.id), gte(agentRuns.startedAt, utcDayStart())));
