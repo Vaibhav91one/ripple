@@ -2,11 +2,47 @@
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
+- **Live:** https://web-2fa0-3000.prg1.zerops.app (custom domain `ripple.vaibhav.quest` coming)
+- **Track:** Track 03: Company Brain, WeMakeDevs x FalkorDB Graph Hacks
+- **Pitch:** before you ship a breaking change, ask the graph who it hits and who was never told.
+- **Modelling:** Telling a team is an edge (NOTIFIES / ACKED), so a missing edge is the finding.
+
 ![Ripple overview: the v1 sunset across every team](docs/screens/v2-final-overview.png)
 
 Built for the WeMakeDevs x FalkorDB Graph Hacks, Track 03. Live demo data is a synthetic company, **Ledgerly**, that has just decided to sunset its API v1.
 
 v2 is a dashboard product: `/overview`, a `/graph` explorer, `/decisions`, `/changes`, `/inbox`, and seven team workspaces under `/teams/<team>`, all reading one FalkorDB graph.
+
+## Use Ripple from your agent
+
+Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (11 tools) or stdio against a local FalkorDB.
+
+```bash
+# Claude Code, hosted demo
+claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
+# local stdio: FalkorDB on :6379 with the seed loaded (this repo's .mcp.json already wires it)
+claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
+```
+
+Cursor and other clients (`mcp.json`):
+
+```json
+{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }
+```
+
+**Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). Install by copying the folder into `~/.claude/skills/` (all projects) or `.claude/skills/` (one project):
+
+```bash
+cp -r skills/ripple-impact ~/.claude/skills/
+```
+
+**Demo.** Ask "what does sunsetting API v1 (d-1) hit?" and raise `depth`; measured live, 20 to 50 ms per tool call:
+
+| `ripple_impact` d-1 | Teams reached | Gap (never told) |
+|---|---|---|
+| depth 1 | devrel, legal, sales, support | legal, devrel |
+| depth 3 (default) | + security | legal, security, devrel |
+| depth 4 | + data | data, legal, security, devrel |
 
 ## Screens
 
@@ -49,14 +85,14 @@ Ask it as a team (what hits me?) and inside a team (who knows this?):
 - Why was a decision made (`SUPPORTED_BY` artifacts).
 - Ask drawer: the model picks one of six query templates and fills parameters; it never writes Cypher.
 
-## Why FalkorDB is central
+## Why FalkorDB is load-bearing
 
-- **Multi-hop over 8+ node types in one query.** `ripple.cypher` crosses Decision, System, Ticket, Deal, Contract, Customer, Team and Person in a single Cypher statement (`DEPENDS_ON*0..2` plus entity hops, 12 branches joined by `UNION ALL`).
-- **Vector + full-text + graph in one query.** `search-vector.cypher` does a vector nearest-neighbour search on `Artifact.emb` and hops to the systems each hit is `ABOUT` in the same statement. Full-text search is a FalkorDB index on the same label.
-- **One graph per company key.** `graphFor(tenant)` selects a graph by name; tenants are isolated with no row-level filters. The demo is graph `demo`.
-- **Dated edges.** Every edge carries `valid_from` / `valid_to` (epoch ints), so "what changed" and "what was true then" are plain `WHERE` clauses, and moving the sunset date ends one edge and writes another.
-
-Without FalkorDB the ripple would be a pile of joins across six systems, the conflict check a hand-written script, and the "who was never told" gap a set difference computed in application code.
+- **Variable-length `DEPENDS_ON` traversal.** `ripple.cypher` walks decision, systems, dependents, then tickets, deals, contracts, customers and teams in one statement; `depth` is the hop bound (see the table above).
+- **The missing-edge gap query.** `gap.cypher` finds teams the decision hits with no `NOTIFIES`/`ACKED` edge. The finding is an absence, which is natural in a graph and a set difference in application code elsewhere.
+- **Temporal edges.** Every edge has `valid_from` / `valid_to` (epoch ints), so "what changed" and "what was true then" are plain `WHERE` clauses; moving the sunset date ends one edge and writes another.
+- **`MERGE` write-back.** Conflicts, acks and tasks are written back with `MERGE`, so the gap shrinks when a team acks.
+- **Full-text and vector index on `Artifact`.** `search.cypher` and `search-vector.cypher` find the decision's evidence, and the vector query hops to the systems each hit is `ABOUT` in the same statement.
+- **Fixed Cypher tools.** The agent picks among a fixed set of Cypher-backed tools and fills parameters; it never writes Cypher.
 
 ## Architecture
 
@@ -814,6 +850,28 @@ WHERE (h)-[:ABOUT]->(:System {id: $id})
 RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 ```
 
+## Numbers
+
+Local graph `demo`, measured with `GRAPH.RO_QUERY`: 284 nodes, 462 edges across 27 edge types (the live server reports 287 nodes).
+
+| Node label | Count | | Edge type | Count |
+|---|---|---|---|---|
+| Artifact | 89 | | USES | 42 |
+| Customer | 41 | | ABOUT | 69 |
+| Person | 31 | | HANDLED_BY, RAISED_BY | 37 each |
+| Deal | 16 | | OWNS | 36 |
+| Control | 14 | | AUTHORED | 32 |
+| Clause | 13 | | MEMBER_OF | 31 |
+| Team | 10 | | PARTY_TO | 24 |
+| System | 9 | | REVIEWED | 20 |
+| Contract, Task, Page | 8 each | | ASSIGNED, OWNED_BY | 16 each |
+| Goal | 7 | | ACKED | 15 |
+| Vendor, Risk, Incident, Finding | 6 each | | COVERS, HAS_CLAUSE, MANAGED_BY, AFFECTED, others | 87 (15 types) |
+| Decision, Framework | 2 each | | | |
+| Conflict, DocsStats | 1 each | | | |
+
+Live MCP latency: 20 to 50 ms per tool call. Eval: 16/16 (see Eval).
+
 ## FalkorDB gotchas we hit
 
 - **`--` comments fail.** Use `//`.
@@ -859,16 +917,7 @@ RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 
 See [docs/deploy.md](docs/deploy.md) (Zerops: `web` Next.js standalone plus a `falkordb` docker service; a Caddy/Docker fallback is in `deploy/fallback`).
 
-## Use Ripple from Claude Code / Cursor
-
-Ripple ships an MCP server (stateless Streamable HTTP at `/api/mcp`, or stdio against a local FalkorDB).
-
-```bash
-# hosted demo
-claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
-# local: FalkorDB on :6379 with the seed loaded; this repo's .mcp.json already wires it for Claude Code
-claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
-```
+## MCP tools
 
 Tools (all read-only except `ack_brief`; each returns JSON `{ rows, sources, cypher, trace }`):
 
@@ -884,12 +933,30 @@ Tools (all read-only except `ack_brief`; each returns JSON `{ rows, sources, cyp
 - `affected_controls`: security controls tied to the decision (coarse: v1-related controls, there is no Control-to-System edge).
 - `ack_brief`: record a team's acknowledgement (writes to the demo graph).
 
+## How this was built (AI-use disclosure)
+
+Ripple was built with Claude Code: Claude Opus as the lead agent, Claude Sonnet subagents for parallel issues and research. The author (GitHub [Vaibhav91one](https://github.com/Vaibhav91one)) chose the track and the product (decision impact, "who wasn't told"), the data-model direction, the seven team workspaces, the UI kits, the Zerops deployment and the scope (no cuts), and reviewed every PR. Commits carry `Co-Authored-By` trailers.
+
 ## Honest limits
 
-- The data is **synthetic** (Ledgerly), not a real company.
-- The extraction cache is **seeded from mocks** until an API key is set; with a key, `pnpm extract` fills it from the model, and every edge still passes the quote check.
-- **Single tenant in the demo**: the graph-per-key design is there, but the demo uses one graph (`demo`) and no sign-in is required.
-- The team workspaces read the seeded graph, not the real GitHub, Zendesk, HubSpot, Ironclad, Vanta, Mintlify or Asana accounts. Slack and Jira connectors are v1: today artifacts come from the seed, not live sources.
+- The data is **synthetic** (Ledgerly), seeded; hackathon rule 6 allows synthetic data. No live connectors: today artifacts come from the seed, not GitHub, Zendesk, HubSpot, Ironclad, Vanta, Mintlify, Asana, Slack or Jira.
+- **No auth or permissions.**
+- **Single demo graph** (`demo`): `graphFor(tenant)` exists, but multigraph per tenant is not wired.
+- **Some team KPIs are estimated**: eng coding and deploy times, support CSAT, devrel v2 adoption. Legal shows "awaiting approval" instead of cycle time.
+- **`affected_controls` is coarse**: a `v1Related` flag, there is no Control to System edge.
+- **No LLM key on the live server**, so Ask uses cached answers (`llm: fallback`). The extraction cache is seeded from mocks; with a key, `pnpm extract` fills it and every edge still passes the quote check.
+
+## Prior art
+
+[Hopper](https://www.falkordb.com/blog/memory-meets-motion-the-falkordb-standouts/) (security advisory to customer to contract clause; "no path = safe") and Drift (decision contradictions from meetings) were both standouts at FalkorDB's Memory Meets Motion hackathon. Ripple starts from a company decision, crosses every team, and the finding is the missing NOTIFIES/ACK edge plus contract conflicts, with acknowledgement write-back.
+
+## Next (not built)
+
+- GitHub PR check
+- Slack app
+- Remote MCP OAuth with per-team scopes
+- Real connectors (GitHub, Zendesk, HubSpot)
+- Per-tenant graphs
 
 ## Licence
 

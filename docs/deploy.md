@@ -1,85 +1,73 @@
-# Deploying Ripple (issue #17)
+# Deploying Ripple on Zerops
 
-Target: Zerops, two services (`web` Next.js standalone, `falkordb` docker), domain `ripple.vaibhav.quest`.
-`zerops.yaml` was written from the Zerops docs without an account, so the first push is the real test. Things marked UNCONFIRMED in that file are the first suspects if it fails.
+Two services: `web` (Next.js standalone) and `falkordb` (docker). Live: https://web-2fa0-3000.prg1.zerops.app (the custom domain `ripple.vaibhav.quest` is pending). `zerops.yaml` is the pipeline; this page is the runbook that worked (PR #69).
 
-## 1. Create the project (import yaml)
+## 1. Create the project
 
-In the Zerops dashboard: **Import project** and paste:
+Import this yaml in the Zerops dashboard (**Import project**). `#yamlPreprocessor=on` makes Zerops generate the secrets once, at project level, so both services see them:
 
 ```yaml
+#yamlPreprocessor=on
 project:
   name: ripple
+  envVariables:
+    FALKORDB_PASSWORD: <@generateRandomString(<32>)>
+    RESET_TOKEN: <@generateRandomString(<32>)>
+    ACK_TOKEN_SECRET: <@generateRandomString(<32>)>
 services:
   - hostname: falkordb
     type: docker@latest
     priority: 10            # created first
-    verticalAutoscaling:    # ~1 GB fixed. Keys per docs.zerops.io/references/import
-      minRam: 1
-      maxRam: 1
-      minCpu: 1
-      maxCpu: 1
+    verticalAutoscaling: { minRam: 1, maxRam: 1, minCpu: 1, maxCpu: 1 }
   - hostname: web
     type: nodejs@22
-    enableSubdomainAccess: true   # temporary *.zerops.app URL for the first smoke test
-    verticalAutoscaling:
-      minRam: 0.5
-      maxRam: 1
+    enableSubdomainAccess: true
+    verticalAutoscaling: { minRam: 0.5, maxRam: 1 }
 ```
 
-Docs gap: the docker page says CPU/RAM/disk are fixed values under `verticalAutoscaling`; the import reference lists `minRam`/`maxRam`. Equal min/max is the assumed way to pin 1 GB. If the import rejects it, set the size in the dashboard.
+`LLM_API_KEY` is optional. Unset, `/api/health` reports `llm: fallback` and Ask uses cached answers. Set it in the project's environment variables to enable the model.
 
-## 2. Secrets
+## 2. Gotchas that bit us (all fixed in `zerops.yaml`)
 
-Project settings, **Environment variables** (project level, secret):
-
-| Name | Value |
-|---|---|
-| `FALKORDB_PASSWORD` | `openssl rand -hex 24` |
-| `RESET_TOKEN` | `openssl rand -hex 24` |
-| `LLM_API_KEY` | your provider key (blank = the app reports `llm: fallback`) |
-
-Also set `LLM_PROVIDER`, `MODEL_AGENT`, `MODEL_EXTRACT` if they differ from `zerops.yaml`. If `web` cannot see the project variables by bare name, copy the three names into `web`'s `envVariables`.
+- Port protocol is lowercase `tcp`.
+- `HOSTNAME` is a reserved env key, so it is set inline in `start` (`HOSTNAME=0.0.0.0 node .next/standalone/server.js`).
+- pnpm is preinstalled on the Node image; do not `npm i -g` it.
+- `os: ubuntu` for both build and run: `onnxruntime-node` (embeddings) needs glibc, Alpine fails.
+- `onnxruntime-node/common` is in the standalone trace (`outputFileTracingIncludes` in `next.config.ts`), along with `lib/graph/queries/**/*.cypher` and `lib/ingest/cache/**`.
+- `falkordb` and `@redis/client` stay in `serverExternalPackages`; bundling them breaks `next build`.
 
 ## 3. Push
 
 ```bash
-brew install zerops-io/tap/zcli   # or: npm i -g @zerops/zcli
-zcli login <token from Zerops settings>
-zcli project list                  # copy the project id
+zcli login <token>
+zcli project list
 zcli push --projectId <id> --serviceId <falkordb id> --setup falkordb
-zcli push --projectId <id> --serviceId <web id> --setup web
+# from a clean checkout: no node_modules, no .next
+zcli push --no-git --projectId <id> --serviceId <web id> --setup web
+zcli service enable-subdomain --projectId <id> --serviceId <web id>
 ```
 
-(`zcli push` flags are from memory of the zcli help, not checked against the docs. `zcli push --help` is authoritative.) Push `falkordb` first and wait until it is running. On boot, `web` seeds the `demo` graph if it is empty (`instrumentation.ts`); if FalkorDB is not up yet it logs and carries on, and the next `/api/reset` or restart seeds it.
+- Use `--no-git`: from a git worktree the `.git` file makes git mode fail with exit 128.
+- Do not use `.deployignore`; it also filters `deployFiles` and removes the standalone build.
+- Push `falkordb` first. On boot `web` seeds the `demo` graph if empty (`instrumentation.ts`); if FalkorDB is not up yet it logs and the next restart or `/api/reset` seeds it.
 
 ## 4. Domain
 
-1. Service `web` -> **Subdomain & domain & IP access** -> **Setup first domain access**.
-2. Add `ripple.vaibhav.quest`, choose Let's Encrypt, route `/` to port 3000.
-3. Get an IP: free IPv6 activates automatically; the shared IPv4 is free but not for production, a dedicated IPv4 is $3/month.
-4. In Vercel DNS (vaibhav.quest): add the records Zerops shows on that page. The docs do not name the record type or target; expect a CNAME or A/AAAA to the balancer address shown in the dashboard. Add AAAA (and A if you took an IPv4) for `ripple`.
+Subdomain access gives the working URL. For `ripple.vaibhav.quest`: service `web` -> **Subdomain & domain & IP access**, add the domain (Let's Encrypt, route `/` to port 3000), then add the records Zerops shows in Vercel DNS. Pending.
 
 ## 5. Verify
 
 ```bash
-curl -s https://ripple.vaibhav.quest/api/health
-# {"ok":true,"falkordb":"up","graph":109,"llm":"configured"}
-curl -s -o /dev/null -w '%{http_code}\n' https://ripple.vaibhav.quest/ripple     # 200
-curl -N -X POST https://ripple.vaibhav.quest/api/ask -H 'content-type: application/json' \
-  -d '{"question":"who is affected if we sunset API v1?"}'   # tokens must arrive incrementally, not in one block at the end
-curl -s -X POST https://ripple.vaibhav.quest/api/reset -H "x-reset-token: $RESET_TOKEN"   # {"ok":true}
+URL=https://web-2fa0-3000.prg1.zerops.app
+curl -s $URL/api/health   # {"ok":true,"falkordb":"up","graph":287,"llm":"fallback"}
+curl -s -o /dev/null -w '%{http_code}\n' $URL/overview   # 200
+curl -s -X POST $URL/api/reset -H "x-reset-token: $RESET_TOKEN"   # {"ok":true}
 ```
 
-`/api/ask` does not exist yet at the time of writing; adjust the body to the route when it lands. If the stream arrives in one lump, the Zerops balancer is buffering: see "Advanced balancer configuration" in the Zerops L7 balancer docs (the docs say nothing about streaming), or switch to the fallback.
+MCP: `claude mcp add --transport http ripple $URL/api/mcp` (11 tools, 20 to 50 ms per call).
 
 ## Fallback: VPS + docker compose + Caddy
 
-1. Any VPS with Docker; DNS `A ripple -> <vps ip>` in Vercel DNS.
-2. `git clone` the repo, `cd deploy/fallback`, create `.env` (`FALKORDB_PASSWORD`, `RESET_TOKEN`, `LLM_API_KEY`, `LLM_PROVIDER`, `MODEL_AGENT`, `MODEL_EXTRACT`).
+1. Any VPS with Docker; DNS `A ripple -> <vps ip>`.
+2. `cd deploy/fallback`, create `.env` (`FALKORDB_PASSWORD`, `RESET_TOKEN`, optional `LLM_API_KEY`).
 3. `docker compose up -d --build`. Caddy gets the certificate on first request; `flush_interval -1` keeps streams unbuffered.
-4. Same verify commands as above.
-
-## What the build ships
-
-`next.config.ts` sets `output: "standalone"` and `outputFileTracingIncludes` for `lib/graph/queries/**/*.cypher` and `lib/ingest/cache/**` (the query wrappers read them from `process.cwd()`; `server.js` chdirs to its own folder). `falkordb` is in `serverExternalPackages`; bundling it broke `next build` ("a.BigInt is not a function").
