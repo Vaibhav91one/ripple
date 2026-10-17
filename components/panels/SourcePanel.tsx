@@ -6,6 +6,7 @@ import { parseAsString, useQueryStates } from "nuqs";
 import { ExternalLink, X } from "lucide-react";
 import { getPeople, getRipple, getSource } from "@/lib/api";
 import RecordsTable, { type RecordRow } from "@/components/kit/beautifului/records-table";
+import { teamName } from "@/lib/permissions/classify";
 import { fmtDate } from "./format";
 import { highlightQuote } from "./highlight";
 
@@ -35,7 +36,7 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
         id: `${t.teamId}-${w.ref}`,
         name: w.reason,
         tags: [t.teamId],
-        last: `“${w.source.quote}”`,
+        last: w.source.restricted ? `Restricted to ${teamName(w.source.restricted)}` : `“${w.source.quote}”`,
         strength: t.acked ? ("strong" as const) : t.involved ? ("weak" as const) : ("veryweak" as const),
       })),
   );
@@ -64,7 +65,8 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
           </header>
 
           <div className="flex-1 space-y-6 overflow-y-auto p-5">
-            {a && (
+            {a?.restricted && <p className="rounded-md border border-hairline bg-page p-4 text-sm text-faint">This source is restricted to {teamName(a.restricted)}.</p>}
+            {a && !a.restricted && (
               <>
                 <p className="whitespace-pre-wrap rounded-md border border-hairline bg-page p-4 text-md leading-relaxed text-body">
                   {highlightQuote(a.text, quote).map((s, i) =>

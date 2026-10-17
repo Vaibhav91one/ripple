@@ -9,6 +9,7 @@ import { agentRuns, runSteps, type RunStatus } from "../db/schema";
 import type { Graph } from "../graph/client";
 import type { Cypher } from "../graph/queries";
 import { pickModel, roleFor } from "../llm";
+import { redactToolOut } from "../permissions/redact";
 import { agent as findAgent } from "./registry";
 import { TOOLS, type Ctx, type ToolName, type ToolOut, type Viewer } from "./tools";
 
@@ -29,11 +30,8 @@ export type BackgroundCtx = {
 };
 export type RunResult = { runId: string; status: RunStatus; output?: unknown; tokens: number; error?: string };
 
-/** TODO(#99): the permission layer plugs in here. Every tool output passes through this before the model sees it. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function redactToolOutput(out: ToolOut, viewer: Viewer): ToolOut {
-  return out;
-}
+/** The permission layer (#99): every tool output passes through this before the model sees it. */
+export const redactToolOutput = (out: ToolOut, viewer: Viewer, g: Graph): Promise<ToolOut> => redactToolOut(g, viewer, out);
 
 const propose: NonNullable<Ctx["propose"]> = () => Promise.reject(new Error("not_implemented"));
 
@@ -80,7 +78,7 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
         inputSchema: t.input as z.ZodType,
         execute: async (args: unknown, opts) => {
           if (!allowed.has(name)) throw new Error(`tool_not_allowed: ${name}`);
-          const out = redactToolOutput(await (t.run as (c: Ctx, a: unknown) => Promise<ToolOut>)(tctx, args), ctx.viewer);
+          const out = await redactToolOutput(await (t.run as (c: Ctx, a: unknown) => Promise<ToolOut>)(tctx, args), ctx.viewer, ctx.g);
           outs.set(opts.toolCallId, out);
           return wrapData(name, out.rows, out.sources.map((s) => s.artifactId));
         },

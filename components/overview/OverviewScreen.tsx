@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import TaskRows from "@/components/kit/beautifului/task-rows";
 import { ActivityChart } from "@/components/kit/obsidian/analytics/activity-chart";
+import { formatKpi } from "@/components/teams/format";
 import { KpiCard } from "@/components/kit/obsidian/analytics/kpi-card";
 import { Leaderboard } from "@/components/kit/obsidian/analytics/leaderboard";
 import { Segmented } from "@/components/kit/obsidian/analytics/segmented";
@@ -47,6 +48,7 @@ function Dashboard({ o }: { o: Overview }) {
   const ackedPct = affected.length ? Math.round((affected.filter((t) => t.told).length / affected.length) * 100) : 100;
   const conflicts = o.kpis.find((k) => k.id === "conflicts")?.value ?? 0;
   const notTold = o.kpis.find((k) => k.id === "not-told")?.value ?? 0;
+  const arr = o.kpis.find((k) => k.id === "arr-at-risk"); // absent when the viewer may not see customer ARR totals
 
   const sel = o.openDecisions.find((d) => d.decision.id === selected) ?? o.openDecisions[0];
 
@@ -66,11 +68,12 @@ function Dashboard({ o }: { o: Overview }) {
 
       <div className="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Key numbers">
+          <section className={`grid grid-cols-2 gap-3 ${arr ? "lg:grid-cols-5" : "lg:grid-cols-4"}`} aria-label="Key numbers">
             <KpiCard index={0} label="Open decisions" value={o.openDecisions.length} spark={changes} />
             <KpiCard index={1} label="Teams not told" value={notTold} spark={changes} sparkTone={notTold ? "gap" : "covered"} />
             <KpiCard index={2} label="Open conflicts" value={conflicts} spark={changes} sparkTone={conflicts ? "conflict" : "covered"} />
             <KpiCard index={3} label="Acked" value={ackedPct} format={(v) => `${Math.round(v)}%`} spark={acks} sparkTone="covered" />
+            {arr && <KpiCard index={4} label="ARR at risk" value={arr.value} format={(v) => formatKpi("usd", v)} spark={changes} sparkTone={arr.value ? "conflict" : "covered"} />}
           </section>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

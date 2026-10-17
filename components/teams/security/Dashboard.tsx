@@ -54,7 +54,7 @@ export function SecurityDashboard() {
   const fwName = (id: string) => d.frameworks.find((f) => f.id === id)?.name ?? id;
 
   return (
-    <TeamFrame title="Security" subtitle="Controls, frameworks, findings and vendor risk" kpis={d.kpis} angle={d.angle} teamName="Security">
+    <TeamFrame title="Security" subtitle="Controls, frameworks, findings and vendor risk" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="Security">
       <Widget title="Framework readiness" meta="Controls passing">
         <StatusBars rows={readiness.map((f) => ({ label: f.name, percent: f.percent, tone: f.percent >= 80 ? "covered" : f.percent >= 50 ? "gap" : "conflict" }))} />
       </Widget>

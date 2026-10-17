@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { id, ts } from "./common";
+import { id, restrictedField, ts } from "./common";
 import { Conflict, Decision, Edge, EdgeType, Source } from "./core";
 
 export const RippleNode = z.object({
@@ -38,9 +38,11 @@ export const RippleResult = z.object({
     tickets: z.number().int(),
     deals: z.number().int(),
     contracts: z.number().int(),
-    arrAtRisk: z.number().int(),
+    /** null = customer ARR is restricted to Sales (leadership sees the total) */
+    arrAtRisk: z.number().int().nullable(),
   }),
   cypher: z.array(z.object({ name: z.string(), text: z.string() })),
+  ...restrictedField,
 });
 
 export const Brief = z.object({

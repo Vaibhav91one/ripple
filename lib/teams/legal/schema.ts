@@ -2,12 +2,14 @@
 // Pure (zod only) so lib/api.ts and the offline mock can import it in the browser.
 import { z } from "zod";
 import { Kpi, Person, RippleAngle, Clause, Contract } from "@/lib/schemas";
+import { restrictedField } from "@/lib/schemas/common";
 import { kpi, type Rows } from "../util";
 
 export const LegalPayload = z.object({
   team: z.literal("legal"),
   kpis: z.array(Kpi),
   angle: RippleAngle,
+  ...restrictedField,
   now: z.number(),
   contracts: z.array(Contract),
   clauses: z.array(Clause),
@@ -15,7 +17,7 @@ export const LegalPayload = z.object({
 });
 export type LegalPayload = z.infer<typeof LegalPayload>;
 /** The rows the cypher in lib/graph/queries/teams-legal.cypher returns, by kind. */
-export const LegalRows = LegalPayload.omit({ team: true, kpis: true, angle: true, now: true });
+export const LegalRows = LegalPayload.omit({ team: true, restricted: true, kpis: true, angle: true, now: true });
 export type LegalRows = Omit<Rows<LegalPayload>, "now">;
 
 const DAY = 86400;

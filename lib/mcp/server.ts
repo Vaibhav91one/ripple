@@ -6,6 +6,7 @@ import { TOOLS, type Ctx, type Row, type ToolOut } from "../agent/tools";
 import { roQuery } from "../graph/client";
 import { decisions, load, ripple } from "../graph/queries";
 import { recordAck } from "../notify";
+import { redactToolOut } from "../permissions/redact";
 import type { Context } from "../server/context";
 import type { Source } from "../schemas";
 
@@ -98,7 +99,7 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
       async (args: unknown): Promise<CallToolResult> => {
         const t0 = Date.now();
         try {
-          const out = await t.run(args as never);
+          const out = await redactToolOut(g, ctx.viewer, await t.run(args as never)); // every MCP tool, before JSON.stringify
           const ev = { action: "mcp.tool", resourceType: "tool", resourceId: name, read: !t.write };
           if (t.write) await audit?.(ev); else void audit?.(ev); // tool name only, never the payload
           const body = { ...out, trace: { tool: name, args, ms: Date.now() - t0, rows: out.rows.length } };

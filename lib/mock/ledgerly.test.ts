@@ -40,7 +40,7 @@ describe("ledgerly mocks", () => {
     expect(kinds("deal")).toBe(3);
     expect(kinds("contract")).toBe(2);
     const atRisk = m.contracts.reduce(
-      (n, c) => n + m.customers.find((x) => x.id === c.customerId)!.arr,
+      (n, c) => n + (m.customers.find((x) => x.id === c.customerId)!.arr ?? 0),
       0,
     );
     expect(atRisk).toBe(180_000);

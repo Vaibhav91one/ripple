@@ -105,7 +105,9 @@ export function LiveChange({
           </div>
           <dl className="grid grid-cols-2 gap-3">
             <Stat label="Conflicts" before={result.counts.conflicts} after={after?.counts.conflicts} />
-            <Stat label="ARR at risk" before={usd(result.counts.arrAtRisk)} after={after ? usd(after.counts.arrAtRisk) : undefined} />
+            {result.counts.arrAtRisk !== null && (
+              <Stat label="ARR at risk" before={usd(result.counts.arrAtRisk)} after={after && after.counts.arrAtRisk !== null ? usd(after.counts.arrAtRisk) : undefined} />
+            )}
           </dl>
         </div>
       </div>

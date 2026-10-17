@@ -2,6 +2,7 @@
 // Client-safe: no FalkorDB import. Query orchestration lives in graph-view.ts.
 import { z } from "zod";
 import { EdgeType, Source, type RippleResult } from "../schemas";
+import { restrictedField } from "../schemas/common";
 
 const id = z.string().min(1);
 const ts = z.number().int();
@@ -50,6 +51,7 @@ export const GraphView = z.object({
   /** set when ?team= names a team in the view: the nodes and edges on its paths back to the decision */
   lens: z.object({ teamId: id, nodeIds: z.array(id), edgeIds: z.array(id) }).nullable(),
   cypher: z.array(z.object({ name: z.string(), text: z.string() })),
+  ...restrictedField,
 });
 export type GraphItem = z.infer<typeof GraphItem>;
 export type GraphNode = z.infer<typeof GraphNode>;

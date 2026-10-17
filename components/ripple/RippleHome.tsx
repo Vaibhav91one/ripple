@@ -122,7 +122,7 @@ export function RippleHome() {
                   key={t.teamId}
                   className={`rounded-xl transition-opacity duration-200 ${team ? (t.teamId === team ? "ring-1 ring-ripple" : "opacity-45") : ""}`}
                 >
-                  <TeamCard name={name(t.teamId)} status={s} team={t} cypher={s === "gap" ? (data.cypher[1] ?? data.cypher[0]) : data.cypher[0]} />
+                  <TeamCard name={name(t.teamId)} status={s} team={t} restricted={data.restricted?.filter((r) => r.owner === t.teamId)} cypher={s === "gap" ? (data.cypher[1] ?? data.cypher[0]) : data.cypher[0]} />
                 </div>
               ))}
             </CardEnter>

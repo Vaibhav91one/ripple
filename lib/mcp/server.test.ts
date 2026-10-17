@@ -19,7 +19,7 @@ beforeAll(async () => {
     up = true;
     await seed(name);
     const [a, b] = InMemoryTransport.createLinkedPair();
-    await createRippleServer({ g, now: NOW, demo: true }).connect(a);
+    await createRippleServer({ g, now: NOW, demo: true, viewer: { teamIds: ["legal", "sales", "security", "leadership"] } }).connect(a);
     client = new Client({ name: "test", version: "0" });
     await client.connect(b);
   } catch (e) {

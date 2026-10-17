@@ -2,12 +2,14 @@
 // Pure (zod only) so lib/api.ts and the offline mock can import it in the browser.
 import { z } from "zod";
 import { Kpi, Person, RippleAngle, Blocker, Decision, Goal, Risk } from "@/lib/schemas";
+import { restrictedField } from "@/lib/schemas/common";
 import { kpi, type Rows } from "../util";
 
 export const LeadershipPayload = z.object({
   team: z.literal("leadership"),
   kpis: z.array(Kpi),
   angle: RippleAngle,
+  ...restrictedField,
   now: z.number(),
   goals: z.array(Goal),
   risks: z.array(Risk),
@@ -17,7 +19,7 @@ export const LeadershipPayload = z.object({
 });
 export type LeadershipPayload = z.infer<typeof LeadershipPayload>;
 /** The rows the cypher in lib/graph/queries/teams-leadership.cypher returns, by kind. */
-export const LeadershipRows = LeadershipPayload.omit({ team: true, kpis: true, angle: true, now: true });
+export const LeadershipRows = LeadershipPayload.omit({ team: true, restricted: true, kpis: true, angle: true, now: true });
 export type LeadershipRows = Omit<Rows<LeadershipPayload>, "now">;
 
 function kpis(r: LeadershipRows, now: number): Kpi[] {

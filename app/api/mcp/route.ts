@@ -11,7 +11,7 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return Response.json({ error: "graph_down" }, { status: 503 });
   }
-  const server = createRippleServer({ g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, readonly: ctx.readonly }, ctx.audit);
+  const server = createRippleServer({ g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, readonly: ctx.readonly, viewer: ctx.viewer }, ctx.audit);
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
   return transport.handleRequest(req);

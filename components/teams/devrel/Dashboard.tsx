@@ -24,7 +24,7 @@ export function DevrelDashboard() {
   const tasks = [...d.tasks].sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0));
 
   return (
-    <TeamFrame title="DevRel" subtitle="Docs traffic, search gaps, SDK adoption and the changelog" kpis={d.kpis} angle={d.angle} teamName="DevRel">
+    <TeamFrame title="DevRel" subtitle="Docs traffic, search gaps, SDK adoption and the changelog" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="DevRel">
       <Widget title="Top pages" wide meta="last 30 days">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

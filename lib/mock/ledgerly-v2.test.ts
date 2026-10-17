@@ -37,7 +37,7 @@ describe("v2 mocks", () => {
 
   it("keeps the v1 numbers and gives every team a person budget of 3-5", () => {
     expect(v2.deals.filter((d) => d.v1Related && d.stage !== "closed_lost")).toHaveLength(3);
-    expect(v2.contracts.slice(0, 2).reduce((n, c) => n + m.customers.find((x) => x.id === c.customerId)!.arr, 0)).toBe(180_000);
+    expect(v2.contracts.slice(0, 2).reduce((n, c) => n + (m.customers.find((x) => x.id === c.customerId)!.arr ?? 0), 0)).toBe(180_000);
     for (const id of TEAM_IDS) {
       const n = m.people.filter((p) => p.teamId === id).length;
       expect(n, id).toBeGreaterThanOrEqual(3);

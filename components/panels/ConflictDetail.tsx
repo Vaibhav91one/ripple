@@ -8,6 +8,7 @@ import type { Conflict, Source } from "@/lib/schemas";
 import DiffTable from "@/components/kit/beautifului/diff-table";
 import ApprovalCard from "@/components/kit/beautifului/approval-card";
 import { SlideConfirm } from "@/components/kit/bencho/slide-confirm";
+import { teamName } from "@/lib/permissions/classify";
 import { highlightQuote } from "./highlight";
 import { useSourcePanel } from "./SourcePanel";
 
@@ -21,6 +22,8 @@ const CHOICES: { id: Choice; label: string }[] = [
 
 function Clause({ source, title }: { source: Source; title?: string }) {
   const panel = useSourcePanel();
+  if (source.restricted)
+    return <p className="py-1 text-sm text-faint">Source restricted to {teamName(source.restricted)}</p>;
   return (
     <div className="space-y-3 py-1">
       <div className="flex items-center gap-3">
@@ -48,7 +51,7 @@ export function ConflictDetail({
   onResolve,
 }: {
   conflict: Conflict;
-  arrAtRisk: number;
+  arrAtRisk: number | null;
   onResolve: (choice: Choice) => void;
 }) {
   const [decision, ...guarantees] = conflict.sources;
@@ -66,7 +69,7 @@ export function ConflictDetail({
           <h2 className="text-lg text-strong">A promise and a decision disagree</h2>
         </div>
         <p className="text-sm text-body">
-          {conflict.contractIds.length} contracts · ${Math.round(arrAtRisk / 1000)}k at risk
+          {conflict.contractIds.length} contracts{arrAtRisk === null ? "" : ` · $${Math.round(arrAtRisk / 1000)}k at risk`}
         </p>
       </header>
 

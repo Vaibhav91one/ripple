@@ -15,7 +15,7 @@ export const DEMO_GRAPH = "demo";
 
 export type Org = { id: string; graphName: string; isDemo: boolean };
 export type Viewer =
-  | { kind: "anon"; orgId: string; teamIds: string[]; role: "member" }
+  | { kind: "anon"; orgId: string; teamIds: string[]; role: "member" | "change_owner" }
   | { kind: "user"; userId: string; orgId: string; teamIds: string[]; role: "member" | "lead" | "admin" | "change_owner"; personId?: string };
 export type Context = {
   viewer: Viewer;
@@ -37,10 +37,22 @@ export const graphNameFor = (orgId: string) => `t_${orgId.toLowerCase().replace(
 
 /** The demo lens cookie -> one team id; no request scope (scripts, tests) -> the default lens. */
 async function lensTeam(): Promise<string> {
+  const seam = process.env.RIPPLE_GRAPH && process.env.RIPPLE_VIEW_AS; // test-only: act as these teams (comma list) on a temp graph
+  if (seam) return seam;
   try {
     return LENS_TEAM[parseLens((await cookies()).get(LENS_COOKIE)?.value)];
   } catch {
     return LENS_TEAM[parseLens(undefined)];
+  }
+}
+
+/** The demo's change-owner lens acts as the change_owner role (summary-level numbers); the test seam sets it via RIPPLE_VIEW_ROLE. */
+async function lensRole(): Promise<"member" | "change_owner"> {
+  if (process.env.RIPPLE_GRAPH && process.env.RIPPLE_VIEW_AS) return process.env.RIPPLE_VIEW_ROLE === "change_owner" ? "change_owner" : "member";
+  try {
+    return parseLens((await cookies()).get(LENS_COOKIE)?.value) === "change-owner" ? "change_owner" : "member";
+  } catch {
+    return parseLens(undefined) === "change-owner" ? "change_owner" : "member";
   }
 }
 
@@ -65,7 +77,7 @@ export async function getContext(req?: Request): Promise<Context> {
   void req;
   const e = env();
   const session = await sessionViewer();
-  const viewer: Viewer = (session && (await withMembership(session))) ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: [await lensTeam()], role: "member" };
+  const viewer: Viewer = (session && (await withMembership(session))) ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: (await lensTeam()).split(","), role: await lensRole() };
   const graphName = e.RIPPLE_GRAPH || (session ? graphNameFor(session.orgId) : DEMO_GRAPH);
   const raw = await graphFor(graphName);
   if (session && !e.RIPPLE_GRAPH) {

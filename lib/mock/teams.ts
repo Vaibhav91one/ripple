@@ -57,7 +57,7 @@ export function mockOverview(): Overview {
       { id: "teams-affected", label: "Teams affected", value: r.counts.teamsAffected, unit: "count" },
       { id: "not-told", label: "Teams not told", value: r.counts.notTold, unit: "count", tone: "bad" },
       { id: "conflicts", label: "Open conflicts", value: r.counts.conflicts, unit: "count", tone: "bad" },
-      { id: "arr-at-risk", label: "ARR at risk", value: r.counts.arrAtRisk, unit: "usd", tone: "bad" },
+      { id: "arr-at-risk", label: "ARR at risk", value: r.counts.arrAtRisk ?? 0, unit: "usd", tone: "bad" },
       { id: "customers", label: "Customers on API v1", value: r.counts.customers, unit: "count", tone: "warn" },
     ],
     openDecisions: [{ decision: r.decision, notTold: r.gap }],

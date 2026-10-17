@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { roQuery } from "../graph/client";
 import { NotFound } from "../graph/queries";
+import { loadIndex, redact } from "../permissions/redact";
 import { getContext, type Context } from "./context";
 
 export const DEMO_READONLY = "demo_readonly";
@@ -32,7 +33,10 @@ export async function handle<S extends z.ZodType>(
     if (denied) return denied;
   }
   try {
-    return json(schema.parse(await fn(ctx))); // a route that changes state (POST /api/change) calls ctx.writer()
+    // a route that changes state (POST /api/change) calls ctx.writer()
+    const r = redact(await fn(ctx), ctx.viewer, await loadIndex(ctx.graph)); // server-side, before parse: restricted payload never leaves
+    const body: unknown = schema.parse(r.value);
+    return json(r.restricted.length && body && typeof body === "object" && !Array.isArray(body) ? { ...body, restricted: r.restricted } : body);
   } catch (e) {
     if (e instanceof NotFound) return json({ error: "not_found", message: e.message }, 404);
     return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);
