@@ -20,8 +20,8 @@ export function load(name: string): Cypher {
   if (text === undefined) cache.set(name, (text = readFileSync(path.join(DIR, `${name}.cypher`), "utf8")));
   return { name, text };
 }
-async function run<T>(g: Graph, name: string, params: Record<string, unknown>, schema: z.ZodType<T>) {
-  const c = load(name);
+async function run<T>(g: Graph, name: string, params: Record<string, unknown>, schema: z.ZodType<T>, text?: string) {
+  const c = text ? { name, text } : load(name);
   const rows = await query(g, c.text, params);
   return { rows: z.array(schema).parse(rows), c };
 }
@@ -84,12 +84,17 @@ const DecisionRow = Decision.extend({
   src: z.string().nullable(), quote: z.string().nullable(), decidedAt: n,
 });
 
-export async function ripple(g: Graph, decisionId: string, now: number): Promise<RippleResult> {
+const Depth = z.number().int().min(1).max(4);
+
+/** `depth` = systems hops from the sunset system (1 = the system itself, 3 = default, 4 = max). */
+export async function ripple(g: Graph, decisionId: string, now: number, depth = 3): Promise<RippleResult> {
+  const hops = Depth.parse(depth) - 1; // Cypher can't parametrize var-length bounds; validated int, then substituted
+  const text = load("ripple").text.replaceAll("DEPENDS_ON*0..2", `DEPENDS_ON*0..${hops}`);
   const dec = await run(g, "decision", { id: decisionId }, DecisionRow);
   if (!dec.rows[0]) throw new NotFound(`unknown decision ${decisionId}`);
   const { src, quote, ...decision } = dec.rows[0];
   const fallback: Source = { artifactId: src ?? decisionId, quote: quote ?? decision.title };
-  const rp = await run(g, "ripple", { id: decisionId, now }, RippleRow);
+  const rp = await run(g, "ripple", { id: decisionId, now }, RippleRow, text);
 
   const nodes = new Map<string, RippleResult["nodes"][number]>([
     [decisionId, { id: decisionId, label: decision.title, kind: "decision", hop: 0 }],

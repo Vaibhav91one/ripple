@@ -1,4 +1,4 @@
-// pnpm eval: run the 15 questions against the `demo` graph (read-only) and print a markdown table.
+// pnpm eval: run the 16 questions against the `demo` graph (read-only) and print a markdown table.
 import { closeClient, graphFor } from "../graph/client";
 import { evaluate, toMarkdown } from "./questions";
 

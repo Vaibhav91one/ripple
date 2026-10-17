@@ -4,7 +4,7 @@
 // 40 customers on v1, 12 open v1 tickets, 3 open v1 deals, 2 guaranteeing contracts ($180k).
 import type {
   Artifact, Blocker, Clause, Contract, Control, Deal, DocsStats, Edge, Finding, Framework, Goal, Incident,
-  Page, PrRow, Risk, Source, Task, TicketRow, Vendor,
+  Page, PrRow, Risk, Source, System, Task, TicketRow, Vendor,
 } from "@/lib/schemas";
 import * as m from "./ledgerly";
 
@@ -213,8 +213,26 @@ const schedDocs: Artifact[] = [...new Set(clauses.filter((c) => c.src.artifactId
   ts: day("2025-07-01"), uri: `mock://ledgerly/${SCHED(ctr)}`, authorId: "p-noah",
 }));
 
+// Dependency chain only ripple depth 4 reaches: reporting-export -> billing-sync -> api-gateway -> api-v1 (hops 4, 3, 2).
+// The data team owns the deepest system and was never told about d-1.
+export const chainSystems: System[] = [
+  { id: "api-gateway", name: "api-gateway", kind: "service", status: "current", onCallPersonId: "p-lena" },
+  { id: "billing-sync", name: "billing-sync", kind: "service", status: "current", onCallPersonId: "p-omar" },
+  { id: "reporting-export", name: "reporting-export", kind: "service", status: "current", onCallPersonId: "p-data" },
+];
+const chainDoc: Artifact = {
+  id: "art-arch-chain", kind: "doc", title: "Architecture: ledger data flow",
+  text: "api-gateway routes all traffic through API v1 handlers. billing-sync calls api-gateway for ledger writes. reporting-export reads billing-sync snapshots for the month-end finance close. The data team owns reporting-export.",
+  ts: day("2026-08-20"), uri: "mock://ledgerly/art-arch-chain", authorId: "p-data",
+};
+const chainSrc = (quote: string): Source => {
+  if (!chainDoc.text.includes(quote)) throw new Error(`Quote not verbatim in ${chainDoc.id}: ${quote}`);
+  return { artifactId: chainDoc.id, quote };
+};
+
 /** Artifacts the v2 data adds (not in m.artifacts, so the embed cache and v1 evals stay untouched). */
 export const extraArtifacts: Artifact[] = [
+  chainDoc,
   ...newTickets.map((t) => ({
     id: t.id, kind: "ticket" as const, status: t.status, title: t.title,
     text: `${t.title}. Reported by ${cust(Number(t.customerId!.slice(5))).name}.`,
@@ -324,6 +342,10 @@ const personAcks: [string, "seen" | "concern", number][] = [
   ["p-rhea", "seen", 3], ["p-hugo", "seen", 2],
 ];
 export const edges: ExtraEdge[] = [
+  edge("api-gateway", "api-v1", "DEPENDS_ON", day("2026-01-01"), { src: chainSrc("api-gateway routes all traffic through API v1 handlers") }),
+  edge("billing-sync", "api-gateway", "DEPENDS_ON", day("2026-01-01"), { src: chainSrc("billing-sync calls api-gateway for ledger writes") }),
+  edge("reporting-export", "billing-sync", "DEPENDS_ON", day("2026-01-01"), { src: chainSrc("reporting-export reads billing-sync snapshots") }),
+  edge("data", "reporting-export", "OWNS", day("2026-01-01"), { src: chainSrc("The data team owns reporting-export") }),
   ...newTickets.flatMap((t) => [
     edge(t.id, t.systemId!, "ABOUT", t.createdAt),
     edge(t.id, t.customerId!, "RAISED_BY", t.createdAt),

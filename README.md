@@ -826,7 +826,7 @@ RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 
 ## Eval
 
-`pnpm eval` runs 15 questions about Ledgerly against the `demo` graph using the deterministic query wrappers (no LLM). Each question names its tool and expected source artifact ids; a row passes only if the answer matches and every expected source id is returned. `lib/eval/eval.test.ts` runs the same harness on a throwaway `test_v_<uuid>` graph.
+`pnpm eval` runs 16 questions about Ledgerly against the `demo` graph using the deterministic query wrappers (no LLM). Each question names its tool and expected source artifact ids; a row passes only if the answer matches and every expected source id is returned. `lib/eval/eval.test.ts` runs the same harness on a throwaway `test_v_<uuid>` graph.
 
 | # | Question | Answer | Tool | Sources ok | Pass |
 |---|---|---|---|---|---|
@@ -845,8 +845,9 @@ RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 | 13 | Which team blocks the most open requests? | legal | bottleneck | yes | PASS |
 | 14 | Who is waiting on Legal? | eng, finance, product, sales | bottleneck | yes | PASS |
 | 15 | Which artifact mentions Northwind (full-text)? | art-msa-northwind | search | yes | PASS |
+| 16 | Who is affected if we sunset the fax-gateway service? | not in graph | who_knows (fax-gateway) | yes | PASS |
 
-15/15 passed
+16/16 passed
 
 ## Email and ack screens
 

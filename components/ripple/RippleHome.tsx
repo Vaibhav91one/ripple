@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Segmented } from "@/components/kit/obsidian/analytics/segmented";
 import { ToastStack, type Toast } from "@/components/kit/bencho/toast-stack";
 import LoadingState from "@/components/kit/beautifului/loading-state";
 import { AnimatedCount } from "@/components/motion/AnimatedCount";
@@ -17,11 +18,18 @@ import { StatusPills } from "./StatusPills";
 import { TEAM_TABS, useTeam } from "./useTeam";
 
 type NotifyToastResult = { teamId: string; taskId: string; email: { status: "sent" | "preview" | "failed"; to: string | null } };
+const DEPTHS = (["1", "2", "3", "4"] as const).map((id) => ({ id, label: id }));
+type Depth = (typeof DEPTHS)[number]["id"];
 const ORDER: Record<TeamStatus, number> = { conflict: 0, gap: 1, covered: 2 };
 
 export function RippleHome() {
   const [d] = useDecisionId();
-  const { data, isPending, error, refetch } = useQuery({ queryKey: ["ripple", d], queryFn: () => getRipple(d) });
+  const [depth, setDepth] = useState<Depth>("3");
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey: depth === "3" ? ["ripple", d] : ["ripple", d, depth], // default depth shares the cache with every other screen
+    queryFn: () => getRipple(d, Number(depth)),
+    placeholderData: (prev) => prev,
+  });
   const [team, setTeam] = useTeam();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [busy, setBusy] = useState(false);
@@ -87,6 +95,10 @@ export function RippleHome() {
             ))}
           </div>
         </PageHeader>
+        <div className="mt-3 flex items-center gap-2 text-sm text-faint">
+          Depth <Segmented label="Dependency depth" options={DEPTHS} value={depth} onChange={setDepth} />
+          <span>hops from the sunset system</span>
+        </div>
       </div>
       <div className="flex min-h-0 flex-1">
         <section className="relative min-w-0 basis-3/5 p-4">

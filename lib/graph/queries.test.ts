@@ -58,6 +58,19 @@ describe("queries on the ledgerly seed (in order: later tests mutate the graph)"
     expect(r.nodes.find((x) => x.id === "api-v1")?.hop).toBe(1);
   });
 
+  t("ripple depth 1 < 3 < 4: the data team is only reached at depth 4", async () => {
+    const teams = async (d: number) => (await ripple(g, "d-1", NOW, d)).teams.map((x) => x.teamId).sort();
+    expect(await teams(1)).toEqual(["devrel", "legal", "sales", "support"]);
+    expect(await teams(3)).toEqual(["devrel", "legal", "sales", "security", "support"]);
+    const four = await ripple(g, "d-1", NOW, 4);
+    expect(four.teams.map((x) => x.teamId)).toContain("data");
+    expect(four.gap).toContain("data");
+    expect(four.nodes.find((x) => x.id === "reporting-export")?.hop).toBe(4);
+    expect(four.teams.find((x) => x.teamId === "data")!.why[0].source.quote).toBe("The data team owns reporting-export");
+    await expect(ripple(g, "d-1", NOW, 5)).rejects.toThrow();
+    await expect(ripple(g, "d-1", NOW, 0)).rejects.toThrow();
+  });
+
   t("exactly one open conflict, idempotent", async () => {
     const a = await conflicts(g, "d-1", NOW);
     const b = await conflicts(g, "d-1", NOW + 60);

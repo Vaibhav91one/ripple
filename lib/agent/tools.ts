@@ -1,7 +1,7 @@
 // Agent tools = the Cypher templates. The model picks a tool and fills params; it never writes Cypher.
 import { z } from "zod";
 import { query, type Graph } from "../graph/client";
-import { bottleneck, load, ripple, search, whoKnows, type Cypher } from "../graph/queries";
+import { bottleneck, load, NotFound, ripple, search, whoKnows, type Cypher } from "../graph/queries";
 import type { Source } from "../schemas";
 
 export type Row = Record<string, unknown>;
@@ -24,6 +24,8 @@ async function sourcesFor(g: Graph, ids: string[]): Promise<{ sources: Source[];
   const sources = rows.flatMap((r) => (r.text?.trim() ? [{ artifactId: r.id, quote: r.text.trim().slice(0, QUOTE_LEN) }] : []));
   return { sources, cypher: c };
 }
+/** Honest empty answer: one row the model can report plainly instead of guessing. */
+export const notInGraph = (what: string): Row[] => [{ found: false, note: `Nothing in the graph connects to ${what}. The dependency may not be modelled.` }];
 const dedupe = (xs: Source[]) => [...new Map(xs.map((s) => [s.artifactId, s])).values()];
 
 export const TOOLS = {
@@ -34,15 +36,19 @@ export const TOOLS = {
     run: async ({ g }, { text }) => {
       const hits = await search(g, text);
       const s = await sourcesFor(g, hits.data.map((h) => h.id));
-      return { rows: hits.data, sources: s.sources, cypher: [...hits.cypher, s.cypher] };
+      return { rows: hits.data.length ? hits.data : notInGraph(`"${text}"`), sources: s.sources, cypher: [...hits.cypher, s.cypher] };
     },
   }),
   ripple: def({
     description: "Everything a decision touches: affected teams, which were never told (gap), conflicts, customers and ARR at risk.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({
+      decisionId: z.string().describe("Decision id, e.g. d-1"),
+      depth: z.number().int().min(1).max(4).optional().describe("How many dependency hops to follow from the sunset system (1-4, default 3)"),
+    }),
     templates: ["decision", "ripple", "gap", "conflicts-detect"],
-    run: async ({ g, now }, { decisionId }) => {
-      const r = await ripple(g, decisionId, now);
+    run: async ({ g, now }, { decisionId, depth = 3 }) => {
+      const r = await ripple(g, decisionId, now, depth).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
+      if (!r) return { rows: notInGraph(`decision ${decisionId}`), sources: [], cypher: [] };
       const rows: Row[] = [{
         decision: r.decision, counts: r.counts, gap: r.gap,
         teams: r.teams.map((t) => ({ teamId: t.teamId, involved: t.involved, acked: t.acked, why: t.why.map((w) => w.reason) })),
@@ -58,6 +64,7 @@ export const TOOLS = {
     templates: ["who-knows", "artifact-text"],
     run: async ({ g }, { systemId }) => {
       const w = await whoKnows(g, systemId);
+      if (!w.data.length) return { rows: notInGraph(systemId), sources: [], cypher: w.cypher };
       const s = await sourcesFor(g, w.data.flatMap((p) => p.evidence).slice(0, 25));
       return { rows: w.data, sources: s.sources, cypher: [...w.cypher, s.cypher] };
     },
@@ -70,7 +77,7 @@ export const TOOLS = {
       const dc = load("decision");
       const tc = load("trace-decision");
       const [d] = await query<{ id: string; title: string; status: string; src: string | null; quote: string | null }>(g, dc.text, { id: decisionId });
-      if (!d) throw new Error(`unknown decision ${decisionId}`);
+      if (!d) return { rows: notInGraph(`decision ${decisionId}`), sources: [], cypher: [dc] };
       const sup = await query<{ sourceId: string | null; sourceTitle: string | null; quote: string | null }>(g, tc.text, { id: decisionId });
       const supported = sup.filter((x) => x.sourceId);
       const s = await sourcesFor(g, supported.map((x) => x.sourceId!));
