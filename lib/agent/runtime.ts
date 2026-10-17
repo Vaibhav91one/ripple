@@ -12,7 +12,7 @@ import { pickModel, roleFor } from "../llm";
 import { redactToolOut } from "../permissions/redact";
 import { propose as proposeAction } from "../actions/propose";
 import { agent as findAgent } from "./registry";
-import { TOOLS, type Ctx, type ToolName, type ToolOut, type Viewer } from "./tools";
+import { TOOLS, wrapData, type Ctx, type ToolName, type ToolOut, type Viewer } from "./tools";
 
 export { runAgent as runInteractive } from "./loop";
 
@@ -33,10 +33,6 @@ export type RunResult = { runId: string; status: RunStatus; output?: unknown; to
 
 /** The permission layer (#99): every tool output passes through this before the model sees it. */
 export const redactToolOutput = (out: ToolOut, viewer: Viewer, g: Graph): Promise<ToolOut> => redactToolOut(g, viewer, out);
-
-/** Tool output as untrusted data. A literal "</data" in the payload cannot close the wrapper. */
-const wrapData = (name: string, rows: unknown, sourceIds: string[]) =>
-  `<data source="tool:${name}">${JSON.stringify({ rows, sourceIds }).replaceAll("</data", "<\\/data")}</data>`;
 
 const utcDayStart = () => new Date(Math.floor(Date.now() / 86_400_000) * 86_400_000);
 type StepRow = typeof runSteps.$inferInsert;
