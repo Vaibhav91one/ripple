@@ -1,10 +1,10 @@
 // Seed the demo graph when empty. Idempotent; used by instrumentation.ts and /api/reset.
-import { graphFor, guard, roQuery, type QueryOpts } from "./client";
-import { seed } from "../ingest/seed";
+import { client, graphFor, guard, roQuery, type QueryOpts } from "./client";
+import { SEED_VERSION, seed } from "../ingest/seed";
 import { migrateGraph } from "./migrate";
 
 export async function nodeCount(graphName: string, opts: QueryOpts = {}): Promise<number> {
-  const rows = await roQuery<{ n: number }>(await graphFor(graphName), "MATCH (n) WHERE NOT n:Migration RETURN count(n) AS n", {}, opts);
+  const rows = await roQuery<{ n: number }>(await graphFor(graphName), "MATCH (n) WHERE NOT n:Migration AND NOT n:SeedInfo RETURN count(n) AS n", {}, opts);
   return Number(rows[0]?.n ?? 0);
 }
 
@@ -13,6 +13,41 @@ export async function seedIfEmpty(graphName: string): Promise<"seeded" | "presen
   await seed(graphName);
   await migrateGraph(await graphFor(graphName));
   return "seeded";
+}
+
+async function seedVersionOf(graphName: string): Promise<string | undefined> {
+  const rows = await roQuery<{ v: string }>(await graphFor(graphName), "MATCH (s:SeedInfo) RETURN s.version AS v");
+  return rows[0]?.v;
+}
+
+const rebuilds = new Map<string, Promise<unknown>>();
+
+/**
+ * Seed `graphName` when empty; when it holds an older seed (no SeedInfo, or another version), rebuild it in
+ * `<name>_next` and swap it in with an atomic RENAME, so readers see the old graph until the new one is complete.
+ * Demo graph only: never call it for an org graph.
+ */
+export async function syncSeed(graphName: string): Promise<"seeded" | "present" | `reseeded: ${string} -> ${string}`> {
+  if ((await nodeCount(graphName)) === 0) return seedIfEmpty(graphName);
+  const old = await seedVersionOf(graphName);
+  if (old === SEED_VERSION) return "present";
+  const next = `${graphName}_next`;
+  // ponytail: in-process dedupe only; two instances booting at once would race on <name>_next
+  const running = rebuilds.get(graphName);
+  if (running) await running;
+  else {
+    const job = (async () => {
+      await guard(async () => (await graphFor(next)).delete()).catch(() => {}); // leftover from a failed run
+      await seed(next);
+      await migrateGraph(await graphFor(next));
+      await guard(async () => (await (await client()).connection).rename(next, graphName)); // overwrites the target atomically
+    })().finally(() => rebuilds.delete(graphName));
+    rebuilds.set(graphName, job);
+    await job;
+  }
+  const msg = `${old ?? "none"} -> ${SEED_VERSION}` as const;
+  console.log(`[ripple] demo graph reseeded: ${msg}`);
+  return `reseeded: ${msg}`;
 }
 
 export async function resetDemo(graphName: string): Promise<void> {
@@ -36,7 +71,7 @@ const HEAL_EVERY_MS = 60_000;
 export function healDemo(graphName: string, now = Date.now()): Promise<void> | undefined {
   if (now - (lastHeal.get(graphName) ?? -Infinity) < HEAL_EVERY_MS) return;
   lastHeal.set(graphName, now);
-  return seedIfEmpty(graphName).then(
+  return syncSeed(graphName).then(
     (r) => { if (r === "seeded") console.warn(`graph ${graphName} was empty, re-seeded`); },
     (e) => console.error("demo heal failed:", e instanceof Error ? e.message : e),
   );

@@ -1,5 +1,6 @@
 // Deterministic, idempotent Ledgerly seed (MERGE on id). Reuses lib/mock/ledgerly.ts.
 // Dates are epoch seconds. valid_to absent = current edge. Embeddings come from the committed cache (pnpm embed).
+import { createHash } from "node:crypto";
 import { closeClient, graphFor, query, type Graph } from "../graph/client";
 import { readEmbedding } from "./embed";
 import { detectConflicts } from "../graph/queries";
@@ -7,6 +8,13 @@ import { ensureSchema, WEIGHTED } from "../graph/schema";
 import * as m from "../mock/ledgerly";
 import * as v2 from "../mock/ledgerly-v2";
 import { EdgeType, type Artifact } from "../schemas";
+
+/**
+ * Identifies the seed a graph was built from: a hash of the mock data plus a hand-bumped code revision.
+ * Bump SEED_CODE_REV when seed() itself changes shape (a new edge or label built in this file); data edits bump the hash alone.
+ */
+const SEED_CODE_REV = 1;
+export const SEED_VERSION = `${SEED_CODE_REV}-${createHash("sha256").update(JSON.stringify([m, v2])).digest("hex").slice(0, 12)}`;
 
 const day = (d: string) => Math.floor(Date.parse(`${d}T09:00:00Z`) / 1000);
 const kindLabel: Record<Artifact["kind"], string> = { doc: "Doc", ticket: "Ticket", message: "Message", pr: "PR" };
@@ -163,6 +171,8 @@ export async function seed(graphName: string): Promise<void> {
     );
   }
   await detectConflicts(g, Math.floor(Date.now() / 1000)); // reads never write Conflict nodes, so seed creates them
+  // last, so a half-built graph never claims the current version
+  await query(g, "MERGE (s:SeedInfo {k: 'seed'}) SET s.version = $v, s.at = $at", { v: SEED_VERSION, at: Math.floor(Date.now() / 1000) });
 }
 
 if (process.argv[1]?.endsWith("lib/ingest/seed.ts")) {
