@@ -31,6 +31,7 @@ const shape = {
   DATABASE_URL: str,
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: str,
   CLERK_SECRET_KEY: str,
+  RIPPLE_AUTH: str, // "off" forces the public demo even when Clerk keys are set
   CLERK_WEBHOOK_SIGNING_SECRET: str,
   RIPPLE_SECRET_KEY: str,
 };

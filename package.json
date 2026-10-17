@@ -24,6 +24,7 @@
     "@ai-sdk/google": "^4.0.98",
     "@ai-sdk/openai": "^4.0.95",
     "@ai-sdk/openai-compatible": "^3.0.70",
+    "@clerk/nextjs": "^7.9.17",
     "@huggingface/transformers": "^4.3.1",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@openrouter/ai-sdk-provider": "^3.1.0",
