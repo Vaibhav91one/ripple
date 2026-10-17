@@ -41,3 +41,13 @@ export async function query<T = Record<string, unknown>>(
   const res = await graph.query<T>(cypher, { params: params as never });
   return res.data ?? [];
 }
+
+/** Read-only variant (GRAPH.RO_QUERY): FalkorDB rejects any write clause, so reads can never mutate. */
+export async function roQuery<T = Record<string, unknown>>(
+  graph: Graph,
+  cypher: string,
+  params: Params = {},
+): Promise<T[]> {
+  const res = await graph.roQuery<T>(cypher, { params: params as never });
+  return res.data ?? [];
+}

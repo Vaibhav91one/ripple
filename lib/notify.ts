@@ -6,7 +6,7 @@ import { Resend } from "resend";
 import { BriefEmail } from "@/components/email/BriefEmail";
 import { encodeAckToken } from "./ack-token";
 import { buildBrief } from "./briefs";
-import { query, type Graph } from "./graph/client";
+import { query, roQuery, type Graph } from "./graph/client";
 import { ripple } from "./graph/queries";
 import { artifacts } from "./mock/ledgerly";
 import type { Ack } from "./schemas";
@@ -28,7 +28,7 @@ export type NotifyResult = {
 };
 
 const firstMember = async (g: Graph, teamId: string) =>
-  (await query<{ id: string; email: string }>(
+  (await roQuery<{ id: string; email: string }>(
     g,
     "MATCH (p:Person)-[:MEMBER_OF]->(:Team {id: $teamId}) RETURN p.id AS id, p.email AS email ORDER BY p.id LIMIT 1",
     { teamId },

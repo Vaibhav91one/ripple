@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { TOOLS, type Ctx, type Row, type ToolOut } from "../agent/tools";
-import { query } from "../graph/client";
+import { roQuery } from "../graph/client";
 import { decisions, load, ripple } from "../graph/queries";
 import { recordAck } from "../notify";
 import type { Source } from "../schemas";
@@ -36,6 +36,7 @@ export function createRippleServer(ctx: Ctx): McpServer {
     who_knows: { ...TOOLS.who_knows, run: (args: never) => TOOLS.who_knows.run(ctx, args) },
     trace_decision: { ...TOOLS.trace_decision, run: (args: never) => TOOLS.trace_decision.run(ctx, args) },
     bottleneck: { ...TOOLS.bottleneck, run: (args: never) => TOOLS.bottleneck.run(ctx, args) },
+    why_affected: { ...TOOLS.why_affected, run: (args: never) => TOOLS.why_affected.run(ctx, args) },
     who_wasnt_told: {
       description: "Teams affected by a decision that were never involved in it nor acknowledged it (the gap), with why each is affected and the evidence.",
       input: z.object({ decisionId }),
@@ -61,7 +62,7 @@ export function createRippleServer(ctx: Ctx): McpServer {
       run: async ({ decisionId: id }: Id) => {
         await ripple(g, id, now); // throws NotFound for an unknown decision
         const c = load("deals-at-risk");
-        const rows = await query<Row & { src: string | null; quote: string | null }>(g, c.text, { id });
+        const rows = await roQuery<Row & { src: string | null; quote: string | null }>(g, c.text, { id });
         return { rows, sources: dedupe(rows.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : []))), cypher: [c] };
       },
     },
@@ -71,7 +72,7 @@ export function createRippleServer(ctx: Ctx): McpServer {
       run: async ({ decisionId: id }: Id) => {
         await ripple(g, id, now);
         const c = load("controls-affected");
-        return { rows: await query<Row>(g, c.text, { id }), sources: [], cypher: [c] };
+        return { rows: await roQuery<Row>(g, c.text, { id }), sources: [], cypher: [c] };
       },
     },
     ack_brief: {
