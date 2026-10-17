@@ -1,6 +1,7 @@
 // Audit log: who did what. Writes are awaited, reads fire-and-forget (`read: true`); a DB failure never fails the request.
 // With no DATABASE_URL (the demo before Postgres) this is a silent no-op.
 import { env } from "./env";
+import { safeMessage } from "./log";
 
 export type AuditEvent = {
   action: string;
@@ -27,7 +28,7 @@ export async function audit(ctx: AuditCtx, ev: AuditEvent): Promise<void> {
       resourceType: ev.resourceType, resourceId: ev.resourceId, outcome: ev.outcome ?? "allow", meta: ev.meta,
     });
   } catch (e) {
-    if (Date.now() - lastError > 60_000) console.error("audit log write failed:", e instanceof Error ? e.message : e); // one line a minute at most
+    if (Date.now() - lastError > 60_000) console.error("audit log write failed:", safeMessage(e)); // one line a minute at most
     lastError = Date.now();
   }
 }

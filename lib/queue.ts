@@ -1,6 +1,7 @@
 // pg-boss queue on the direct Postgres connection (needs LISTEN/NOTIFY + advisory locks: no pgbouncer).
 // The web side only sends; the worker process (worker/index.ts) starts, migrates and creates queues.
 import { PgBoss, type SendOptions } from "pg-boss";
+import { safeMessage } from "./log";
 import { env } from "./env";
 
 export const QUEUES = ["route-event", "agent", "deliver", "sync", "reminder", "digest", "execute-action", "noop"] as const;
@@ -19,7 +20,7 @@ export function queue(): Promise<PgBoss> | undefined {
   if (!url) return undefined;
   boss ??= (async () => {
     const b = new PgBoss({ ...bossOptions(url), supervise: false, schedule: false, migrate: false });
-    b.on("error", (e) => console.error("[queue]", e.message));
+    b.on("error", (e) => console.error("[queue]", safeMessage(e)));
     return b.start();
   })();
   return boss;
@@ -34,7 +35,7 @@ export async function enqueue(
   try {
     return await (await q).send(name, data, opts);
   } catch (e) {
-    console.error(`[queue] enqueue ${name} failed:`, (e as Error).message);
+    console.error(`[queue] enqueue ${name} failed:`, safeMessage(e));
     return null;
   }
 }

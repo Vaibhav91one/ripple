@@ -34,7 +34,8 @@ const shape = {
   CLERK_SECRET_KEY: str,
   RIPPLE_AUTH: str, // "off" forces the public demo even when Clerk keys are set
   CLERK_WEBHOOK_SIGNING_SECRET: str,
-  RIPPLE_SECRET_KEY: str,
+  RIPPLE_SECRET_KEY: str, // 32-byte base64, encrypts connector tokens (lib/crypto.ts)
+  RIPPLE_SECRET_KEY_OLD: str, // previous key, decrypt-only during rotation
 };
 export type Env = z.infer<z.ZodObject<typeof shape>>;
 
