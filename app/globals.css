@@ -35,6 +35,10 @@
   --text-lg: 18px;
   --text-xl: 24px;
   --text-2xl: 32px;
+  --text-3xs: 10px;
+  --text-2xs: 11px;
+  --text-3xl: 40px;
+  --text-4xl: 64px;
   /* motion */
   --ease-enter: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -74,6 +78,9 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-chip: 4px;
+  --radius-control: 8px;
+  --radius-card: 12px;
 }
 
 :root {

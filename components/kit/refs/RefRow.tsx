@@ -33,20 +33,20 @@ export function RefRow({ n, name, from, post, license, img, crop = "center", ski
           <p className={label}>Reference</p>
           {hasRef(img) ? (
             // eslint-disable-next-line @next/next/no-img-element -- local-only screenshot, not optimised on purpose
-            <img src={`/refs/${img}`} alt={`${from} reference`} className={`w-full rounded-lg border border-hairline object-cover ${wide ? "max-h-[420px]" : "h-72"}`} style={{ objectPosition: crop }} />
+            <img src={`/refs/${img}`} alt={`${from} reference`} className={`w-full rounded-control border border-hairline object-cover ${wide ? "max-h-[420px]" : "h-72"}`} style={{ objectPosition: crop }} />
           ) : (
-            <a href={post} target="_blank" rel="noreferrer" className="flex h-24 items-center justify-center rounded-lg border border-dashed border-hairline text-faint hover:text-body">
+            <a href={post} target="_blank" rel="noreferrer" className="flex h-24 items-center justify-center rounded-control border border-dashed border-hairline text-faint hover:text-body">
               Open the reference post
             </a>
           )}
         </div>
         <div className={pane}>
           <p className={label}>Replica</p>
-          <div className={`skin-${skin} overflow-x-auto rounded-lg bg-page p-5 text-body`}>{replica}</div>
+          <div className={`skin-${skin} overflow-x-auto rounded-control bg-page p-5 text-body`}>{replica}</div>
         </div>
         <div className={pane}>
           <p className={label}>Ripple</p>
-          <div className="skin-ripple overflow-x-auto rounded-lg border border-hairline bg-page p-5 text-body">{ripple}</div>
+          <div className="skin-ripple overflow-x-auto rounded-control border border-hairline bg-page p-5 text-body">{ripple}</div>
         </div>
       </div>
     </article>

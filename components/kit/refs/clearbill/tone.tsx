@@ -12,7 +12,7 @@ const TONE: Record<Tone, string> = {
 /** Small tinted status pill; `dot` adds the leading status dot. */
 export function Pill({ tone, dot, children }: { tone: Tone; dot?: boolean; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-[11px] font-medium leading-none ${TONE[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-2xs font-medium leading-none ${TONE[tone]}`}>
       {dot && <span aria-hidden className="size-[5px] rounded-full bg-current" />}
       {children}
     </span>

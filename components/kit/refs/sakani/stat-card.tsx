@@ -17,18 +17,18 @@ export function StatCard({ title, value, delta, trend = "up", description }: {
 }) {
   const Icon = icon[trend];
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-[18px] border border-hairline bg-surface p-5">
-      <span className="text-[14px] leading-5 font-medium text-body">{title}</span>
-      <span className="text-[30px] leading-[36px] font-semibold tracking-[-0.02em] text-strong">{value}</span>
+    <div className="flex min-w-0 flex-col gap-2 rounded-card border border-hairline bg-surface p-5">
+      <span className="text-sm leading-5 font-medium text-body">{title}</span>
+      <span className="text-2xl leading-[36px] font-semibold tracking-[-0.02em] text-strong">{value}</span>
       {(delta || description) && (
         <div className="flex items-center gap-1.5">
           {delta && (
-            <span className={`inline-flex h-5 items-center gap-1 rounded-full px-2 text-[12px] leading-none font-medium whitespace-nowrap ${tone[trend]}`}>
+            <span className={`inline-flex h-5 items-center gap-1 rounded-full px-2 text-xs leading-none font-medium whitespace-nowrap ${tone[trend]}`}>
               <Icon size={12} strokeWidth={2} aria-hidden />
               {delta}
             </span>
           )}
-          {description && <span className="text-[12px] leading-4 text-faint">{description}</span>}
+          {description && <span className="text-xs leading-4 text-faint">{description}</span>}
         </div>
       )}
     </div>

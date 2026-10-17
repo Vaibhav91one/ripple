@@ -8,7 +8,7 @@ export function ResolveOptions({ heading, options, value, onChange }: {
 }) {
   return (
     <section className="min-w-[520px] max-w-[620px] rounded-[var(--ref-radius)] border border-hairline bg-surface p-4">
-      <h3 className="mb-4 px-0.5 text-[15px] text-strong">{heading}</h3>
+      <h3 className="mb-4 px-0.5 text-md text-strong">{heading}</h3>
       <div role="radiogroup" aria-label={heading} className="space-y-2.5">
         {options.map((o) => {
           const on = o.id === value;
@@ -20,7 +20,7 @@ export function ResolveOptions({ heading, options, value, onChange }: {
               aria-checked={on}
               aria-disabled={o.locked || undefined}
               onClick={() => !o.locked && onChange?.(o.id)}
-              className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-ripple ${
+              className={`flex w-full items-start gap-3 rounded-control border px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-ripple ${
                 on ? "border-strong bg-raised shadow-[0_0_0_1px_var(--strong)]" : "border-hairline"
               } ${o.locked ? "cursor-not-allowed opacity-55" : ""}`}
             >
@@ -28,11 +28,11 @@ export function ResolveOptions({ heading, options, value, onChange }: {
                 {on && <span className="size-1.5 rounded-full bg-page" />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 text-[12px] font-medium text-strong">
+                <span className="flex items-center gap-2 text-xs font-medium text-strong">
                   {o.title}
-                  {o.tag && <span className="text-[10px] font-medium text-ripple">{o.tag}</span>}
+                  {o.tag && <span className="text-3xs font-medium text-ripple">{o.tag}</span>}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-faint">{o.sub}</span>
+                <span className="mt-0.5 block text-2xs text-faint">{o.sub}</span>
               </span>
               {o.locked && <Lock aria-label="Locked" className="mt-1 size-3.5 shrink-0 text-faint" />}
             </button>
