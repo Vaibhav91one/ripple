@@ -11,10 +11,10 @@ function Form() {
       <div className="max-w-sm space-y-3 text-center">
         <p className="text-strong">Sign-up is not configured here.</p>
         <p className="text-sm text-body">Ripple runs as a public demo with no account needed.</p>
-        <Link href="/overview" className="text-sm text-ripple hover:underline">Open the live demo</Link>
+        <Link href="/home" className="text-sm text-ripple hover:underline">Open the live demo</Link>
       </div>
     );
-  return <ClerkProvider><SignUp /></ClerkProvider>;
+  return <ClerkProvider><SignUp fallbackRedirectUrl="/home" /></ClerkProvider>;
 }
 
 export default function Page() {

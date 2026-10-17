@@ -102,6 +102,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "ripple": [{ url: "/api/ripple?d=d-1" }, { url: "/api/ripple?d=d-1&depth=4" }],
   "graph": [{ url: "/api/graph?d=d-1" }, { url: "/api/graph?d=d-1&team=legal" }],
   "inbox": [{ url: "/api/inbox?p=p-ana" }],
+  "home": [{ url: "/api/home" }],
   "inbox/notifications": [{ url: "/api/inbox/notifications" }],
   "who-knows": [{ url: "/api/who-knows?system=api-v1" }],
   "health": [{ url: "/api/health" }],

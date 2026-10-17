@@ -1,6 +1,7 @@
 export * from "./core";
 export * from "./ripple";
 export * from "./inbox";
+export * from "./home";
 export * from "./stream";
 export * from "./teams";
 export * from "./overview";

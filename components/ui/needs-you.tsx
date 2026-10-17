@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
 import { ChevronRight, CircleAlert, CircleCheck, Ellipsis, MapPin, Repeat } from "lucide-react";
 import { card } from "./hatch";
 
@@ -11,11 +13,14 @@ const icons = {
 export type NeedsYouProps = {
   title: string;
   sub: string;
-  rows: { icon: keyof typeof icons; title: string; sub: string }[];
+  /** `href` makes the row a link; `actions` render under it (buttons, so they sit outside the link). */
+  rows: { icon: keyof typeof icons; title: string; sub: string; href?: string; actions?: ReactNode }[];
+  /** Shown instead of the rows when there are none. */
+  empty?: string;
   menuLabel?: string;
 };
 
-export function NeedsYou({ title, sub, rows, menuLabel = "More" }: NeedsYouProps) {
+export function NeedsYou({ title, sub, rows, menuLabel = "More", empty }: NeedsYouProps) {
   return (
     <section className={`${card} p-5`}>
       <header className="flex items-start justify-between">
@@ -27,19 +32,25 @@ export function NeedsYou({ title, sub, rows, menuLabel = "More" }: NeedsYouProps
           <Ellipsis size={14} />
         </button>
       </header>
+      {rows.length === 0 && empty && <p className="py-3 text-sm text-faint">{empty}</p>}
       <ul className="mt-2">
         {rows.map((r) => {
           const { Icon, tone } = icons[r.icon];
+          const body = (
+            <>
+              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${tone}`}><Icon size={16} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium leading-4 text-strong">{r.title}</span>
+                <span className="mt-0.5 block text-2xs text-faint">{r.sub}</span>
+              </span>
+              <ChevronRight size={14} className="shrink-0 text-faint" />
+            </>
+          );
+          const row = "flex w-full items-center gap-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-ripple";
           return (
             <li key={r.title} className="border-b border-hairline last:border-b-0">
-              <button type="button" className="flex w-full items-center gap-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-ripple">
-                <span className={`grid size-9 shrink-0 place-items-center rounded-full ${tone}`}><Icon size={16} /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium leading-4 text-strong">{r.title}</span>
-                  <span className="mt-0.5 block text-2xs text-faint">{r.sub}</span>
-                </span>
-                <ChevronRight size={14} className="shrink-0 text-faint" />
-              </button>
+              {r.href ? <Link href={r.href} className={row}>{body}</Link> : <button type="button" className={row}>{body}</button>}
+              {r.actions && <div className="-mt-1 flex flex-wrap gap-2 pb-3 pl-12">{r.actions}</div>}
             </li>
           );
         })}

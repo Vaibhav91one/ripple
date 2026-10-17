@@ -3,6 +3,7 @@ import type {
   BottleneckRow,
   Change,
   Decision,
+  Home,
   Inbox,
   Overview,
   Person,
@@ -63,6 +64,14 @@ export async function getInbox(personId: string): Promise<Inbox> {
   return {
     forMe: items.filter((i) => i.kind !== "brief"),
     sent: items.flatMap((i) => (i.kind === "brief" ? [{ ...i, kind: "sent" as const, status: "pending" as const }] : [])),
+  };
+}
+
+/** Offline Home: the old inbox as Priya (change owner); no live tokens, approvals or notifications. */
+export async function getHome(): Promise<Home> {
+  return {
+    teamId: "eng", inbox: await getInbox("p-priya"), briefs: [], hits: [], tasks: [], approvals: [], accessRequests: [],
+    angle: null, conflicts: 0, notifications: { notifications: [], unread: 0 },
   };
 }
 
