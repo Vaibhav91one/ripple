@@ -2,14 +2,14 @@
 // claims; the citation check then drops any claim whose sources did not come from those rows.
 import { generateText, Output, type LanguageModel } from "ai";
 import { z } from "zod";
-import { graphFor, type Graph } from "./graph/client";
+import type { Graph } from "./graph/client";
 import { ripple } from "./graph/queries";
 import { pickModel } from "./llm";
 import { briefs as mockBriefs } from "./mock/ledgerly";
 import { Brief, type RippleResult, type Source } from "./schemas";
 
 type Claim = Brief["claims"][number];
-export const DEMO_GRAPH = () => process.env.RIPPLE_GRAPH ?? "demo";
+const fail = (m: string): never => { throw new Error(m); };
 const key = (s: Source) => `${s.artifactId}|${s.quote}`;
 
 /** Deterministic claims for one team from its ripple rows, worded by the mock brief when it cites the same artifact. */
@@ -44,7 +44,7 @@ export async function buildBrief(
   o: { g?: Graph; now?: number; model?: LanguageModel | null; rippleResult?: RippleResult } = {},
 ): Promise<Brief & { dropped: number; llm: boolean }> {
   const now = o.now ?? Math.floor(Date.now() / 1000);
-  const r = o.rippleResult ?? (await ripple(o.g ?? (await graphFor(DEMO_GRAPH())), decisionId, now));
+  const r = o.rippleResult ?? (await ripple(o.g ?? fail("buildBrief needs g or rippleResult"), decisionId, now));
   const base = claimsFor(r, teamId);
   const model = o.model === undefined ? pickModel("agent") : o.model;
   let claims = base, dropped = 0, llm = false;

@@ -8,5 +8,5 @@ import { Change } from "@/lib/schemas";
 export function GET(req: Request) {
   const q = params(req, z.object({ since: z.coerce.number().int().default(0) }));
   if (bad(q)) return q;
-  return handle(z.array(Change), async (g) => (await diff(g, q.since)).data);
+  return handle(z.array(Change), async ({ graph }) => (await diff(graph, q.since)).data);
 }

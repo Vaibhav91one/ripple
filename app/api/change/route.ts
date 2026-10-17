@@ -11,9 +11,10 @@ export async function POST(req: Request) {
   const body = Body.safeParse(await req.json().catch(() => null));
   if (!body.success) return Response.json({ error: "bad_request", message: body.error.message }, { status: 400 });
   const { decisionId, newOn } = body.data;
-  return handle(RippleResult, async (g, now) => {
-    await ripple(g, decisionId, now); // 404 for an unknown decision before anything is written
-    await changeSunset(g, decisionId, newOn, now);
-    return ripple(g, decisionId, now);
-  }, true);
+  return handle(RippleResult, async (ctx) => {
+    const { now } = ctx;
+    await ripple(ctx.graph, decisionId, now); // 404 for an unknown decision before anything is written
+    await changeSunset(ctx.writer(), decisionId, newOn, now);
+    return ripple(ctx.graph, decisionId, now);
+  });
 }

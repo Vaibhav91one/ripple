@@ -4,4 +4,4 @@ import { handle } from "@/lib/server/route";
 
 
 /** id -> display name for every entity; the Changes screen labels edge ends with it. */
-export const GET = () => handle(z.record(z.string(), z.string()), async (g) => (await names(g)).data);
+export const GET = () => handle(z.record(z.string(), z.string()), async ({ graph }) => (await names(graph)).data);

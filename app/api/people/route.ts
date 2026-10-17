@@ -4,4 +4,4 @@ import { handle } from "@/lib/server/route";
 import { Person } from "@/lib/schemas";
 
 
-export const GET = () => handle(z.array(Person), async (g) => (await people(g)).data);
+export const GET = () => handle(z.array(Person), async ({ graph }) => (await people(graph)).data);
