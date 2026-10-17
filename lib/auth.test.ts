@@ -4,6 +4,7 @@ const authMock = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
 const ensureSchema = vi.fn();
 vi.mock("./graph/schema", () => ({ ensureSchema: (g: unknown) => ensureSchema(g) }));
+vi.mock("./graph/migrate", () => ({ migrateGraph: async () => [] }));
 vi.mock("./graph/client", () => ({ graphFor: async (n: string) => ({ name: n }), readOnly: (g: unknown) => g }));
 
 import { authEnabled, sessionViewer } from "./auth";

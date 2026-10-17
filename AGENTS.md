@@ -22,6 +22,7 @@ Ripple is a company brain on FalkorDB for the WeMakeDevs x FalkorDB Graph Hacks 
 - **Kits:** components from Beautiful UI, Rare UI and Bencho live in `components/kit/<kit>/`, restyled to our tokens, with the kit's licence file. No Bencho Pro blocks. The copied components started as fixed-data demos: when a screen needs one, refactor it to take props (data in, callbacks out) keeping its markup, styling and motion, and keep `/styleguide/kit` working by passing the old sample data. Never rebuild a look-alike. Kit code renders `m.*` (strict LazyMotion), never `motion.*`.
 - **Data:** every shape comes from `lib/schemas.ts` (Zod 4). Screens read through `lib/api.ts` (mocks until Phase 3).
 - **Cypher (FalkorDB 6.0.2):** `//` comments only (`--` fails). Full-text: `CREATE FULLTEXT INDEX FOR (a:Artifact) ON (a.text)`. Vector: `CREATE VECTOR INDEX … OPTIONS {dimension:384, similarityFunction:'cosine'}`. No label OR in MATCH (`(:A|:B)`); relationship OR (`-[:A|B]->`) works. Dates are epoch ints; pass `$now`.
+- **Graph migrations:** any change to graph labels or properties that existing data needs ships with a migration appended to `lib/graph/migrate.ts` (run at boot, in `getContext` and by `pnpm graph:migrate [graph]`). A fresh seed is not enough: the live graph keeps its old shape.
 - **Local FalkorDB:** Apple container, `container run -d --name falkor -p 6379:6379 -p 3000:3000 falkordb/falkordb:6.0.2`.
 
 ## Permissions (share the topology, redact the details)
