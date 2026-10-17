@@ -162,3 +162,7 @@ export type ToolName = keyof typeof TOOLS;
 
 export const cypherText = (cs: { name: string; text: string }[]) => cs.map((c) => `// ${c.name}\n${c.text}`).join("\n");
 export const templateText = (names: string[]) => cypherText(names.map(load));
+
+/** Tool output as untrusted data. A literal "</data" in the payload cannot close the wrapper. */
+export const wrapData = (name: string, rows: unknown, sourceIds: string[]) =>
+  `<data source="tool:${name}">${JSON.stringify({ rows, sourceIds }).replaceAll("</data", "<\\/data")}</data>`;

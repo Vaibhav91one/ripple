@@ -16,6 +16,7 @@
     "embed": "tsx lib/ingest/embed.ts",
     "shots": "tsx scripts/shots.ts",
     "eval": "tsx lib/eval/run.ts",
+    "eval:agents": "tsx scripts/eval-agents.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
