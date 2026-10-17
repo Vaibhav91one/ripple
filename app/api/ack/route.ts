@@ -20,12 +20,13 @@ export async function POST(req: Request) {
     const ctx = await getContext(req);
     // The token's org picks the graph (not the clicker's session); RIPPLE_GRAPH is the test override.
     const g = await graphFor(env().RIPPLE_GRAPH || (o === DEMO_GRAPH ? DEMO_GRAPH : graphNameFor(o)));
-    // Acknowledger: the signed-in person of that org, else the person the brief was sent to.
+    // `by` is the recipient from the token; a different signed-in person of that org is recorded as `onBehalfOf`.
     const me = ctx.viewer.kind === "user" && ctx.viewer.orgId === o ? ctx.viewer : undefined;
-    const { gap, by } = await recordAck(g, { teamId, decisionId, kind: body.data.kind, by: me?.personId ?? p });
+    const onBehalfOf = me?.personId && me.personId !== p ? me.personId : undefined;
+    const { gap, by } = await recordAck(g, { teamId, decisionId, kind: body.data.kind, by: p, onBehalfOf });
     await audit(
       { org: { id: o }, viewer: { kind: ctx.viewer.kind, id: me?.userId } },
-      { action: "ack", resourceType: "decision", resourceId: decisionId, meta: { teamId, kind: body.data.kind, by } },
+      { action: "ack", resourceType: "decision", resourceId: decisionId, meta: { teamId, kind: body.data.kind, by, onBehalfOf } },
     );
     return Response.json({ ack: { teamId, decisionId, kind: body.data.kind, by }, gap });
   } catch (e) {

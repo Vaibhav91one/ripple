@@ -72,7 +72,11 @@ describe("notify and ack on a temp graph (in order)", () => {
     const d = decodeAckToken(r.token, NOW);
     expect(d.state === "ok" && d.payload.o).toBe("org_1");
     expect(d.state === "ok" && d.payload.p).toBeTruthy();
-    expect((await recordAck(g, { teamId: "legal", decisionId: "d-1", kind: "seen", by: "p-real" }, NOW)).by).toBe("p-real");
+    const edge = () => query<{ by: string; o: string | null }>(g, "MATCH (:Team {id: 'legal'})-[a:ACKED]->(:Decision {id: 'd-1'}) RETURN a.by AS by, a.onBehalfOf AS o");
+    expect((await recordAck(g, { teamId: "legal", decisionId: "d-1", kind: "seen", by: "p-real", onBehalfOf: "p-other" }, NOW)).by).toBe("p-real");
+    expect(await edge()).toEqual([{ by: "p-real", o: "p-other" }]);
+    await recordAck(g, { teamId: "legal", decisionId: "d-1", kind: "seen", by: "p-real" }, NOW); // same person or no session
+    expect(await edge()).toEqual([{ by: "p-real", o: null }]);
   });
 
   t("ack removes the team from the gap and writes ACKED {kind, by, at}", async () => {

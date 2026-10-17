@@ -115,11 +115,11 @@ export async function notifyGaps(
 
 /** Write ACKED {kind, by, at} from team to decision; returns the new gap. Idempotent per team+decision. */
 export async function recordAck(
-  g: Graph, a: { teamId: string; decisionId: string; kind: Ack["kind"]; by?: string }, now = Math.floor(Date.now() / 1000),
+  g: Graph, a: { teamId: string; decisionId: string; kind: Ack["kind"]; by?: string; onBehalfOf?: string }, now = Math.floor(Date.now() / 1000),
 ): Promise<{ gap: string[]; by: string }> {
   const by = a.by ?? (await firstMember(g, a.teamId))?.id ?? "unknown";
   await query(g, `MATCH (t:Team {id: $teamId}), (d:Decision {id: $decisionId})
     MERGE (t)-[r:ACKED]->(d)
-    SET r.kind = $kind, r.by = $by, r.at = $now, r.valid_from = $now, r.valid_to = null`, { teamId: a.teamId, decisionId: a.decisionId, kind: a.kind, by, now });
+    SET r.kind = $kind, r.by = $by, r.onBehalfOf = $onBehalfOf, r.at = $now, r.valid_from = $now, r.valid_to = null`, { teamId: a.teamId, decisionId: a.decisionId, kind: a.kind, by, onBehalfOf: a.onBehalfOf ?? null, now });
   return { gap: (await ripple(g, a.decisionId, now)).gap, by };
 }
