@@ -115,7 +115,7 @@ const table: Row[] = [
     ev("conflict.found", { changeId: "c1", conflictsWith: "c3" }),
     [["p-priya", "high", HIGH, "change_owner"]],
   ],
-  ["brief.sent: the recipient", ev("brief.sent", { briefId: "b1", userId: "p-tomas" }), [["p-tomas", "normal", DM, "brief_recipient"]]],
+  ["brief.sent: the recipient", ev("brief.sent", { briefId: "b1", userId: "p-tomas" }), [["p-tomas", "normal", ["email", "inbox"], "brief_recipient"]]],
   ["ack.recorded: change owner, low, inbox only", ev("ack.recorded", { changeId: "c1", userId: "p-ana" }), [["p-priya", "low", INBOX, "change_owner"]]],
   ["ack.missing_48h: the person, normal", ev("ack.missing_48h", { changeId: "c1", userId: "p-tomas" }), [["p-tomas", "normal", DM, "ack_reminder:48h"]]],
   [

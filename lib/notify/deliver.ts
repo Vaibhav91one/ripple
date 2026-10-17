@@ -69,7 +69,7 @@ const esc = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").re
 /** Resend through the existing notify.ts send path. No key, no from-address or no recipient is a failure, not a send. */
 export const emailAdapter: Adapter = {
   async send(_channel, person, m) {
-    const [{ sendEmail }, { env }] = await Promise.all([import("../notify"), import("../env")]);
+    const [{ sendEmail }, { env }] = await Promise.all([import("./email"), import("../env")]);
     let html = `<ul>${m.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
     if (m.sections?.length) {
       const [{ createElement }, { NotificationEmail }, { renderHtml }] = await Promise.all([

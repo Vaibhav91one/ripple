@@ -25,7 +25,7 @@ function recipients(e: RippleEvent, g: GraphReader): Hit[] {
     case "conflict.found":
       return [...hits([g.changeOwner(e.payload.changeId)], "change_owner", "high"), ...hits([g.changeOwner(e.payload.conflictsWith)], "conflicting_change_owner", "high")];
     case "brief.sent":
-      return hits([e.payload.userId], "brief_recipient", "normal");
+      return hits([e.payload.userId], "brief_recipient", "normal", true);
     case "ack.recorded":
       return hits([g.changeOwner(e.payload.changeId)], "change_owner", "low");
     case "ack.missing_48h":
@@ -61,6 +61,7 @@ function channels(urgency: Urgency, prefs: Prefs | undefined, email?: boolean): 
   if (chosen) return chosen;
   if (urgency === "high") return ["slack_dm", "email", "inbox"];
   if (urgency === "low") return email ? ["email", "inbox"] : ["inbox"];
+  if (email) return ["email", "inbox"];
   return [prefs?.preferTeamChannel ? "slack_channel" : "slack_dm", "inbox"];
 }
 
