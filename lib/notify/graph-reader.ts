@@ -55,5 +55,6 @@ export async function loadSnapshot(g: Graph): Promise<Snapshot> {
 /** Preloaded reader plus the address book (email by person id) the delivery step needs. */
 export async function loadGraphReader(g: Graph) {
   const snap = await loadSnapshot(g);
-  return { reader: snapshotGraphReader(snap), emailOf: (personId: string) => snap.people.find((p) => p.id === personId)?.email ?? null };
+  return { reader: snapshotGraphReader(snap), emailOf: (personId: string) => snap.people.find((p) => p.id === personId)?.email ?? null,
+    teamOf: (personId: string) => snap.people.find((p) => p.id === personId)?.teamId ?? null };
 }

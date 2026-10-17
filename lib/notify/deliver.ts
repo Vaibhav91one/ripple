@@ -50,9 +50,9 @@ export async function storeAndQueue(
 
 export async function routeAndStore(
   d: Db, event: RippleEvent, eventId: string | undefined,
-  deps: { graph: GraphReader; prefs: PrefsReader; now: number; enqueue: typeof Enqueue },
+  deps: { graph: GraphReader; prefs: PrefsReader; now: number; enqueue: typeof Enqueue; slack?: boolean },
 ) {
-  return storeAndQueue(d, event, eventId, route(event, deps.graph, deps.prefs, deps.now), deps.enqueue);
+  return storeAndQueue(d, event, eventId, route(event, deps.graph, deps.prefs, deps.now, { slack: deps.slack }), deps.enqueue);
 }
 
 // ---- delivery ----
@@ -93,9 +93,11 @@ export const logAdapter: Adapter = {
   },
 };
 
-export const defaultAdapter: Adapter = {
-  send: (channel, person, m) => (channel === "email" ? emailAdapter : logAdapter).send(channel, person, m),
-};
+/** Email goes through Resend, slack_* through the org's Slack adapter; without one (Slack not connected) they are logged. */
+export const composeAdapter = (slack?: Adapter | null): Adapter => ({
+  send: (channel, person, m) => (channel === "email" ? emailAdapter : slack ?? logAdapter).send(channel, person, m),
+});
+export const defaultAdapter = composeAdapter();
 
 /**
  * Send everything pending for a batch key as one message per person per channel and record what happened.
