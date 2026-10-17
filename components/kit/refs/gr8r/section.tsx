@@ -47,11 +47,11 @@ const rippleGroups: TimelineGroup[] = [
       { id: "r6", title: "Security", tone: "gap", status: "todo", who: "SE", noBar: "not told", noBarAt: "2026-09-22" },
       { id: "r7", title: "Legal", tone: "gap", status: "todo", who: "LE", noBar: "not told", noBarAt: "2026-09-22" },
       { id: "r8", title: "DevRel", tone: "gap", status: "todo", who: "DE", noBar: "not told", noBarAt: "2026-09-22" },
-      { id: "r9", title: "Data (depth 4)", tone: "gap", status: "half", who: "DA", start: "2026-10-12", end: "2026-10-13" },
+      { id: "r9", title: "Data (depth 4, illustrative date)", tone: "gap", status: "half", who: "DA", start: "2026-10-12", end: "2026-10-13" },
     ],
   },
   {
-    id: "chain", name: "Dependency chain", count: 4, tone: "conflict",
+    id: "chain", name: "Dependency chain (hops, not dates)", count: 4, tone: "conflict",
     tasks: [
       { id: "s1", title: "api-v1", tone: "ripple", status: "half", who: "V1", start: "2026-09-22", end: "2026-10-06" },
       { id: "s2", title: "api-gateway", tone: "ripple", status: "todo", who: "GW", start: "2026-10-06", end: "2026-10-08" },
