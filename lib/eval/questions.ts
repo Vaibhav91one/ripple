@@ -1,6 +1,7 @@
-// 15 questions about the Ledgerly demo, answered by the deterministic query wrappers (no LLM).
+// 16 questions about the Ledgerly demo, answered by the deterministic query wrappers (no LLM).
 // Each one names the tool/query that answers it, the expected answer and the artifact ids that must come back.
 import type { Graph } from "../graph/client";
+import { TOOLS, type Row } from "../agent/tools";
 import { bottleneck, ripple, search, whoKnows } from "../graph/queries";
 import type { RippleResult } from "../schemas";
 
@@ -11,6 +12,7 @@ type Ctx = {
   v1: Awaited<ReturnType<typeof whoKnows>>["data"];
   bn: Awaited<ReturnType<typeof bottleneck>>["data"];
   hits: { id: string }[];
+  nf: Row[]; // who_knows on a system the graph has never heard of
 };
 type Got = { answer: string; ids: string[] };
 export type Question = { q: string; tool: string; answer: string; sources: string[]; get: (c: Ctx) => Got };
@@ -50,6 +52,8 @@ export const QUESTIONS: Question[] = [
     get: (c) => ({ answer: c.bn[0].waitingTeamIds.join(", "), ids: [] }) },
   { q: "Which artifact mentions Northwind (full-text)?", tool: "search", answer: "art-msa-northwind", sources: ["art-msa-northwind"],
     get: (c) => ({ answer: c.hits[0].id, ids: c.hits.map((h) => h.id) }) },
+  { q: "Who is affected if we sunset the fax-gateway service?", tool: "who_knows (fax-gateway)", answer: "not in graph", sources: [],
+    get: (c) => ({ answer: c.nf[0]?.found === false ? "not in graph" : "found something", ids: [] }) },
 ];
 
 export type EvalRow = { q: string; tool: string; answer: string; expected: string; sourcesOk: boolean; pass: boolean };
@@ -60,6 +64,7 @@ export async function evaluate(g: Graph, now = NOW): Promise<EvalRow[]> {
     v1: (await whoKnows(g, "api-v1")).data,
     bn: (await bottleneck(g, now)).data,
     hits: (await search(g, "Northwind")).data,
+    nf: (await TOOLS.who_knows.run({ g, now, demo: false }, { systemId: "fax-gateway" })).rows,
   };
   return QUESTIONS.map((x) => {
     const got = x.get(c);

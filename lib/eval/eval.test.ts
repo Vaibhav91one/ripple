@@ -27,10 +27,10 @@ afterAll(async () => {
   }
 });
 
-it("all 15 eval questions pass on a fresh seed", async (ctx) => {
+it("all 16 eval questions pass on a fresh seed", async (ctx) => {
   if (!up) ctx.skip();
   const rows = await evaluate(g);
-  expect(rows).toHaveLength(15);
-  expect(QUESTIONS).toHaveLength(15);
+  expect(rows).toHaveLength(16);
+  expect(QUESTIONS).toHaveLength(16);
   expect(rows.filter((r) => !r.pass)).toEqual([]);
 }, 30_000);

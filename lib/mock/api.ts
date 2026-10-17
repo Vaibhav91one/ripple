@@ -47,7 +47,7 @@ export async function getPeople(): Promise<Person[]> {
 
 export async function getNames(): Promise<Record<string, string>> {
   return Object.fromEntries(
-    [m.teams, m.people, m.systems, m.customers, m.decisions, m.deals, m.contracts, m.artifacts, v2.extraArtifacts, v2.findings, v2.tasks]
+    [m.teams, m.people, m.systems, v2.chainSystems, m.customers, m.decisions, m.deals, m.contracts, m.artifacts, v2.extraArtifacts, v2.findings, v2.tasks]
       .flat()
       .map((x) => [x.id, "name" in x ? x.name : x.title]),
   );

@@ -111,6 +111,19 @@ describe("tools on a seeded temp graph", () => {
     expect((await TOOLS.bottleneck.run(ctx(), {})).rows.length).toBeGreaterThan(0);
   });
 
+  t("tools answer honestly when the graph has nothing", async () => {
+    const nf = (o: { rows: Record<string, unknown>[] }) => o.rows[0];
+    expect(nf(await TOOLS.who_knows.run(ctx(), { systemId: "fax-gateway" }))).toMatchObject({ found: false, note: expect.stringContaining("fax-gateway") });
+    expect(nf(await TOOLS.ripple.run(ctx(), { decisionId: "d-nope" }))).toMatchObject({ found: false });
+    expect(nf(await TOOLS.trace_decision.run(ctx(), { decisionId: "d-nope" }))).toMatchObject({ found: false });
+    expect(nf(await TOOLS.search.run(ctx(), { text: "zzqxnonexistentword" }))).toMatchObject({ found: false });
+  });
+
+  t("ripple tool depth 4 reaches the data team", async () => {
+    const o = await TOOLS.ripple.run(ctx(), { decisionId: "d-1", depth: 4 });
+    expect(o.rows[0].gap as string[]).toContain("data");
+  });
+
   t("create_tasks writes a Task + NOTIFIES per gap team, demo only", async () => {
     await expect(TOOLS.create_tasks.run({ ...ctx(), demo: false }, { decisionId: "d-1" })).rejects.toThrow(/demo/);
     const o = await TOOLS.create_tasks.run(ctx(), { decisionId: "d-1" });

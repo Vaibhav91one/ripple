@@ -101,7 +101,7 @@ export async function seed(graphName: string): Promise<void> {
   await ensureSchema(g);
 
   const simple: [string, ({ id: string } & Record<string, unknown>)[]][] = [
-    ["Team", m.teams], ["Person", m.people], ["System", m.systems],
+    ["Team", m.teams], ["Person", m.people], ["System", [...m.systems, ...v2.chainSystems]],
     ["Customer", [...m.customers, m.v2Customer]], ["Deal", v2.deals], ["Contract", v2.contracts],
     ["Decision", m.decisions], ["Incident", v2.incidents], ["Task", v2.tasks],
     ["Clause", v2.clauses.map((c) => ({ ...c, src: undefined }))], ["Control", v2.controls], ["Framework", v2.frameworks],

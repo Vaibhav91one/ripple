@@ -32,8 +32,9 @@ const qs = (o: Record<string, string | number>) => new URLSearchParams(Object.en
 export const getDecisions = (): Promise<Decision[]> =>
   OFFLINE ? mock.getDecisions() : call(z.array(Decision), "/api/decisions");
 
-export const getRipple = (decisionId: string): Promise<RippleResult> =>
-  OFFLINE ? mock.getRipple(decisionId) : call(RippleResult, `/api/ripple?${qs({ d: decisionId })}`);
+/** `depth` 1-4 = dependency hops followed from the sunset system (default 3). The offline mock has one fixed depth. */
+export const getRipple = (decisionId: string, depth = 3): Promise<RippleResult> =>
+  OFFLINE ? mock.getRipple(decisionId) : call(RippleResult, `/api/ripple?${qs({ d: decisionId, depth })}`);
 
 /** `since` is epoch seconds. */
 export const getChanges = (since: number): Promise<Change[]> =>

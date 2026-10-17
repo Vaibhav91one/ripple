@@ -10,7 +10,8 @@ import { templateText, TOOLS, type Row, type ToolName } from "./tools";
 export const SYSTEM = `You are Ripple's analyst for a company knowledge graph. Answer only from tool results.
 Call tools to find facts; you cannot write queries. Be concise (2-4 sentences).
 After every factual claim, cite the supporting artifact as [[artifact-id]] using ONLY ids returned in tool results (sourceIds).
-If the tools return nothing relevant, say you could not find it. Never invent ids.`;
+If the tools return nothing relevant, say you could not find it. Never invent ids.
+If a tool returns found:false, say plainly that the graph has nothing on it and the dependency may not be modelled. Do not guess or fill in from general knowledge.`;
 
 export type LoopOpts = {
   model: LanguageModel;
@@ -45,6 +46,7 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   let claims = 0;
   let cited = 0;
   let spoke = false;
+  let notFound = false; // a tool said found:false: an honest "not in the graph" answer needs no citation
 
   function* drain(final: boolean): Generator<StreamEvent> {
     for (;;) {
@@ -92,6 +94,7 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
       yield { type: "tool_call", tool: part.toolName, args: (part.input ?? {}) as Record<string, unknown>, cypher: t ? templateText(t.templates) : "" };
     } else if (part.type === "tool-result") {
       const out = part.output as { rows: Row[]; sourceIds: string[] };
+      if (out.rows.some((r) => r.found === false)) notFound = true;
       yield { type: "tool_result", tool: part.toolName, rows: out.rows, sourceIds: out.sourceIds };
     } else if (part.type === "tool-error") {
       yield { type: "tool_result", tool: part.toolName, rows: [{ error: String(part.error) }], sourceIds: [] };
@@ -103,7 +106,7 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
     }
   }
   yield* drain(true);
-  if (spoke && cited === 0) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
+  if (spoke && cited === 0 && !notFound) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
   o.onUsage?.((await result.totalUsage).totalTokens ?? 0);
   yield { type: "done" };
 }
