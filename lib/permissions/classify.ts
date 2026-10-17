@@ -14,7 +14,7 @@ export const KIND_OWNER: Record<Exclude<RestrictedKind, "source">, string> = {
 };
 /** A source quote belongs to the team whose restricted payload it backs (the edge type that cites it). */
 export const EDGE_OWNER: Record<string, string> = {
-  GUARANTEES: "legal", HAS_CLAUSE: "legal", PROMISED: "sales", FOUND_IN: "security", COVERS: "security",
+  GUARANTEES: "legal", HAS_CLAUSE: "legal", DRAFT_DOC: "legal", PROMISED: "sales", FOUND_IN: "security", COVERS: "security",
 };
 /** Customer ARR is owned by Sales. */
 export const ARR_OWNER = "sales";

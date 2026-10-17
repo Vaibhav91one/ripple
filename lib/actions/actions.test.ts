@@ -34,6 +34,8 @@ afterAll(async () => {
   const { pendingActions, orgPolicy, auditLog, events } = await import("../db/schema");
   const { eq } = await import("drizzle-orm");
   for (const t of [pendingActions, orgPolicy, auditLog, events]) await db().delete(t).where(eq(t.orgId, org.id));
+  const { orgs } = await import("../db/schema");
+  await db().delete(orgs).where(eq(orgs.id, org.id));
 });
 
 const proposer = { org, viewer: { kind: "agent", id: "a" } };
@@ -142,5 +144,32 @@ describe.skipIf(!dbUrl)("pending actions (Postgres + FalkorDB)", () => {
     expect(propose.mock.calls.every((a) => a[0] === "create_task")).toBe(true);
     expect(out.rows).toHaveLength(propose.mock.calls.length);
     expect(await query(g, "MATCH (k:Task) WHERE k.id STARTS WITH 'task-d-1' RETURN k.id AS id")).toHaveLength(0);
+  }, 30_000);
+
+  it("an approved draft_doc becomes a document and a Doc linked ABOUT the contract and the decision", async (c) => {
+    if (!graphUp) c.skip();
+    const { db } = await import("../db");
+    const { orgs, documents, agentRuns } = await import("../db/schema");
+    const { and, eq } = await import("drizzle-orm");
+    const { propose } = await import("./propose");
+    const { approve } = await import("./decide");
+    const { executeAction } = await import("./execute");
+    const d = db();
+    await d.insert(orgs).values({ id: org.id, slug: org.id, graphName: gname }).onConflictDoNothing();
+    const [run] = await d.insert(agentRuns).values({ orgId: org.id, agent: "contract", trigger: "manual", input: {} }).returning({ id: agentRuns.id });
+    const draft = { kind: "notice", contractId: "ctr-1", decisionId: "d-1", title: "Notice of API v1 retirement: Northwind", body: "Clause 7.2: Ledgerly guarantees availability of API v1 until 2027-06-30." };
+    const p = await propose({ ...proposer, runId: run.id }, "draft_doc", draft);
+    await approve(user("lead", "u-lead"), p.id);
+    expect(await executeAction(p.id, g)).toBe("executed");
+    const result = (await row(p.id)).result as { documentId: string };
+    const [doc] = await d.select().from(documents).where(and(eq(documents.orgId, org.id), eq(documents.id, result.documentId)));
+    expect(doc).toMatchObject({ title: draft.title, text: draft.body });
+    const node = await query<{ author: string; approvedBy: string; text: string; about: string[] }>(g,
+      "MATCH (a:Doc:Artifact {id: $id}) OPTIONAL MATCH (a)-[:ABOUT]->(x) RETURN a.author AS author, a.approvedBy AS approvedBy, a.text AS text, collect(x.id) AS about", { id: result.documentId });
+    expect(node[0]).toMatchObject({ author: "agent:contract", approvedBy: "u-lead", text: draft.body });
+    expect([...node[0].about].sort()).toEqual(["ctr-1", "d-1"]);
+    expect(await query(g, "CALL db.idx.fulltext.queryNodes('Artifact', 'guarantees') YIELD node RETURN node.id AS id")).toEqual(expect.arrayContaining([{ id: result.documentId }]));
+    await d.delete(documents).where(eq(documents.orgId, org.id));
+    await d.delete(agentRuns).where(eq(agentRuns.orgId, org.id));
   }, 30_000);
 });

@@ -9,7 +9,8 @@ import { applyProposal } from "../connectors/apply";
 import { githubApp } from "../connectors/github/client";
 import { safeMessage } from "../log";
 
-export type ActionCtx = { org: { id: string }; now: number; writer: () => Graph };
+/** approver: who approved the action (user id or "policy"). runId: the agent run that proposed it. */
+export type ActionCtx = { org: { id: string }; now: number; writer: () => Graph; approver?: string | null; runId?: string | null };
 
 export const CreateTask = z.object({ id: z.string().min(1), teamId: z.string().min(1), decisionId: z.string().min(1), title: z.string().min(1), body: z.string() });
 // Labels are interpolated into Cypher, so they come from this list only.
@@ -18,6 +19,31 @@ export const GraphMerge = z.object({
   id: z.string().min(1),
   props: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).refine((p) => !("id" in p), "props.id is not allowed").default({}),
 });
+
+export const DraftDoc = z.object({ kind: z.enum(["notice", "amendment"]), contractId: z.string().min(1), decisionId: z.string().min(1), title: z.string().min(1), body: z.string().min(1) });
+
+/** Approved draft -> `document` row (deduped by content per org) + a Doc:Artifact node ABOUT the contract and the decision. Legal-only on read (restrictedTo). Returns the document id. */
+async function saveDraft(payload: unknown, { org, writer, now, approver, runId }: ActionCtx) {
+  const p = DraftDoc.parse(payload);
+  const { db } = await import("../db"); // lazy: keeps lib/db (server-only) out of the pure-executor import graph
+  const { documents, agentRuns } = await import("../db/schema");
+  const { and, eq } = await import("drizzle-orm");
+  const { createHash } = await import("node:crypto");
+  const sha256 = createHash("sha256").update(p.body).digest("hex");
+  const run = runId ? (await db().select({ agent: agentRuns.agent }).from(agentRuns).where(eq(agentRuns.id, runId)))[0] : undefined;
+  const [ins] = await db().insert(documents).values({ orgId: org.id, sourceKind: "doc", sourceRef: `draft:${p.kind}:${p.contractId}`, title: p.title, text: p.body, sha256 })
+    .onConflictDoNothing({ target: [documents.orgId, documents.sha256] }).returning({ id: documents.id });
+  const id = ins?.id ?? (await db().select({ id: documents.id }).from(documents).where(and(eq(documents.orgId, org.id), eq(documents.sha256, sha256))))[0].id;
+  await query(writer(), `MERGE (a:Doc:Artifact {id: $id})
+    SET a.kind = 'doc', a.title = $title, a.text = $text, a.ts = $now, a.uri = '', a.author = $author, a.approvedBy = $approvedBy, a.draftKind = $draftKind, a.restrictedTo = 'legal'
+    WITH a
+    OPTIONAL MATCH (c:Contract {id: $contractId})
+    OPTIONAL MATCH (d:Decision {id: $decisionId})
+    FOREACH (_ IN CASE WHEN c IS NULL THEN [] ELSE [1] END | MERGE (a)-[r:ABOUT]->(c) SET r.valid_from = $now, r.valid_to = null, r.observed_at = $now)
+    FOREACH (_ IN CASE WHEN d IS NULL THEN [] ELSE [1] END | MERGE (a)-[r:ABOUT]->(d) SET r.valid_from = $now, r.valid_to = null, r.observed_at = $now)`,
+  { id, title: p.title, text: p.body, now, author: `agent:${run?.agent ?? "unknown"}`, approvedBy: approver ?? "unknown", draftKind: p.kind, contractId: p.contractId, decisionId: p.decisionId });
+  return { documentId: id, kind: p.kind, contractId: p.contractId, decisionId: p.decisionId };
+}
 
 export const SuggestMerge = z.object({
   op: z.literal("suggest_merge"), kind: z.enum(["Person", "Team", "System", "Customer"]), aliasNorm: z.string().min(1), nodeId: z.string().min(1),
@@ -44,6 +70,7 @@ export async function createIssue(e: GithubEnv, title: string, body: string): Pr
 export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: ActionCtx) => Promise<unknown>>> = {
   create_task: async (payload, { writer, now }) =>
     query(writer(), load("create-tasks").text, { rows: [CreateTask.parse(payload)], now }),
+  draft_doc: async (payload, ctx) => saveDraft(payload, ctx),
   create_issue: async (payload) => {
     const { title, body } = CreateIssue.parse(payload);
     const r = await createIssue(env(), title, body);

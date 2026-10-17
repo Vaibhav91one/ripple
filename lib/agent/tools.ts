@@ -27,6 +27,8 @@ type Def<I extends z.ZodType> = {
   input: I;
   /** Template names, shown to the user in the tool_call event before the tool runs. */
   templates: string[];
+  /** Set on a tool that proposes this action kind. defineAgent rejects it unless the agent's `writes` lists the kind. */
+  proposes?: ActionKind;
   run: (ctx: Ctx, args: z.infer<I>) => Promise<ToolOut>;
 };
 const def = <I extends z.ZodType>(d: Def<I>) => d;
@@ -200,6 +202,7 @@ export const TOOLS = {
       body: z.string().min(1).describe("The full draft text, quoting the clause it responds to"),
     }),
     templates: [],
+    proposes: "draft_doc",
     run: async ({ readonly, propose }, args) => {
       if (readonly) throw new Error("demo_readonly");
       if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
@@ -215,6 +218,7 @@ export const TOOLS = {
       body: z.string().describe("What to do and why, citing the clause"),
     }),
     templates: [],
+    proposes: "create_task",
     run: async ({ readonly, propose }, a) => {
       if (readonly) throw new Error("demo_readonly");
       if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
@@ -226,6 +230,7 @@ export const TOOLS = {
     description: "Propose one open Task (with a NOTIFIES edge) for every team the decision never reached. A person approves each proposal before it is created. Without an approver it only reports what it would create.",
     input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
     templates: ["ripple", "gap"],
+    proposes: "create_task",
     run: async ({ g, now, readonly, propose }, { decisionId }) => {
       if (readonly) throw new Error("demo_readonly");
       const r = await ripple(g, decisionId, now);
@@ -242,6 +247,8 @@ export const TOOLS = {
   }),
 };
 export type ToolName = keyof typeof TOOLS;
+/** Every tool that cannot cause a side effect: what a read-only agent (Ask) may use. */
+export const READ_TOOLS = (Object.keys(TOOLS) as ToolName[]).filter((n) => !TOOLS[n].proposes);
 
 export const cypherText = (cs: { name: string; text: string }[]) => cs.map((c) => `// ${c.name}\n${c.text}`).join("\n");
 export const templateText = (names: string[]) => cypherText(names.map(load));

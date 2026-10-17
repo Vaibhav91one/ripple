@@ -28,5 +28,9 @@ export type AgentDef<I extends z.ZodType = z.ZodType, O extends z.ZodType = z.Zo
 export function defineAgent<I extends z.ZodType, O extends z.ZodType>(d: AgentDef<I, O>): Readonly<AgentDef<I, O>> {
   for (const t of d.tools) if (!Object.hasOwn(TOOLS, t)) throw new Error(`agent ${d.name}: unknown tool "${t}"`);
   for (const w of d.writes) if (!(ACTION_KINDS as readonly string[]).includes(w)) throw new Error(`agent ${d.name}: unknown write kind "${w}"`);
+  for (const t of d.tools) {
+    const k = TOOLS[t].proposes;
+    if (k && !d.writes.includes(k)) throw new Error(`agent ${d.name}: tool "${t}" proposes ${k} but writes does not list it`);
+  }
   return Object.freeze({ ...d });
 }

@@ -315,7 +315,8 @@ describe("sentinel leak: agent tools", () => {
 
   t("tool results (what the model and the stream see) hold no foreign sentinel", async () => {
     const calls = [
-      ...Object.entries(ARGS).filter(([n]) => n !== "create_tasks").map(([n, a]) => [n, a] as const),
+      // the interactive agent has read tools only
+      ...Object.entries(ARGS).filter(([n]) => !TOOLS[n as keyof typeof TOOLS].proposes).map(([n, a]) => [n, a] as const),
       ["why_affected", { decisionId: "d-1", teamId: "sales" }] as const,
       ["why_affected", { decisionId: "d-1", teamId: "security" }] as const,
       ["ripple", { decisionId: "d-1" }] as const,
