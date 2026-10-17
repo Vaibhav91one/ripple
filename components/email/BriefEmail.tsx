@@ -3,11 +3,11 @@ import type { Brief, Conflict } from "@/lib/schemas";
 // Email-safe: tables + inline styles only (clients ignore CSS variables and Tailwind).
 // The hex values are the dark tokens from app/globals.css flattened for email clients.
 // Pure props in, markup out, so #16 can pass it straight to Resend's `react` option.
-const c = {
+export const c = {
   page: "#161616", surface: "#1d1d1d", hairline: "#2e2e2e", strong: "#f5f5f5",
   body: "#d0d0d0", faint: "#8f8f8f", conflict: "#f0756b", ripple: "#5fd0d9",
 };
-const font = "Geist, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+export const font = "Geist, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
 
 export type EmailReply = "seen" | "concern" | "not_relevant";
 export const replyLabels: Record<EmailReply, string> = { seen: "Seen", concern: "Concern", not_relevant: "Not relevant" };
