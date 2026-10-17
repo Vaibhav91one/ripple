@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authMock = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
+const ensureSchema = vi.fn();
+vi.mock("./graph/schema", () => ({ ensureSchema: (g: unknown) => ensureSchema(g) }));
+vi.mock("./graph/client", () => ({ graphFor: async (n: string) => ({ name: n }), readOnly: (g: unknown) => g }));
 
 import { authEnabled, sessionViewer } from "./auth";
-import { DEMO_GRAPH, getContext } from "./server/context";
+import { DEMO_GRAPH, getContext, graphNameFor } from "./server/context";
 
 const KEYS = { NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_x", CLERK_SECRET_KEY: "sk_test_x" };
 const setKeys = () => Object.entries(KEYS).forEach(([k, v]) => (process.env[k] = v));
@@ -50,8 +53,21 @@ describe("sessionViewer / getContext", () => {
     authMock.mockResolvedValue({ userId: "user_1", orgId: "org_abc", orgRole: "org:admin" });
     const c = await getContext();
     expect(c.viewer).toEqual({ kind: "user", userId: "user_1", orgId: "org_abc", teamIds: [], role: "admin" });
-    expect(c.org).toEqual({ id: "org_abc", graphName: "org_abc", isDemo: false });
+    expect(c.org).toEqual({ id: "org_abc", graphName: "t_org_abc", isDemo: false });
+    expect(ensureSchema).toHaveBeenCalledTimes(1);
+    await getContext(); // second request: schema is not re-run
+    expect(ensureSchema).toHaveBeenCalledTimes(1);
     authMock.mockResolvedValue({ userId: "user_2", orgId: "org_abc", orgRole: "org:member" });
     expect((await getContext()).viewer.role).toBe("member");
+  });
+});
+
+describe("graphNameFor", () => {
+  it("lowercases and replaces non-alphanumerics", () => {
+    expect(graphNameFor("org_2Abc-X.y")).toBe("t_org_2abc_x_y");
+  });
+  it("demo never runs ensureSchema", async () => {
+    await getContext();
+    expect(ensureSchema).not.toHaveBeenCalled();
   });
 });
