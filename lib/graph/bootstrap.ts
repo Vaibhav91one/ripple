@@ -29,12 +29,13 @@ const HEAL_EVERY_MS = 60_000;
 /**
  * Self-heal after FalkorDB data loss: re-seed `graphName` if it reads empty. Call it for the demo graph only.
  * Fire and forget (never blocks a request), at most once a minute per graph, errors logged once per attempt.
+ * Returns the in-flight heal (undefined when throttled) so tests can await it instead of sleeping.
  */
-export function healDemo(graphName: string, now = Date.now()): void {
+export function healDemo(graphName: string, now = Date.now()): Promise<void> | undefined {
   if (now - (lastHeal.get(graphName) ?? -Infinity) < HEAL_EVERY_MS) return;
   lastHeal.set(graphName, now);
-  seedIfEmpty(graphName).then(
-    (r) => r === "seeded" && console.warn(`graph ${graphName} was empty, re-seeded`),
+  return seedIfEmpty(graphName).then(
+    (r) => { if (r === "seeded") console.warn(`graph ${graphName} was empty, re-seeded`); },
     (e) => console.error("demo heal failed:", e instanceof Error ? e.message : e),
   );
 }

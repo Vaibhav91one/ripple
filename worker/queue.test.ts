@@ -3,9 +3,19 @@ import { spawn } from "node:child_process";
 
 vi.mock("server-only", () => ({}));
 const url = process.env.DATABASE_URL;
+// Own pg-boss schema per run: another suite on the same Postgres must not consume (or feed) our jobs.
+const schema = `test_boss_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
+process.env.PGBOSS_SCHEMA = schema;
 
 describe.skipIf(!url)("queue + worker (Postgres)", () => {
-  afterAll(async () => { const { queue } = await import("../lib/queue"); await (await queue())?.stop({ graceful: false }); });
+  afterAll(async () => {
+    const { queue } = await import("../lib/queue");
+    await (await queue())?.stop({ graceful: false });
+    const sql = (await import("postgres")).default(url!, { max: 1, onnotice: () => {} });
+    await sql.unsafe(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    await sql.end();
+    delete process.env.PGBOSS_SCHEMA;
+  });
 
   it("processes an enqueued job in-process and singletonKey dedupes", async () => {
     const { startWorker } = await import("./index");

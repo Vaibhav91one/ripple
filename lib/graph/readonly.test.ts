@@ -14,6 +14,17 @@ const NOW = Math.floor(Date.parse("2026-10-17T09:00:00Z") / 1000);
 let g: Graph;
 let up = false;
 
+const urls: [string, string, unknown?][] = [
+  ["ripple", "/api/ripple?d=d-1"], ["graph", "/api/graph?d=d-1"], ["inbox", "/api/inbox?p=p-priya"],
+  ["overview", "/api/overview"], ["changes", "/api/changes?since=0"], ["decisions", "/api/decisions"],
+  ["people", "/api/people"], ["names", "/api/names"], ["bottleneck", "/api/bottleneck"],
+  ["who-knows", "/api/who-knows?system=api-v1"],
+  ["source/[id]", "/api/source/art-rfc14", { params: Promise.resolve({ id: "art-rfc14" }) }],
+  ...TeamId.options.map(
+    (team) => ["teams/[team]", `/api/teams/${team}`, { params: Promise.resolve({ team }) }] as [string, string, unknown],
+  ),
+];
+
 beforeAll(async () => {
   process.env.RIPPLE_GRAPH = name;
   process.env.RIPPLE_NOW = "2026-10-17T09:00:00Z";
@@ -22,6 +33,8 @@ beforeAll(async () => {
     await query(g, "RETURN 1");
     up = true;
     await seed(name);
+    // Cold-loading ~15 route modules is what blew the 5s test budget under load; do it here.
+    await Promise.all(urls.map(([route]) => import(`../../app/api/${route}/route`)));
   } catch (e) {
     console.warn(`SKIPPING read-only tests: FalkorDB unreachable (${String(e)})`);
   }
@@ -50,18 +63,8 @@ describe("read paths never write", () => {
 
   t("every GET route is 200 and never calls query", async () => {
     const spy = vi.spyOn(Graph.prototype, "query");
-    const urls: [string, string, unknown?][] = [
-      ["ripple", "/api/ripple?d=d-1"], ["graph", "/api/graph?d=d-1"], ["inbox", "/api/inbox?p=p-priya"],
-      ["overview", "/api/overview"], ["changes", "/api/changes?since=0"], ["decisions", "/api/decisions"],
-      ["people", "/api/people"], ["names", "/api/names"], ["bottleneck", "/api/bottleneck"],
-      ["who-knows", "/api/who-knows?system=api-v1"],
-      ["source/[id]", "/api/source/art-rfc14", { params: Promise.resolve({ id: "art-rfc14" }) }],
-      ...TeamId.options.map(
-        (team) => ["teams/[team]", `/api/teams/${team}`, { params: Promise.resolve({ team }) }] as [string, string, unknown],
-      ),
-    ];
     for (const [route, url, ctx] of urls) {
-      const mod = await import(`../../app/api/${route}/route`);
+      const mod = await import(`../../app/api/${route}/route`); // already loaded in beforeAll
       const res = await (mod.GET as (r: Request, c?: unknown) => Promise<Response>)(new Request(`http://t${url}`), ctx);
       expect(res.status, url).toBe(200);
     }
