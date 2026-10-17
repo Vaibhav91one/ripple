@@ -1,4 +1,14 @@
 import type { Job } from "pg-boss";
+import type { RippleEvent } from "../../lib/events/types";
+
+/** Queue one `agent` job per agent whose trigger lists this event type (Impact Analyst, Contract Sentinel). Their input schemas pick the keys they need. */
+export async function dispatchAgents(event: Pick<RippleEvent, "type" | "orgId" | "payload">, enqueue: (name: "agent", data: object) => Promise<unknown>): Promise<string[]> {
+  const { agents } = await import("../../lib/agent/registry");
+  const p = event.payload as { changeId?: string; contractId?: string };
+  const hit = agents().filter((x) => x.trigger.events?.includes(event.type));
+  for (const a of hit) await enqueue("agent", { orgId: event.orgId, agent: a.name, trigger: `event:${event.type}`, input: { reason: event.type, decisionId: p.changeId ?? null, contractId: p.contractId ?? null } });
+  return hit.map((x) => x.name);
+}
 
 /** Load the event, snapshot the graph and prefs, route(), store notifications (deduped) and queue deliveries. */
 export default async function routeEvent(jobs: Job<{ eventId: string; type: string; orgId: string }>[]) {
@@ -18,5 +28,6 @@ export default async function routeEvent(jobs: Job<{ eventId: string; type: stri
     const [{ reader }, prefs] = await Promise.all([loadGraphReader(await graphFor(org?.graphName ?? row.orgId)), loadPrefsReader(row.orgId, d)]);
     const { stored } = await routeAndStore(d, event, row.id, { graph: reader, prefs, now: Math.floor(Date.now() / 1000), enqueue, slack: !!(await slackToken(row.orgId)) });
     console.log("[worker] route-event", event.type, row.id, `stored ${stored}`);
+    await dispatchAgents(event, enqueue);
   }
 }

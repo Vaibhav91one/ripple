@@ -11,6 +11,7 @@ const sample: Record<string, object> = {
   "task.due": { taskId: "t1" }, "task.overdue": { taskId: "t1" }, "approval.requested": { changeId: "c1", approverId: "u1" },
   "access.needed": { userId: "u1", resource: "r" }, "access.granted": { userId: "u1", resource: "r" },
   "pr.opened": { url: "https://github.com/a/b/pull/1" }, "pr.updated": { url: "https://github.com/a/b/pull/1" },
+  "impact.ready": { changeId: "c1", runId: "r1" }, "contract.added": { contractId: "ctr-1" },
   "digest.weekly": { weekStart: "2026-10-12" },
   "evidence.recorded": { changeId: "c1", channelId: "C1" },
   "slack.inbound": { kind: "event", teamId: "T1", body: { type: "message" } },

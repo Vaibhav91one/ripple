@@ -3,6 +3,7 @@ import { PgBoss, type Job } from "pg-boss";
 import { POLICY, QUEUES, bossOptions } from "../lib/queue";
 import { safeMessage } from "../lib/log";
 import agent from "./handlers/agent";
+import agentCron from "./handlers/agent-cron";
 import executeAction from "./handlers/execute-action";
 import noop from "./handlers/noop";
 import deliver from "./handlers/deliver";
@@ -14,7 +15,7 @@ import slackInbound from "./handlers/slack-inbound";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Handlers = Record<string, (jobs: Job<any>[]) => Promise<unknown>>;
-export const handlers: Handlers = { noop, "route-event": routeEvent, deliver, reminder, agent, "execute-action": executeAction, ingest, sync, "slack-inbound": slackInbound };
+export const handlers: Handlers = { noop, "route-event": routeEvent, deliver, reminder, agent, "agent-cron": agentCron, "execute-action": executeAction, ingest, sync, "slack-inbound": slackInbound };
 
 /** Start a worker against `url`; returns the graceful stop function. */
 export async function startWorker(url: string, use: Handlers = handlers) {
@@ -23,6 +24,10 @@ export async function startWorker(url: string, use: Handlers = handlers) {
   await boss.start();
   for (const q of QUEUES) await boss.createQueue(q, { policy: POLICY[q] ?? "standard" }); // idempotent
   for (const [name, fn] of Object.entries(use)) await boss.work(name, fn);
+  if (use["agent-cron"]) { // one keyed schedule per agent with trigger.cron: schedule() upserts, so a restart changes nothing
+    const { agents } = await import("../lib/agent/registry");
+    for (const a of agents()) if (a.trigger.cron) await boss.schedule("agent-cron", a.trigger.cron, { agent: a.name }, { key: a.name });
+  }
   return () => boss.stop({ graceful: true, timeout: 10_000 });
 }
 

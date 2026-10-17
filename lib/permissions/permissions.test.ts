@@ -295,6 +295,12 @@ const ARGS: Record<string, Record<string, unknown>> = {
   bottleneck: {},
   why_affected: { decisionId: "d-1", teamId: "legal" },
   create_tasks: { decisionId: "d-1" },
+  edge_freshness: { decisionId: "d-1", depth: 4 },
+  contract_conflicts: { decisionId: "d-1" },
+  contract_clauses: { contractId: "ctr-1" }, // Legal-only: clause ids are restricted, so every other viewer gets a count
+  contract_renewals: { withinDays: 365 },
+  propose_draft: { kind: "notice", contractId: "ctr-1", decisionId: "d-1", title: "t", body: "b" },
+  propose_task: { teamId: "legal", decisionId: "d-1", title: "t", body: "b" },
 };
 const usage = {
   inputTokens: { total: 3, noCache: 3, cacheRead: undefined, cacheWrite: undefined },
@@ -309,7 +315,8 @@ describe("sentinel leak: agent tools", () => {
 
   t("tool results (what the model and the stream see) hold no foreign sentinel", async () => {
     const calls = [
-      ...Object.entries(ARGS).filter(([n]) => n !== "create_tasks").map(([n, a]) => [n, a] as const),
+      // the interactive agent has read tools only
+      ...Object.entries(ARGS).filter(([n]) => !TOOLS[n as keyof typeof TOOLS].proposes).map(([n, a]) => [n, a] as const),
       ["why_affected", { decisionId: "d-1", teamId: "sales" }] as const,
       ["why_affected", { decisionId: "d-1", teamId: "security" }] as const,
       ["ripple", { decisionId: "d-1" }] as const,
@@ -332,6 +339,19 @@ describe("sentinel leak: agent tools", () => {
       for (const s of forbidden(v)) expect(text, `${v} agent leaked ${s}: ${snip(text, s)}`).not.toContain(s);
     }
   }, 60_000);
+
+  t("contract_clauses: Legal reads the clauses, nobody else does", async () => {
+    const { redactToolOut } = await import("./redact");
+    const out = await TOOLS.contract_clauses.run({ g, now: NOW, demo: true }, { contractId: "ctr-1" });
+    const own = JSON.stringify(await redactToolOut(g, pv("legal"), out));
+    expect(own).toContain("SENTINEL_CLAUSE");
+    for (const v of VIEWERS.filter((x) => x !== "legal")) {
+      const r = await redactToolOut(g, pv(v), out);
+      expect(JSON.stringify(r), v).not.toContain("SENTINEL_CLAUSE");
+      expect(r.rows, v).toEqual([]);
+      expect(r.restricted, v).toContainEqual(expect.objectContaining({ kind: "clause", owner: "legal" }));
+    }
+  });
 
   t("create_tasks output is redacted too", async () => {
     const { redactToolOut } = await import("./redact");
@@ -460,7 +480,7 @@ describe("sentinel leak: runBackground tool outputs", () => {
     const { redactToolOutput } = await import("../agent/runtime");
     for (const v of VIEWERS)
       for (const [tool, args] of Object.entries(ARGS)) {
-        if (tool === "create_tasks") continue;
+        if (tool === "create_tasks" || tool.startsWith("propose_")) continue;
         const out = await redactToolOutput(await TOOLS[tool as keyof typeof TOOLS].run({ g, now: NOW, demo: true, viewer: pv(v) }, args as never), { kind: "agent", ...pv(v) }, g);
         const text = JSON.stringify(out);
         for (const x of forbidden(v)) expect(text, `${v} background ${tool} leaked ${x}: ${snip(text, x)}`).not.toContain(x);

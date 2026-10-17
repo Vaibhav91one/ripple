@@ -2,14 +2,14 @@
 import { z } from "zod";
 import { defineAgent } from "../define";
 import { SYSTEM } from "../loop";
-import { TOOLS, type ToolName } from "../tools";
+import { READ_TOOLS } from "../tools";
 
 export const ask = defineAgent({
   name: "ask",
   group: "ask",
   team: "everyone",
   model: "reasoning",
-  tools: Object.keys(TOOLS) as ToolName[],
+  tools: READ_TOOLS,
   writes: [],
   budget: { maxSteps: 5, maxTokens: 20_000 },
   trigger: {},
