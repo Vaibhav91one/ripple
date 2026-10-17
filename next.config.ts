@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   // bundling the redis client breaks the build ("a.BigInt is not a function")
   // transformers.js loads onnxruntime-node (native .so) by dynamic import, which the tracer misses: keep both external
-  serverExternalPackages: ["falkordb", "@redis/client", "@huggingface/transformers", "onnxruntime-node"],
+  serverExternalPackages: ["falkordb", "@redis/client", "@huggingface/transformers", "onnxruntime-node", "unpdf", "mammoth"],
   partialPrefetching: true,
   // v1 URLs: /ripple?d=X opens that decision, bare /ripple opens the overview
   async redirects() {
