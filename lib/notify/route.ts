@@ -10,7 +10,7 @@ const hits = (ids: (string | null)[], reason: string, urgency: Urgency, email?: 
   ids.filter((id): id is string => !!id).map((personId) => ({ personId, reason, urgency, email }));
 
 /** Who should hear about this event, highest priority first. */
-function recipients(e: RippleEvent, g: GraphReader): Hit[] {
+function recipients(e: RippleEvent, g: GraphReader, slack: boolean): Hit[] {
   switch (e.type) {
     case "change.spotted":
       return []; // unconfirmed; nobody is messaged until it is confirmed
@@ -25,7 +25,7 @@ function recipients(e: RippleEvent, g: GraphReader): Hit[] {
     case "conflict.found":
       return [...hits([g.changeOwner(e.payload.changeId)], "change_owner", "high"), ...hits([g.changeOwner(e.payload.conflictsWith)], "conflicting_change_owner", "high")];
     case "brief.sent":
-      return hits([e.payload.userId], "brief_recipient", "normal", true);
+      return hits([e.payload.userId], "brief_recipient", "normal", !slack) // Slack DM when the org has Slack, email otherwise;
     case "ack.recorded":
       return hits([g.changeOwner(e.payload.changeId)], "change_owner", "low");
     case "ack.missing_48h":
@@ -114,10 +114,10 @@ export function afterQuiet(now: number, q: NonNullable<Prefs["quietHours"]>): nu
   }
 }
 
-export function route(event: RippleEvent, graph: GraphReader, prefs: PrefsReader, now: number): NotificationPlan[] {
+export function route(event: RippleEvent, graph: GraphReader, prefs: PrefsReader, now: number, opts: { slack?: boolean } = {}): NotificationPlan[] {
   // One plan per person per event: keep the first reason, the highest urgency.
   const byPerson = new Map<string, Hit>();
-  for (const h of recipients(event, graph)) {
+  for (const h of recipients(event, graph, !!opts.slack)) {
     const prev = byPerson.get(h.personId);
     if (!prev) byPerson.set(h.personId, h);
     else if (RANK[h.urgency] > RANK[prev.urgency]) byPerson.set(h.personId, { ...prev, urgency: h.urgency });
