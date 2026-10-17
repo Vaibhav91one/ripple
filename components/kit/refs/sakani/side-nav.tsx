@@ -6,9 +6,9 @@ import type { LucideIcon } from "lucide-react";
 export type NavItem = { id: string; label: string; icon: LucideIcon; badge?: string };
 export type NavGroupItem = { id: string; label: string; icon: LucideIcon; color: string };
 
-const item = "flex h-8 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[14px] leading-5 font-medium focus-visible:outline-2 focus-visible:outline-ripple";
+const item = "flex h-8 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm leading-5 font-medium focus-visible:outline-2 focus-visible:outline-ripple";
 const idle = "text-faint hover:text-strong";
-const label = "mt-8 px-[22px] pb-1 text-[12px] leading-4 font-medium text-faint";
+const label = "mt-8 px-[22px] pb-1 text-xs leading-4 font-medium text-faint";
 
 export function SideNav({ brand, items, active, groupTitle, group, recentsTitle, recents, onSelect }: {
   brand: string; items: NavItem[]; active: string;
@@ -18,8 +18,8 @@ export function SideNav({ brand, items, active, groupTitle, group, recentsTitle,
   return (
     <nav aria-label={brand} className="flex w-[270px] shrink-0 flex-col bg-page text-body">
       <div className="flex h-[60px] items-center gap-2.5 px-6">
-        <span aria-hidden className="grid size-7 place-items-center rounded-lg bg-strong text-[15px] leading-none font-bold text-page">{brand[0]}</span>
-        <span className="text-[15px] leading-5 font-semibold text-strong">{brand}</span>
+        <span aria-hidden className="grid size-7 place-items-center rounded-control bg-strong text-md leading-none font-bold text-page">{brand[0]}</span>
+        <span className="text-md leading-5 font-semibold text-strong">{brand}</span>
       </div>
       <ul className="flex flex-col gap-1 px-3">
         {items.map(({ id, label: text, icon: Icon, badge }) => {
@@ -30,7 +30,7 @@ export function SideNav({ brand, items, active, groupTitle, group, recentsTitle,
                 className={`${item} ${on ? "bg-raised text-strong" : idle}`}>
                 <Icon size={16} strokeWidth={1.5} aria-hidden />
                 <span className="flex-1 truncate">{text}</span>
-                {badge && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-overlay px-1.5 text-[11px] font-medium text-strong">{badge}</span>}
+                {badge && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-overlay px-1.5 text-2xs font-medium text-strong">{badge}</span>}
               </button>
             </li>
           );

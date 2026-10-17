@@ -10,7 +10,7 @@
   --chart: var(--ripple);
   --chart-2: var(--gap);
   --accent-ink: var(--page);
-  --ref-radius: 10px;
+  --ref-radius: 12px;
   --glow-a: var(--raised);
   --glow-b: var(--gap);
   --glow-ink: var(--strong);

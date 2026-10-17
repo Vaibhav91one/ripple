@@ -6,13 +6,13 @@ export function SummaryLine({ date, summary, onRefresh }: { date: string; summar
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <span className="text-[14px] leading-5 font-medium text-strong">{date}</span>
+        <span className="text-sm leading-5 font-medium text-strong">{date}</span>
         <button type="button" onClick={onRefresh} aria-label="Refresh summary"
-          className="inline-flex size-4 items-center justify-center rounded-sm text-body hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple">
+          className="inline-flex size-4 items-center justify-center rounded-control text-body hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple">
           <RotateCw size={14} strokeWidth={1.75} aria-hidden />
         </button>
       </div>
-      <p className="text-[16px] leading-6 text-faint">{summary}</p>
+      <p className="text-md leading-6 text-faint">{summary}</p>
     </div>
   );
 }

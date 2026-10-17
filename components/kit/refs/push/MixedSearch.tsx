@@ -29,8 +29,8 @@ export function MixedSearch({ placeholder, hint, groups, activeId, query, onQuer
           <Search size={17} aria-hidden />
           <input type="text" aria-label={placeholder} placeholder={placeholder} value={query} readOnly={!interactive} onChange={(e) => onQuery?.(e.target.value)} onKeyDown={onKeyDown}
             role="combobox" aria-expanded aria-controls="mixed-search-list" aria-activedescendant={activeId ? `ms-${activeId}` : undefined}
-            className="min-w-0 flex-1 bg-transparent text-[16px] text-strong outline-none placeholder:text-faint" />
-          <kbd className="rounded-md bg-hairline px-1.5 py-0.5 font-mono text-[12px] text-body">{hint}</kbd>
+            className="min-w-0 flex-1 bg-transparent text-md text-strong outline-none placeholder:text-faint" />
+          <kbd className="rounded-control bg-hairline px-1.5 py-0.5 font-mono text-xs text-body">{hint}</kbd>
         </label>
         <button type="button" aria-label="Filter" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-raised text-body outline-none focus-visible:ring-2 focus-visible:ring-ripple">
           <SlidersHorizontal size={18} aria-hidden />
@@ -39,16 +39,16 @@ export function MixedSearch({ placeholder, hint, groups, activeId, query, onQuer
       <ul id="mixed-search-list" role="listbox" aria-label={label} className="mt-1">
         {groups.map((g) => (
           <li key={g.label} role="presentation">
-            <p className="px-2.5 pb-1 pt-3 text-[15px] font-medium text-faint">{g.label}</p>
+            <p className="px-2.5 pb-1 pt-3 text-md font-medium text-faint">{g.label}</p>
             <ul role="presentation">
               {g.rows.map((r) => {
                 const Icon = ICONS[r.icon];
                 return (
                   <li key={r.id} id={`ms-${r.id}`} role="option" aria-selected={r.id === activeId}
-                    className={`flex min-h-[52px] items-center py-1.5 gap-3.5 rounded-xl px-2.5 ${r.id === activeId ? "bg-raised" : ""}`}>
-                    <span className={`flex size-9 shrink-0 items-center justify-center rounded-[10px] ${TONES[r.tone]}`}><Icon size={19} aria-hidden /></span>
-                    <span className="min-w-0 flex-1 text-[17px] leading-tight">{r.label}</span>
-                    {r.meta && <span className="font-mono text-[12px] text-faint">{r.meta}</span>}
+                    className={`flex min-h-[52px] items-center py-1.5 gap-3.5 rounded-card px-2.5 ${r.id === activeId ? "bg-raised" : ""}`}>
+                    <span className={`flex size-9 shrink-0 items-center justify-center rounded-control ${TONES[r.tone]}`}><Icon size={19} aria-hidden /></span>
+                    <span className="min-w-0 flex-1 text-md leading-tight">{r.label}</span>
+                    {r.meta && <span className="font-mono text-xs text-faint">{r.meta}</span>}
                   </li>
                 );
               })}
