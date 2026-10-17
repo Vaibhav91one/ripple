@@ -9,7 +9,7 @@ import { audit } from "../audit";
 import type { ActionKind } from "../agent/define";
 import { OWNER_ROLE } from "./executors";
 
-export type ProposeCtx = { org: { id: string }; viewer: { kind: string; id?: string }; runId?: string };
+export type ProposeCtx = { org: { id: string }; viewer: { kind: string; id?: string }; runId?: string; /** Background run: a policy-approved action is held (approved, not enqueued) until runBackground validates the run and releases it. */ hold?: boolean };
 export type Proposed = { id: string; status: string; created: boolean };
 
 /** Queue the execution once. singletonKey is the idempotency key, so a double approve cannot double-enqueue. */
@@ -36,6 +36,6 @@ export async function propose(ctx: ProposeCtx, kind: ActionKind, payload: unknow
   if (!policy?.autoApprove) return { id: row.id, status: "pending", created: true };
   await d.update(pendingActions).set({ status: "approved", approver: "policy", decidedAt: new Date() }).where(eq(pendingActions.id, row.id));
   await audit(ctx, { action: "action.approved", resourceType: "action", resourceId: row.id, meta: { kind, by: "policy" } });
-  await enqueueExecution(row.id, key);
+  if (!ctx.hold) await enqueueExecution(row.id, key);
   return { id: row.id, status: "approved", created: true };
 }

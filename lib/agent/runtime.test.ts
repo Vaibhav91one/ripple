@@ -6,6 +6,8 @@ import { closeClient, graphFor, query, type Graph } from "../graph/client";
 import { seed } from "../ingest/seed";
 
 vi.mock("server-only", () => ({}));
+const enqueue = vi.hoisted(() => vi.fn(async (..._a: unknown[]) => "job"));
+vi.mock("../queue", () => ({ enqueue }));
 // Two test agents instead of the real registry: a narrow allowlist and a tiny token budget.
 vi.mock("./registry", async () => {
   const { defineAgent } = await import("./define");
@@ -13,6 +15,7 @@ vi.mock("./registry", async () => {
   const list = [
     defineAgent({ ...base, name: "t-who", tools: ["who_knows"], budget: { maxSteps: 4, maxTokens: 10_000 } }),
     defineAgent({ ...base, name: "t-ids", tools: ["who_knows"], output: z.object({ answer: z.string(), teamId: z.string() }), budget: { maxSteps: 4, maxTokens: 10_000 } }),
+    defineAgent({ ...base, name: "t-prop", tools: ["create_tasks"], writes: ["create_task"], output: z.object({ answer: z.string(), teamId: z.string() }), budget: { maxSteps: 4, maxTokens: 10_000 } }),
     defineAgent({ ...base, name: "t-tiny", tools: ["who_knows"], budget: { maxSteps: 4, maxTokens: 5 } }),
   ];
   return { agents: () => list, agent: (n: string) => list.find((a) => a.name === n) };
@@ -148,6 +151,48 @@ describe.skipIf(!dbUrl)("runBackground (Postgres + FalkorDB)", () => {
     expect(r.output).toBeUndefined();
     expect((await stepsOf(r.runId)).some((s) => s.kind === "validation")).toBe(true);
   }, 30_000);
+
+  describe("auto-approved proposals are held until the run is validated", () => {
+    const executions = () => enqueue.mock.calls.filter((c) => c[0] === "execute-action");
+    const actionsOf = async (runId: string) => {
+      const { db } = await import("../db");
+      const { pendingActions } = await import("../db/schema");
+      const { eq } = await import("drizzle-orm");
+      return db().select().from(pendingActions).where(eq(pendingActions.runId, runId));
+    };
+    const run = async (teamId: string) => {
+      const { db } = await import("../db");
+      const { orgPolicy } = await import("../db/schema");
+      await db().insert(orgPolicy).values({ orgId: org.id, actionKind: "create_task", autoApprove: true }).onConflictDoNothing();
+      const { runBackground } = await import("./runtime");
+      const model = new MockLanguageModelV4({
+        doGenerate: [gen([call("c1", "create_tasks", { decisionId: "d-1" })], "tool-calls", 10), gen([text(JSON.stringify({ answer: "x", teamId }))], "stop", 10)],
+      });
+      return runBackground("t-prop", {}, { ...ctx(), model });
+    };
+
+    it("a rejected run (invented teamId) never reaches execute-action; its auto-approved actions are rejected", async (c) => {
+      if (!graphUp) c.skip();
+      enqueue.mockClear();
+      const r = await run("finance");
+      expect(r.status).toBe("rejected");
+      expect(executions()).toHaveLength(0);
+      const acts = await actionsOf(r.runId);
+      expect(acts.length).toBeGreaterThan(0);
+      expect(acts.every((a) => a.status === "rejected" && a.error?.includes("teamId=finance"))).toBe(true);
+    }, 30_000);
+
+    it("a run that passes validation releases its held actions to execute-action", async (c) => {
+      if (!graphUp) c.skip();
+      enqueue.mockClear();
+      const r = await run("devrel"); // devrel is in the create_tasks rows
+      expect(r.status).toBe("done");
+      const acts = await actionsOf(r.runId);
+      expect(acts.length).toBeGreaterThan(0);
+      expect(executions()).toHaveLength(acts.length);
+      expect(acts.every((a) => a.status === "approved")).toBe(true);
+    }, 30_000);
+  });
 
   it("unknown agent throws before logging anything", async () => {
     const { runBackground } = await import("./runtime");

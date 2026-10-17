@@ -10,7 +10,7 @@ import type { Graph } from "../graph/client";
 import type { Cypher } from "../graph/queries";
 import { pickModel, roleFor } from "../llm";
 import { redactToolOut } from "../permissions/redact";
-import { propose as proposeAction } from "../actions/propose";
+import { enqueueExecution, propose as proposeAction } from "../actions/propose";
 import { agent as findAgent } from "./registry";
 import { audit } from "../audit";
 import type { Outcome } from "../schemas";
@@ -41,6 +41,20 @@ export const redactToolOutput = (out: ToolOut, viewer: Viewer, g: Graph): Promis
 const utcDayStart = () => new Date(Math.floor(Date.now() / 86_400_000) * 86_400_000);
 type StepRow = typeof runSteps.$inferInsert;
 
+/** A run's policy-approved actions are held until the run ends. done releases them to execute-action; any other end rejects them, and a rejected run also rejects its still-pending proposals. Nothing a bad run proposed can have a side effect. */
+async function settleHeld(runId: string, status: RunStatus, reason?: string) {
+  if (status === "running" || status === "queued") return;
+  const d = db();
+  const held = and(eq(pendingActions.runId, runId), eq(pendingActions.status, "approved"), eq(pendingActions.approver, "policy"));
+  if (status === "done") {
+    for (const a of await d.select({ id: pendingActions.id, key: pendingActions.idempotencyKey }).from(pendingActions).where(held)) await enqueueExecution(a.id, a.key);
+    return;
+  }
+  const why = reason ?? `run ended ${status}`;
+  await d.update(pendingActions).set({ status: "rejected", error: why, decidedAt: new Date() }).where(held);
+  if (status === "rejected") await d.update(pendingActions).set({ status: "rejected", error: why, decidedAt: new Date() }).where(and(eq(pendingActions.runId, runId), eq(pendingActions.status, "pending")));
+}
+
 export async function runBackground(agentName: string, input: unknown, ctx: BackgroundCtx): Promise<RunResult> {
   const def = findAgent(agentName);
   if (!def) throw new Error(`unknown agent "${agentName}"`);
@@ -52,6 +66,7 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
   let tokens = 0;
   const finish = async (status: RunStatus, extra: { output?: unknown; error?: string } = {}): Promise<RunResult> => {
     await d.update(agentRuns).set({ status, tokens, endedAt: new Date(), output: extra.output ?? null, error: extra.error ?? null }).where(eq(agentRuns.id, runId));
+    await settleHeld(runId, status, extra.error);
     return { runId, status, tokens, ...extra };
   };
 
@@ -68,7 +83,7 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
     const parsed = def.input.safeParse(input);
     if (!parsed.success) return await finish("failed", { error: `invalid input: ${parsed.error.message}` });
 
-    const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose: (kind, payload, evidence) => proposeAction({ org: ctx.org, viewer: { kind: ctx.viewer.kind ?? "agent", id: ctx.viewer.id }, runId }, kind, payload, evidence) };
+    const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose: (kind, payload, evidence) => proposeAction({ org: ctx.org, viewer: { kind: ctx.viewer.kind ?? "agent", id: ctx.viewer.id }, runId, hold: true }, kind, payload, evidence) };
     const outs = new Map<string, ToolOut & { ms: number }>(); // toolCallId -> output, for the step log
     const calls: Call[] = [];
     const allowed = new Set<string>(def.tools);
@@ -124,7 +139,6 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
       // An output that names entities no tool returned is not trusted: nothing downstream (impact.ready, notifications) may act on it.
       const reason = `rejected: output names ids no tool returned (${bad.join(", ")})`;
       await d.insert(runSteps).values({ runId, n: ++n, kind: "validation", args: { rejected: bad, outcome: outcome.outcome, rowCount: outcome.rowCount }, tokens: 0 });
-      await d.update(pendingActions).set({ status: "rejected", decidedAt: new Date() }).where(and(eq(pendingActions.runId, runId), eq(pendingActions.status, "pending")));
       await audit({ org: ctx.org, viewer: ctx.viewer as { kind: string; id?: string } }, { action: "agent.answer_rejected", resourceType: "agent_run", resourceId: runId, outcome: "deny", meta: { agent: def.name, ids: bad, outcome: outcome.outcome } });
       return { ...(await finish("rejected", { error: reason })), outcome };
     }
