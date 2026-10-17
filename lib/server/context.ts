@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { audit, type AuditEvent } from "../audit";
 import { env } from "../env";
+import { safeMessage } from "../log";
 import { LENS_COOKIE, LENS_TEAM, parseLens } from "../lens";
 import { sessionViewer } from "../auth";
 import { ensureSchema } from "../graph/schema";
@@ -54,7 +55,7 @@ async function withMembership<V extends Extract<Viewer, { kind: "user" }>>(v: V)
     const m = await getMember(v.orgId, v.userId);
     return m ? { ...v, teamIds: m.teamIds, role: v.role === "admin" ? "admin" : m.role, personId: m.personId ?? undefined } : v;
   } catch (err) {
-    console.error("membership lookup failed:", err instanceof Error ? err.message : err);
+    console.error("membership lookup failed:", safeMessage(err));
     return v;
   }
 }
@@ -80,7 +81,7 @@ export async function getContext(req?: Request): Promise<Context> {
         await db().insert(orgs).values({ id: session.orgId, slug, graphName, isDemo: false }).onConflictDoNothing();
       } catch (err) {
         knownOrgs.delete(session.orgId);
-        console.error("org upsert failed:", err instanceof Error ? err.message : err);
+        console.error("org upsert failed:", safeMessage(err));
       }
     }
   }

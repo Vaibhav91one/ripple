@@ -30,7 +30,7 @@ describe.skipIf(!url)("postgres tables", () => {
 
   it("seeds the demo org and round-trips a row in every table", async () => {
     const { db } = await import("./index");
-    const { orgs, memberships, apiKeys, auditLog } = await import("./schema");
+    const { orgs, memberships, apiKeys, auditLog, connectorAccounts } = await import("./schema");
     const { eq } = await import("drizzle-orm");
     const d = db();
 
@@ -53,5 +53,11 @@ describe.skipIf(!url)("postgres tables", () => {
     await d.insert(auditLog).values({ orgId: org, actorType: "user", action: "read", outcome: "allow", meta: { a: 1 } });
     const [a] = await d.select().from(auditLog).where(eq(auditLog.orgId, org));
     expect(a.meta).toEqual({ a: 1 });
+
+    const acct = { orgId: org, kind: "slack", externalId: "T1", tokenEnc: "v1:aa:bb:cc:dd", scopes: ["chat:write"], cursor: { ts: "1" } };
+    await d.insert(connectorAccounts).values(acct);
+    const [c] = await d.select().from(connectorAccounts).where(eq(connectorAccounts.orgId, org));
+    expect(c).toMatchObject({ status: "active", scopes: ["chat:write"], cursor: { ts: "1" }, lastSyncAt: null });
+    await expect(d.insert(connectorAccounts).values(acct)).rejects.toThrow(); // unique(org_id, kind, external_id)
   });
 });

@@ -1,6 +1,7 @@
 // Worker process: `pnpm worker`. Owns pg-boss start (migrations, maintenance) and runs the handlers.
 import { PgBoss, type Job } from "pg-boss";
 import { POLICY, QUEUES, bossOptions } from "../lib/queue";
+import { safeMessage } from "../lib/log";
 import noop from "./handlers/noop";
 import routeEvent from "./handlers/route-event";
 
@@ -11,7 +12,7 @@ export const handlers: Handlers = { noop, "route-event": routeEvent };
 /** Start a worker against `url`; returns the graceful stop function. */
 export async function startWorker(url: string, use: Handlers = handlers) {
   const boss = new PgBoss(bossOptions(url));
-  boss.on("error", (e) => console.error("[worker]", e.message));
+  boss.on("error", (e) => console.error("[worker]", safeMessage(e)));
   await boss.start();
   for (const q of QUEUES) await boss.createQueue(q, { policy: POLICY[q] ?? "standard" }); // idempotent
   for (const [name, fn] of Object.entries(use)) await boss.work(name, fn);

@@ -15,6 +15,13 @@
       "when": 1792245983165,
       "tag": "0001_clammy_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792247826204,
+      "tag": "0002_same_otto_octavius",
+      "breakpoints": true
     }
   ]
 }
