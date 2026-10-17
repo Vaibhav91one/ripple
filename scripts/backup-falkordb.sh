@@ -4,7 +4,7 @@
 # Needs curl >= 7.75 (--aws-sigv4), tar, redis-cli (or BACKUP_REDIS_CLI="docker exec falkordb redis-cli").
 set -eu
 CLI="${BACKUP_REDIS_CLI:-redis-cli -h ${FALKORDB_HOST:-localhost} -p ${FALKORDB_PORT:-6379}}"
-DIR="${BACKUP_DATA_DIR:-/var/lib/falkordb-data}"
+DIR="${BACKUP_DATA_DIR:-}" # empty = copy /data out of the `falkordb` container (named volume on Zerops)
 KEEP="${BACKUP_KEEP:-14}"
 rc() { $CLI ${FALKORDB_PASSWORD:+-a "$FALKORDB_PASSWORD" --no-auth-warning} "$@"; }
 
@@ -19,6 +19,7 @@ done
 name="falkordb-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 # dump.rdb plus the AOF files (appendonly.aof or appendonlydir)
+if [ -z "$DIR" ]; then DIR="$tmp/data"; docker cp falkordb:/data "$DIR"; fi
 (cd "$DIR" && tar czf "$tmp/$name" dump.rdb $(ls -d appendonly* 2>/dev/null))
 echo "archive: $name ($(wc -c <"$tmp/$name") bytes)"
 

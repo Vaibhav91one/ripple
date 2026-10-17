@@ -45,7 +45,7 @@ Migrations run once per deploy: `web`'s `run.initCommands` runs `zsc execOnce ${
 
 ## Persistence, backups, restore (#91)
 
-`zerops.yaml` mounts the VM dir `/var/lib/falkordb-data` at `/data` (a symlink to the image's data dir) and turns AOF on (`--appendonly yes --appendfsync everysec`); the start command `mkdir -p`s the dir first. **Unverified on Zerops**: the docs do not say whether a `docker@latest` VM disk survives a redeploy. Check: `redis-cli GRAPH.QUERY check "CREATE (:Marker)"`, redeploy `falkordb`, query again. Locally (Apple `container`, same flags) a marker node survived stop/start.
+`zerops.yaml` mounts the docker named volume `falkordb-data` at `/data` (a symlink to the image's data dir) and turns AOF on (`--appendonly yes --appendfsync everysec`). A host dir under `/var/lib` does not work: the start command runs as a non-root user and `mkdir` is denied (seen live on 2026-10-17). **Unverified on Zerops**: the docs do not say whether a `docker@latest` VM disk survives a redeploy. Check: `redis-cli GRAPH.QUERY check "CREATE (:Marker)"`, redeploy `falkordb`, query again. Locally (Apple `container`, same flags) a marker node survived stop/start.
 
 **Backups**: `scripts/backup-falkordb.sh` runs `BGSAVE`, waits for `LASTSAVE` to change, tars `dump.rdb` + the AOF dir, uploads to S3 (curl `--aws-sigv4`, path-style) and prunes to the newest `BACKUP_KEEP` (14). It has to run on the falkordb VM (the files live there) with `BACKUP_REDIS_CLI="docker exec falkordb redis-cli"`. Without `BACKUP_S3_ENDPOINT` it is a dry run that lists the archive. Env names (object-storage service `storage`): `BACKUP_S3_ENDPOINT=${storage_apiUrl}`, `BACKUP_S3_BUCKET=${storage_bucketName}`, `BACKUP_S3_ACCESS_KEY=${storage_accessKeyId}`, `BACKUP_S3_SECRET_KEY=${storage_secretAccessKey}`. The commented `envVariables` + `crontab` block in `zerops.yaml` (03:00 daily) schedules it; uncomment once `storage` exists and the script is on the VM.
 
@@ -59,7 +59,7 @@ container run -d --name falkor-restore -p 6391:6379 -v "$PWD":/data -e REDIS_ARG
 redis-cli -p 6391 -a pw GRAPH.QUERY demo "MATCH (n) RETURN count(n)"   # compare with the live count
 ```
 
-To restore live: stop `falkordb`, replace `dump.rdb` in `/var/lib/falkordb-data` (delete `appendonlydir`), start it. Verified locally: node count after restore matched.
+To restore live: stop `falkordb`, copy `dump.rdb` into the `falkordb-data` volume (`docker run --rm -v falkordb-data:/data -v $PWD:/in alpine cp /in/dump.rdb /data/`, and delete `appendonlydir`), start it. Verified locally: node count after restore matched.
 
 **FalkorDB Cloud fallback**: if host paths do not persist, point `web` at the hosted instance by setting only `FALKORDB_HOST`, `FALKORDB_PORT`, `FALKORDB_PASSWORD` and `FALKORDB_TLS=1`; `lib/graph/client.ts` opens a TLS socket when `FALKORDB_TLS` is on. Remove the `falkordb` service afterwards.
 
