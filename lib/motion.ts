@@ -1,5 +1,5 @@
 // Single source of motion timing (#2). ms for CSS, `sec` for motion/react.
-// Mirrored by --default-transition-duration (hover) and the keyframes in app/globals.css.
+// `hover` is mirrored by --default-transition-duration in app/globals.css.
 export const duration = {
   hover: 120, fast: 160, enter: 220, drawer: 240, node: 260, exit: 200, count: 300,
   medium: 320, slow: 450, long: 650, draw: 900, loop: 1200, // loop = one pulse/shimmer cycle; scale it for slower loops
