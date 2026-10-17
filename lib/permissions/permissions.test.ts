@@ -313,6 +313,11 @@ const ARGS: Record<string, Record<string, unknown>> = {
   access_gap: { decisionId: "d-1" },
   propose_customer_draft: { kind: "email", customerId: "cust-1", decisionId: "d-1", title: "t", body: "b" },
   propose_access_request: { decisionId: "d-1", personId: "p-ana", resourceId: "group:v2-console", justification: "j" },
+  docs_pages: { decisionId: "d-1" },
+  affected_controls: { decisionId: "d-1" }, // Security-only: control and finding rows are restricted, every other viewer gets counts
+  affected_tickets: { decisionId: "d-1" },
+  decision_costs: { decisionId: "d-1" }, // arrAtRisk for leadership and Sales, customer arr for Sales only, contract detail Legal-only
+  propose_doc: { kind: "audit_note", decisionId: "d-1", pageId: null, title: "t", body: "b" },
 };
 const usage = {
   inputTokens: { total: 3, noCache: 3, cacheRead: undefined, cacheWrite: undefined },

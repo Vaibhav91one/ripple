@@ -206,4 +206,29 @@ describe.skipIf(!dbUrl)("pending actions (Postgres + FalkorDB)", () => {
     expect((await computeIt(ctx("lead"))).requests[0]).toMatchObject({ status: "granted", decidedBy: "it-1" });
     await d.delete(events).where(eq(events.orgId, org.id));
   }, 30_000);
+
+  it("an approved docs draft is open and ABOUT its page; an audit note is Security-only", async (c) => {
+    if (!graphUp) c.skip();
+    const { db } = await import("../db");
+    const { orgs, documents } = await import("../db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { propose } = await import("./propose");
+    const { approve } = await import("./decide");
+    const { executeAction } = await import("./execute");
+    const d = db();
+    await d.insert(orgs).values({ id: org.id, slug: org.id, graphName: gname }).onConflictDoNothing();
+    const saved = async (draft: object) => {
+      const p = await propose(proposer, "draft_doc", draft);
+      await approve(user("lead", "u-lead"), p.id);
+      expect(await executeAction(p.id, g)).toBe("executed");
+      const id = ((await row(p.id)).result as { documentId: string }).documentId;
+      return (await query<{ restrictedTo: string | null; about: string[] }>(g, "MATCH (a:Doc:Artifact {id: $id}) OPTIONAL MATCH (a)-[:ABOUT]->(x) RETURN a.restrictedTo AS restrictedTo, collect(x.id) AS about", { id }))[0];
+    };
+    const docsDraft = await saved({ kind: "docs_change", pageId: "pg-1", decisionId: "d-1", title: "Banner", body: "API v1 will be shut down on Jan 31, 2027." });
+    expect(docsDraft.restrictedTo).toBeNull();
+    expect([...docsDraft.about].sort()).toEqual(["d-1", "pg-1"]);
+    const note = await saved({ kind: "audit_note", decisionId: "d-1", title: "Audit impact", body: "CC6.1 is failing and audit-blocking." });
+    expect(note.restrictedTo).toBe("security");
+    await d.delete(documents).where(eq(documents.orgId, org.id));
+  }, 30_000);
 });
