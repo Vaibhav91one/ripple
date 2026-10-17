@@ -7,7 +7,7 @@ import { Sparkles } from "lucide-react";
 import { DashboardButton, DashboardShell } from "@/components/kit/obsidian/dashboard-shell/dashboard-shell";
 import { Mark } from "@/components/brand/Mark";
 import { HealthPill } from "./HealthPill";
-import { NAV, routeInfo } from "./nav";
+import { NAV, NAV_FOOTER, routeInfo } from "./nav";
 import { TeamSwitcher } from "./TeamSwitcher";
 
 /** Dashboard chrome: grouped sidebar, header (title, status slot, Team chip, Ask). Nav lives in ./nav. */
@@ -25,6 +25,7 @@ export function AppShell({ status, authSlot, lensSlot, children }: { status?: st
       title={title}
       status={status}
       statusTone="neutral"
+      secondaryNavigation={NAV_FOOTER}
       sidebarFooter={<HealthPill />}
       headerActions={
         <>
