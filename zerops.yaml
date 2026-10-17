@@ -121,4 +121,4 @@ zerops:
         MODEL_AGENT: gpt-5.4
         MODEL_EXTRACT: gpt-5.4-nano
         # FALKORDB_PASSWORD, LLM_API_KEY, ACK_TOKEN_SECRET, RESET_TOKEN: project secrets, visible by bare name.
-      start: pnpm worker
+      start: node_modules/.bin/tsx --conditions=react-server worker/index.ts # no pnpm needed in the run image
