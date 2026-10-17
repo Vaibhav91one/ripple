@@ -3,8 +3,8 @@ import { Check, ChevronRight } from "lucide-react";
 import { m } from "motion/react";
 import { duration, ease, sec } from "@/lib/motion";
 
-export function ActionToast({ title, body, time, action, dismiss, onDismiss }: {
-  title: string; body: string; time: string; action: string; dismiss: string; onDismiss?: () => void;
+export function ActionToast({ title, body, time, action, dismiss, onAction, onDismiss }: {
+  title: string; body: string; time: string; action: string; dismiss: string; onAction?: () => void; onDismiss?: () => void;
 }) {
   return (
     <m.div
@@ -23,7 +23,7 @@ export function ActionToast({ title, body, time, action, dismiss, onDismiss }: {
         </div>
       </div>
       <div className="mt-3 flex items-center gap-4">
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-control bg-strong px-3 py-2 text-xs font-medium text-[var(--accent-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple">
+        <button type="button" onClick={onAction} className="inline-flex items-center gap-1.5 rounded-control bg-strong px-3 py-2 text-xs font-medium text-[var(--accent-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple">
           {action}<ChevronRight aria-hidden className="size-3.5" />
         </button>
         <button type="button" onClick={onDismiss} className="rounded-control text-xs font-medium text-strong focus-visible:outline-2 focus-visible:outline-ripple">{dismiss}</button>

@@ -79,16 +79,19 @@ export default function ToolChips({
   diffs = DIFFS,
   live = false,
   summary,
+  defaultOpen = false,
 }: {
   rows?: ToolRowData[];
   diffs?: DiffChip[];
   /** Rows arrive from outside: show them all at once, no replay timer. */
   live?: boolean;
   summary?: string;
+  /** Start with every row expanded. */
+  defaultOpen?: boolean;
 }) {
   const [step, setStep] = useState(0);
   const [open, setOpen] = useState(true);
-  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+  const [openRows, setOpenRows] = useState<Set<string>>(() => new Set(defaultOpen ? rows.map((_, i) => String(i)) : []));
   const total = rows.length + 1; // rows, then diff chips
 
   useEffect(() => {

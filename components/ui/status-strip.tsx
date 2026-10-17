@@ -11,7 +11,7 @@ export function StatusStrip({ crumb, title, status, meta, cells }: {
   cells: StatusCell[];
 }) {
   return (
-    <section className="min-w-[520px] max-w-[620px] space-y-3">
+    <section className="min-w-0 sm:min-w-[520px] max-w-[620px] space-y-3">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-faint">
         <TriangleAlert aria-hidden className="size-3.5" />
         <span>{crumb[0]}</span>

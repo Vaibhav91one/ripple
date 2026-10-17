@@ -2,10 +2,12 @@
 // NEXT_PUBLIC_RIPPLE_OFFLINE=1 serves lib/mock instead (demo without FalkorDB); it is never the default.
 import { z } from "zod";
 import {
+  AgentList, ApprovalList, DecideResult, RunDetail, RunList, type SettingsPatch,
   Artifact, BottleneckRow, Change, Decision, Home, Inbox, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import * as mock from "@/lib/mock/api";
+import { SAMPLE_APPROVALS, SAMPLE_RUN, SAMPLE_RUNS } from "@/lib/approvals/sample";
 
 export const OFFLINE = process.env.NEXT_PUBLIC_RIPPLE_OFFLINE === "1";
 
@@ -118,3 +120,25 @@ export async function* askStream(question: string): AsyncGenerator<unknown> {
     }
   }
 }
+
+const JSON_HEADERS = { "content-type": "application/json" };
+
+/** Pending + failed actions the viewer's role may decide (`decided` = history). */
+export const getApprovals = (scope: "open" | "decided" = "open"): Promise<ApprovalList> =>
+  OFFLINE ? Promise.resolve(scope === "open" ? SAMPLE_APPROVALS : { approvals: [], open: 0 }) : call(ApprovalList, `/api/approvals?${qs({ scope })}`);
+
+/** `bulk` also decides every pending action of the same kind and change. */
+export const decideApproval = (id: string, decision: "approve" | "reject", opts: { note?: string; bulk?: boolean } = {}): Promise<DecideResult> =>
+  call(DecideResult, `/api/approvals/${encodeURIComponent(id)}`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ decision, ...opts }) });
+
+export const getAgents = (): Promise<AgentList> => call(AgentList, "/api/agents");
+
+export const getRuns = (agent?: string): Promise<RunList> =>
+  OFFLINE ? Promise.resolve(SAMPLE_RUNS) : call(RunList, `/api/agents/runs${agent ? `?${qs({ agent })}` : ""}`);
+
+export const getRun = (id: string): Promise<RunDetail> =>
+  OFFLINE ? Promise.resolve(SAMPLE_RUN) : call(RunDetail, `/api/agents/runs/${encodeURIComponent(id)}`);
+
+/** Admin only. */
+export const patchAgentSettings = (name: string, patch: SettingsPatch): Promise<unknown> =>
+  call(z.unknown(), `/api/agents/${encodeURIComponent(name)}/settings`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(patch) });

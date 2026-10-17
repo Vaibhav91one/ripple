@@ -7,7 +7,7 @@ export function ResolveOptions({ heading, options, value, onChange }: {
   heading: string; options: ResolveOption[]; value: string; onChange?: (id: string) => void;
 }) {
   return (
-    <section className="min-w-[520px] max-w-[620px] rounded-[var(--ref-radius)] border border-hairline bg-surface p-4">
+    <section className="min-w-0 sm:min-w-[520px] max-w-[620px] rounded-[var(--ref-radius)] border border-hairline bg-surface p-4">
       <h3 className="mb-4 px-0.5 text-md text-strong">{heading}</h3>
       <div role="radiogroup" aria-label={heading} className="space-y-2.5">
         {options.map((o) => {
