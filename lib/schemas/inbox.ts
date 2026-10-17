@@ -27,3 +27,17 @@ export const Inbox = z.object({ forMe: z.array(InboxItem), sent: z.array(SentIte
 export type InboxItem = z.infer<typeof InboxItem>;
 export type SentItem = z.infer<typeof SentItem>;
 export type Inbox = z.infer<typeof Inbox>;
+
+/** The in-app notification copy (Postgres `notification`), as the inbox API returns it. */
+export const NotificationItem = z.object({
+  id: z.string(),
+  kind: z.string(),
+  title: z.string(),
+  reason: z.string(),
+  subject: z.object({ kind: z.string(), id: z.string() }),
+  urgency: z.enum(["high", "normal", "low"]),
+  createdAt: z.string(),
+  readAt: z.string().nullable(),
+});
+export const NotificationList = z.object({ notifications: z.array(NotificationItem), unread: z.number() });
+export type NotificationList = z.infer<typeof NotificationList>;
