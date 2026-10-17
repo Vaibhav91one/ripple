@@ -3,7 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Dialog } from "radix-ui";
 import { parseAsString, useQueryStates } from "nuqs";
-import { ExternalLink, X } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Maximize2, X } from "lucide-react";
 import { getPeople, getRipple, getSource } from "@/lib/api";
 import RecordsTable, { type RecordRow } from "@/components/kit/beautifului/records-table";
 import { teamName } from "@/lib/permissions/classify";
@@ -59,9 +60,12 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
                 </p>
               )}
             </div>
+            <div className="flex shrink-0 items-center gap-1">
+            {a && <Link href={`/items/${a.kind}/${encodeURIComponent(a.id)}`} onClick={close} aria-label="Open full page" title="Open full page" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors"><Maximize2 className="size-4" /></Link>}
             <Dialog.Close aria-label="Close" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
               <X className="size-4" />
             </Dialog.Close>
+            </div>
           </header>
 
           <div className="flex-1 space-y-6 overflow-y-auto p-5">

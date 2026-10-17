@@ -2,7 +2,7 @@
 // NEXT_PUBLIC_RIPPLE_OFFLINE=1 serves lib/mock instead (demo without FalkorDB); it is never the default.
 import { z } from "zod";
 import {
-  Artifact, BottleneckRow, Change, Decision, Inbox, Overview, Person, RippleResult, WhoKnowsRow,
+  Artifact, BottleneckRow, Change, Decision, Inbox, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import * as mock from "@/lib/mock/api";
@@ -18,9 +18,13 @@ export class GraphDownError extends Error {
 }
 export const isGraphDown = (e: unknown): e is GraphDownError => e instanceof GraphDownError;
 
+/** 404 from a route: the id is not in the graph. */
+export class NotFoundError extends Error {}
+
 async function call<S extends z.ZodType>(schema: S, url: string, init?: RequestInit): Promise<z.infer<S>> {
   const res = await fetch(url, init);
   if (res.status === 503) throw new GraphDownError();
+  if (res.status === 404) throw new NotFoundError(url);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
     throw new Error(body.message ?? body.error ?? `${url}: ${res.status}`);
@@ -48,6 +52,10 @@ export const getWhoKnows = (systemId: string): Promise<WhoKnowsRow[]> =>
 
 export const getInbox = (personId: string): Promise<Inbox> =>
   OFFLINE ? mock.getInbox(personId) : call(Inbox, `/api/inbox?${qs({ p: personId })}`);
+
+/** Everything about one graph node (a PR, a contract, a team...), with the viewer's permissions applied. */
+export const getItem = (kind: string, id: string): Promise<ItemView> =>
+  OFFLINE ? Promise.reject(new NotFoundError(id)) : call(ItemView, `/api/items/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`);
 
 export const getSource = (artifactId: string): Promise<Artifact> =>
   OFFLINE ? mock.getSource(artifactId) : call(Artifact, `/api/source/${encodeURIComponent(artifactId)}`);

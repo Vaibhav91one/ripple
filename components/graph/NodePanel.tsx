@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, m } from "motion/react";
-import { X } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, X } from "lucide-react";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import { teamName } from "@/lib/permissions/classify";
 import { duration, ease, sec } from "@/lib/motion";
@@ -38,6 +39,11 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
           </header>
 
           <div className="flex-1 space-y-5 overflow-y-auto p-4">
+            {info.href && (
+              <Link href={info.href} className="inline-flex items-center gap-1.5 text-sm text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
+                Open full page <ExternalLink className="size-3.5" aria-hidden />
+              </Link>
+            )}
             <section>
               <h3 className="mb-2 font-mono text-xs uppercase text-faint">Properties</h3>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">

@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import Link from "next/link";
+import { Maximize2 } from "lucide-react";
 import { ContextCard, ContextChip } from "@/components/kit/beautifului/context-cards";
 import { getSource } from "@/lib/api";
 import type { RippleResult } from "@/lib/schemas";
@@ -28,9 +30,12 @@ function OpenSourceChip({ artifactId, quote }: { artifactId: string; quote: stri
   const { data } = useQuery({ queryKey: ["source", artifactId], queryFn: () => getSource(artifactId) });
   const panel = useSourcePanel();
   return (
-    <button type="button" onClick={() => panel.open(artifactId, quote)} aria-label={`Open source: ${data?.title ?? artifactId}`} className="rounded-full">
-      <ContextChip source={data?.title ?? artifactId} badge={data ? KIND[data.kind] : "…"} tone="bg-ripple" title={quote} />
-    </button>
+    <span className="inline-flex items-center gap-1">
+      <button type="button" onClick={() => panel.open(artifactId, quote)} aria-label={`Open source: ${data?.title ?? artifactId}`} className="rounded-full">
+        <ContextChip source={data?.title ?? artifactId} badge={data ? KIND[data.kind] : "…"} tone="bg-ripple" title={quote} />
+      </button>
+      {data && <Link href={`/items/${data.kind}/${encodeURIComponent(data.id)}`} aria-label={`Open full page: ${data.title}`} title="Open full page" className="rounded-sm p-0.5 text-faint hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors"><Maximize2 className="size-3" aria-hidden /></Link>}
+    </span>
   );
 }
 
