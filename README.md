@@ -15,7 +15,7 @@
 
 Built for the WeMakeDevs x FalkorDB Graph Hacks, Track 03. Live demo data is a synthetic company, **Ledgerly**, that has just decided to sunset its API v1.
 
-v2 is a dashboard product: `/overview`, a `/graph` explorer, `/decisions`, `/changes`, `/inbox`, and seven team workspaces under `/teams/<team>`, all reading one FalkorDB graph.
+v2 is a dashboard product: `/overview`, a `/graph` explorer, `/changes` (one page per change), `/inbox`, and seven team workspaces under `/teams/<team>`, all reading one FalkorDB graph.
 
 ## Use Ripple from your agent
 
@@ -67,7 +67,7 @@ cp -r skills/ripple-impact ~/.claude/skills/
 | | |
 |---|---|
 | ![Overview](docs/screens/v2-final-overview.png) `/overview`: KPIs, activity, blockers, team strip | ![Graph explorer](docs/screens/v2-final-graph.png) `/graph`: the ripple as a Flowchart, edge evidence on click |
-| ![Decision](docs/screens/v2-final-decisions-d-1.png) `/decisions/d-1`: the ripple, the gap, the conflict | ![Changes](docs/screens/v2-final-changes.png) `/changes`: dated edges added and ended |
+| ![Decision](docs/screens/v2-final-decisions-d-1.png) `/changes/d-1`: the ripple, the gap, the conflict | ![Changes](docs/screens/v2-final-changes.png) `/changes`: dated edges added and ended |
 | ![Eng](docs/screens/v2-final-teams-eng.png) `/teams/eng` | ![Legal](docs/screens/v2-final-teams-legal.png) `/teams/legal` |
 | ![Security](docs/screens/v2-final-teams-security.png) `/teams/security` | ![Leadership](docs/screens/v2-final-teams-leadership.png) `/teams/leadership` |
 
@@ -130,7 +130,7 @@ One Next.js 16 app (UI plus route handlers) and one FalkorDB. No other services.
                              full-text index, 384-d vector index)
 ```
 
-- **Screens:** `app/(app)/` routes `overview`, `graph`, `decisions`, `changes`, `inbox`, `teams/[team]`. The `/graph` view uses the Beautiful UI Flowchart fed by `graph-view.cypher`.
+- **Screens:** `app/(app)/` routes `overview`, `graph`, `changes`, `inbox`, `teams/[team]`. The `/graph` view uses the Beautiful UI Flowchart fed by `graph-view.cypher`.
 - **LLM: AI SDK, bring your own key** (Anthropic, OpenAI, Google, OpenRouter, OpenAI-compatible, Ollama). No key: the app runs on deterministic query wrappers and committed caches.
 - **Embeddings are local**: MiniLM-L6-v2 (384-d) via `@huggingface/transformers`, cached by content hash in `lib/ingest/cache/embed`.
 

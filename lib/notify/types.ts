@@ -21,6 +21,8 @@ export interface GraphReader {
   changeOwner(changeId: string): string | null;
   /** Leads/owners of the teams the change gaps (lead found by title, e.g. "Support Lead"). */
   teamOwners(changeId: string): string[];
+  /** Lead of a team, by title. */
+  teamLeadOf(teamId: string): string | null;
   /** On-call/owners of the systems the change touches. */
   systemOwners(changeId: string): string[];
   /** People who already acknowledged the change. */

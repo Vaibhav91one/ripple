@@ -1,4 +1,4 @@
-import { BookOpen, Bot, ClipboardCheck, Code2, GitBranch, Handshake, Headset, History, Home, KeyRound, LayoutDashboard, Network, Plug, Scale, Settings, ShieldCheck, Target } from "lucide-react";
+import { BookOpen, Bot, ClipboardCheck, Code2, Handshake, Headset, History, Home, KeyRound, LayoutDashboard, Network, Plug, Scale, Settings, ShieldCheck, Target } from "lucide-react";
 import type { DashboardShellNavItem, DashboardShellNavSection } from "@/components/kit/obsidian/dashboard-shell/dashboard-shell";
 
 export const TEAMS = [
@@ -21,8 +21,6 @@ export const NAV: DashboardShellNavSection[] = [
     title: "Work",
     items: [
       { id: "/home", label: "Home", icon: Home, href: "/home" },
-      // Decisions stays until /changes absorbs the decision page (P5-8); it's the core ripple screen.
-      { id: "/decisions", label: "Decisions", icon: GitBranch, href: "/decisions" },
       { id: "/changes", label: "Changes", icon: History, href: "/changes" },
       { id: "/approvals", label: "Approvals", icon: ClipboardCheck, href: "/approvals" },
       { id: "/agents", label: "Agents", icon: Bot, href: "/agents" },

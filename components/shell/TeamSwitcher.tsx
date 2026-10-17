@@ -17,7 +17,7 @@ export function TeamSwitcher() {
   const router = useRouter();
   const [lens, setLens] = useQueryState("team", parseAsString);
   const [open, setOpen] = useState(false);
-  const onDecision = pathname.startsWith("/decisions/");
+  const onDecision = pathname.startsWith("/changes/");
   const fromPath = TEAMS.find((t) => pathname.startsWith(`/teams/${t.id}`))?.id ?? null;
   const current = onDecision ? lens : fromPath;
   const label = TEAMS.find((t) => t.id === current)?.label;

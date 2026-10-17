@@ -25,7 +25,7 @@ export function RippleAngle({ angle, teamName }: { angle: Angle; teamName: strin
         <StatusPill tone={status.tone} label={status.label} />
       </header>
       {angle.decisionId ? (
-        <Link href={`/decisions/${angle.decisionId}`} className="group flex items-center justify-between rounded-md border border-hairline bg-raised px-3 py-2 text-sm text-strong hover:border-ripple transition-colors">
+        <Link href={`/changes/${angle.decisionId}`} className="group flex items-center justify-between rounded-md border border-hairline bg-raised px-3 py-2 text-sm text-strong hover:border-ripple transition-colors">
           <span>{name(angle.decisionId)}</span>
           <ArrowUpRight className="size-4 text-faint group-hover:text-ripple transition-colors" aria-hidden />
         </Link>

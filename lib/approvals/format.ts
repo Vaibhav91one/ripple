@@ -27,7 +27,7 @@ function line(kind: string, p: Obj): string {
     return `Update ${str(p.label) ?? "node"} ${str(p.id) ?? ""}`.trim();
   }
   const title = str(p.title) ?? str(p.subject) ?? str(p.text);
-  const verb: Record<string, string> = { create_task: "Create task", create_issue: "Open GitHub issue", send_slack: "Send Slack message", send_email: "Send email", pr_comment: "Comment on PR", access_request: "Request access", draft_doc: "Draft document" };
+  const verb: Record<string, string> = { create_task: "Create task", create_issue: "Open GitHub issue", send_slack: "Send Slack message", send_email: "Send email", pr_comment: "Comment on PR", access_request: "Request access", draft_doc: "Draft document", send_reminder: "Chase team" };
   return `${verb[kind] ?? human(kind)}${title ? `: ${title}` : ""}`;
 }
 

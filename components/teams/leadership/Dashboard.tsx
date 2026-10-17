@@ -63,7 +63,7 @@ export function LeadershipDashboard() {
                   <p className="text-xs text-conflict">
                     Blocked by{" "}
                     {b.toId.startsWith("d-")
-                      ? <Link href={`/decisions/${b.toId}`} className="underline underline-offset-2">{target(b.toId)}</Link>
+                      ? <Link href={`/changes/${b.toId}`} className="underline underline-offset-2">{target(b.toId)}</Link>
                       : target(b.toId)}
                     {" "}· {age(b.since)}
                   </p>
@@ -96,7 +96,7 @@ export function LeadershipDashboard() {
           {open.map((x) => (
             <li key={x.id} className="flex items-center gap-3 py-2">
               <div className="min-w-0 flex-1">
-                <Link href={`/decisions/${x.id}`} className="block truncate text-sm text-strong underline-offset-2 hover:underline transition-colors">{x.title}</Link>
+                <Link href={`/changes/${x.id}`} className="block truncate text-sm text-strong underline-offset-2 hover:underline transition-colors">{x.title}</Link>
                 <p className="text-xs text-faint">{x.status} · decided {fmtDay(x.decidedAt)}</p>
               </div>
               {notTold(x.id) > 0 && <StatusPill tone="conflict" label={`${notTold(x.id)} teams not told`} />}

@@ -10,11 +10,9 @@ import { CardEnter } from "@/components/motion/CardEnter";
 import { GapChips } from "@/components/motion/GapChips";
 import { getRipple, isGraphDown } from "@/lib/api";
 import { GraphDownBanner, NotFoundBlock } from "@/components/states/States";
-import { PageHeader } from "@/components/shell/PageHeader";
 import { RippleGraph } from "./RippleGraph";
 import { TeamCard, type TeamStatus } from "./TeamCard";
 import { useDecisionId } from "./useDecisionId";
-import { StatusPills } from "./StatusPills";
 import { TEAM_TABS, useTeam } from "./useTeam";
 
 type NotifyToastResult = { teamId: string; taskId: string; email: { status: "sent" | "preview" | "failed"; to: string | null } };
@@ -59,7 +57,7 @@ export function RippleHome() {
   if (isGraphDown(error))
     return <div className="p-8"><GraphDownBanner onRetry={() => void refetch()} /></div>;
   if (error)
-    return <NotFoundBlock title="Decision not found" href="/decisions" cta="All decisions">There is no decision with id &quot;{d}&quot;.</NotFoundBlock>;
+    return <NotFoundBlock title="Change not found" href="/changes" cta="All changes">There is no change with id &quot;{d}&quot;.</NotFoundBlock>;
 
   const name = (id: string) => data.nodes.find((n) => n.id === id)?.label ?? id[0].toUpperCase() + id.slice(1);
   const conflictRefs = new Set(data.conflicts.flatMap((c) => c.contractIds));
@@ -70,15 +68,8 @@ export function RippleHome() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-5 pt-5">
-        <PageHeader
-          title={
-            <span className="flex items-center gap-3">
-              <span className="truncate">{data.decision.title}</span>
-              <StatusPills conflicts={conflicts} notTold={notTold} />
-            </span>
-          }
-        >
+      <div className="px-5 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
           <div data-slot="team-tabs" role="group" aria-label="Filter by team" className="flex items-center gap-1 overflow-x-auto">
             {[{ id: null, label: "All" }, ...TEAM_TABS].map((t) => (
               <button
@@ -94,20 +85,20 @@ export function RippleHome() {
               </button>
             ))}
           </div>
-        </PageHeader>
+        </div>
         <div className="mt-3 flex items-center gap-2 text-sm text-faint">
           Depth <Segmented label="Dependency depth" options={DEPTHS} value={depth} onChange={setDepth} />
           <span>hops from the sunset system</span>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1">
-        <section className="relative min-w-0 basis-3/5 p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-visible">
+        <section className="relative h-[380px] shrink-0 min-w-0 p-4 md:h-auto md:shrink md:basis-3/5">
           <RippleGraph data={data} team={team} />
           <p className="absolute bottom-3 left-5 text-xs text-faint">
             Rings are hops. Sectors group customers {data.counts.customers}, tickets {data.counts.tickets}, deals {data.counts.deals}, contracts {data.counts.contracts}.
           </p>
         </section>
-        <section className="flex min-w-0 basis-2/5 flex-col gap-3 overflow-y-auto border-l border-hairline p-5">
+        <section className="flex min-w-0 flex-col gap-3 border-t border-hairline p-5 md:basis-2/5 md:overflow-y-auto md:border-l md:border-t-0">
           <p className="text-sm text-body">
             <AnimatedCount value={teamsAffected} /> affected
             <span className="text-faint"> · </span>

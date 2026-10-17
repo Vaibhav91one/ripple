@@ -36,13 +36,14 @@ function sections(rows: ApprovalRow[]): Section[] {
 
 const decidable = (r: ApprovalRow) => r.canDecide && r.status === "pending";
 
-export function ApprovalsScreen() {
+/** `changeId` scopes the list to one change and drops the page header (the Approvals tab of /changes/[id]). */
+export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"open" | "decided">("open");
   const [sel, setSel] = useQueryState("a", parseAsString);
   const [now] = useState(() => Date.now());
   const [toast, setToast] = useState<Toast>();
-  const { data, isPending, error, refetch } = useQuery({ queryKey: ["approvals", tab], queryFn: () => getApprovals(tab) });
+  const { data, isPending, error, refetch } = useQuery({ queryKey: ["approvals", tab, changeId ?? null], queryFn: () => getApprovals(tab, changeId) });
   const rows = useMemo(() => data?.approvals ?? [], [data]);
   const secs = useMemo(() => sections(rows), [rows]);
   const row = rows.find((r) => r.id === sel);
@@ -69,9 +70,9 @@ export function ApprovalsScreen() {
   const empty = data?.note ?? (tab === "open" ? "Nothing waiting on you. Agents and connectors propose; you decide." : "No decisions yet.");
 
   return (
-    <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8">
+    <div className={changeId ? "mx-auto flex w-full max-w-[960px] flex-col gap-6" : "mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8"}>
       {isGraphDown(error) && <GraphDownBanner onRetry={() => void refetch()} />}
-      <PageHeader title="Approvals" subtitle={data?.sample ? "Sample proposals" : `${open} waiting for a decision`}>
+      <PageHeader title={changeId ? "Waiting for approval" : "Approvals"} subtitle={data?.sample ? "Sample proposals" : changeId ? `${rows.length} on this change` : `${open} waiting for a decision`}>
         <div role="tablist" aria-label="Show" className="flex gap-1 rounded-lg border border-hairline bg-surface p-0.5 text-sm">
           {(["open", "decided"] as const).map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} type="button" onClick={() => setTab(t)}

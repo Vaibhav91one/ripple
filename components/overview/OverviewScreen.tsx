@@ -82,7 +82,7 @@ function Dashboard({ o }: { o: Overview }) {
               <ul className="flex flex-col divide-y divide-hairline">
                 {o.openDecisions.map(({ decision: d, notTold: gap }, i) => (
                   <li key={d.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-2.5 ${sel?.decision.id === d.id ? "rounded-md bg-raised" : ""}`}>
-                    <Link href={`/decisions/${d.id}`} className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong hover:underline transition-colors">{d.title}</Link>
+                    <Link href={`/changes/${d.id}`} className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong hover:underline transition-colors">{d.title}</Link>
                     {/* conflicts are counted per graph, tied to the first (main) decision */}
                     {i === 0 && conflicts > 0 && <StatusPill tone="conflict" label={`${conflicts} conflict${conflicts > 1 ? "s" : ""}`} />}
                     {gap.map((t) => <StatusPill key={t} tone="gap" label={`${name(t)} not told`} />)}
@@ -152,7 +152,7 @@ function Dashboard({ o }: { o: Overview }) {
                   <dt className="text-faint">Decided</dt><dd className="text-body">{fmtDay(sel.decision.decidedAt)}</dd>
                   <dt className="text-faint">Not told</dt><dd className="text-body">{sel.notTold.map(name).join(", ") || "nobody"}</dd>
                 </dl>
-                <Link href={`/decisions/${sel.decision.id}`} className="text-xs text-strong underline-offset-2 hover:underline transition-colors">Open decision</Link>
+                <Link href={`/changes/${sel.decision.id}`} className="text-xs text-strong underline-offset-2 hover:underline transition-colors">Open decision</Link>
               </>
             ) : <p className="text-sm text-faint">Select an open decision to see its summary.</p>}
           </div>
