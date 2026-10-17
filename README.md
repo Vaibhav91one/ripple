@@ -5,7 +5,7 @@
 - **Live:** https://web-2fa0-3000.prg1.zerops.app (custom domain `ripple.vaibhav.quest` coming)
 - **Track:** Track 03: Company Brain, WeMakeDevs x FalkorDB Graph Hacks
 - **Pitch:** before you ship a breaking change, ask the graph who it hits and who was never told.
-- **Modelling:** Telling a team is an edge (NOTIFIES / ACKED), so a missing edge is the finding.
+- **Modelling:** Telling a team is an edge (INVOLVED_IN / ACKED), so a missing edge is the finding.
 
 ![Ripple overview: the v1 sunset across every team](docs/screens/v2-final-overview.png)
 
@@ -88,7 +88,7 @@ Ask it as a team (what hits me?) and inside a team (who knows this?):
 ## Why FalkorDB is load-bearing
 
 - **Variable-length `DEPENDS_ON` traversal.** `ripple.cypher` walks decision, systems, dependents, then tickets, deals, contracts, customers and teams in one statement; `depth` is the hop bound (see the table above).
-- **The missing-edge gap query.** `gap.cypher` finds teams the decision hits with no `NOTIFIES`/`ACKED` edge. The finding is an absence, which is natural in a graph and a set difference in application code elsewhere.
+- **The missing-edge gap query.** `gap.cypher` finds teams the decision hits with no `INVOLVED_IN`/`ACKED` edge. The finding is an absence, which is natural in a graph and a set difference in application code elsewhere.
 - **Temporal edges.** Every edge has `valid_from` / `valid_to` (epoch ints), so "what changed" and "what was true then" are plain `WHERE` clauses; moving the sunset date ends one edge and writes another.
 - **`MERGE` write-back.** Conflicts, acks and tasks are written back with `MERGE`, so the gap shrinks when a team acks.
 - **Full-text and vector index on `Artifact`.** `search.cypher` and `search-vector.cypher` find the decision's evidence, and the vector query hops to the systems each hit is `ABOUT` in the same statement.
@@ -948,7 +948,7 @@ Ripple was built with Claude Code: Claude Opus as the lead agent, Claude Sonnet 
 
 ## Prior art
 
-[Hopper](https://www.falkordb.com/blog/memory-meets-motion-the-falkordb-standouts/) (security advisory to customer to contract clause; "no path = safe") and Drift (decision contradictions from meetings) were both standouts at FalkorDB's Memory Meets Motion hackathon. Ripple starts from a company decision, crosses every team, and the finding is the missing NOTIFIES/ACK edge plus contract conflicts, with acknowledgement write-back.
+[Hopper](https://www.falkordb.com/blog/memory-meets-motion-the-falkordb-standouts/) (security advisory to customer to contract clause; "no path = safe") and Drift (decision contradictions from meetings) were both standouts at FalkorDB's Memory Meets Motion hackathon. Ripple starts from a company decision, crosses every team, and the finding is the missing INVOLVED_IN/ACKED edge plus contract conflicts, with acknowledgement write-back.
 
 ## Next (not built)
 
