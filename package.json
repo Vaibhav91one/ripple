@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "seed": "tsx lib/ingest/seed.ts",
+    "graph:migrate": "tsx scripts/graph-migrate.ts",
     "worker": "tsx --conditions=react-server worker/index.ts",
     "mcp": "tsx scripts/mcp-stdio.ts",
     "extract": "tsx lib/ingest/extract.ts",

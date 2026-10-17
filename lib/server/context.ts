@@ -7,6 +7,7 @@ import { safeMessage } from "../log";
 import { LENS_COOKIE, LENS_TEAM, parseLens } from "../lens";
 import { sessionViewer } from "../auth";
 import { ensureSchema } from "../graph/schema";
+import { migrateGraph } from "../graph/migrate";
 import { healDemo } from "../graph/bootstrap";
 import { graphFor, readOnly, type Graph } from "../graph/client";
 
@@ -111,6 +112,7 @@ export async function getContext(req?: Request): Promise<Context> {
   if (session && !e.RIPPLE_GRAPH) {
     if (!ready.has(graphName)) {
       await ensureSchema(raw); // indexes only, never seed data
+      await migrateGraph(raw);
       ready.add(graphName);
     }
     if (e.DATABASE_URL && !knownOrgs.has(session.orgId)) {
