@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { CsvImport } from "@/components/connectors/CsvImport";
@@ -17,7 +18,7 @@ export default function CsvPage() {
         <h1 className="text-lg font-medium text-strong">Import a CSV</h1>
         <p className="text-sm text-faint">Customers, deals, usage and who has access to which software. Re-importing the same file changes nothing.</p>
       </div>
-      <Suspense><Importer /></Suspense>
+      <Suspense fallback={<PageLoading />}><Importer /></Suspense>
     </div>
   );
 }

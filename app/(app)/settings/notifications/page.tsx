@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { NotificationPrefs, type FormValues } from "@/components/settings/NotificationPrefs";
@@ -54,7 +55,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-lg font-medium text-strong">Notifications</h1>
-      <Suspense><Prefs /></Suspense>
+      <Suspense fallback={<PageLoading />}><Prefs /></Suspense>
     </div>
   );
 }

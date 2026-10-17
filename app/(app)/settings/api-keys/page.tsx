@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { ApiKeysPanel, type KeyRow } from "@/components/settings/ApiKeysPanel";
@@ -26,7 +27,7 @@ export default function ApiKeysPage() {
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-lg font-medium text-strong">API keys</h1>
-      <Suspense><Keys /></Suspense>
+      <Suspense fallback={<PageLoading />}><Keys /></Suspense>
     </div>
   );
 }

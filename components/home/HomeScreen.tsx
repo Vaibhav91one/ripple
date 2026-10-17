@@ -12,6 +12,7 @@ import { NeedsYou } from "@/components/ui/needs-you";
 import { SummaryLine } from "@/components/ui/summary-line";
 import { Pill } from "@/components/ui/tone";
 import { ackBrief, getHome, getNames, isGraphDown } from "@/lib/api";
+import { proposalTitle } from "@/lib/approvals/title";
 import { describeEdge } from "@/lib/changes";
 import type { HomeBrief } from "@/lib/schemas";
 
@@ -74,7 +75,7 @@ export function HomeScreen({ lens }: { lens: string }) {
       title: b.title, sub: `Brief to acknowledge · ${date(b.at)}`,
       href: `/changes/${encodeURIComponent(b.decisionId)}`, actions: <BriefActions b={b} lens={lens} />,
     })),
-    ...h.approvals.map((a) => ({ icon: "pin" as const, title: `Approve: ${a.kind.replaceAll("_", " ")}`, sub: waited(a.requestedAt), href: "/approvals" })),
+    ...h.approvals.map((a) => ({ icon: "pin" as const, title: a.subject ? proposalTitle({ summary: "", subject: a.subject }, name) : `Approve: ${a.kind.replaceAll("_", " ")}`, sub: waited(a.requestedAt), href: "/approvals" })),
     ...h.accessRequests.map((a) => ({ icon: "pin" as const, title: "Access request", sub: waited(a.requestedAt), href: "/approvals" })),
     ...h.inbox.forMe.flatMap((i): Row[] => i.kind === "review"
       ? [{ icon: "pin", title: i.title, sub: `Review assigned to you · ${date(i.at)}`, href: `/items/task/${encodeURIComponent(i.taskId)}` }] : []),
@@ -90,8 +91,8 @@ export function HomeScreen({ lens }: { lens: string }) {
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col gap-8 px-4 py-8 sm:px-8">
       {isGraphDown(error) && <GraphDownBanner onRetry={() => void refetch()} />}
-      {isPending && <LoadingBlock label="Loading your day" />}
       <PageHeader title="Home" subtitle={h ? `What needs you and ${team} today` : undefined} />
+      {isPending && <LoadingBlock label="Loading your day" />}
       {h && (
         <>
           <SummaryLine

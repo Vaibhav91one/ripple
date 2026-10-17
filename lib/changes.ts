@@ -15,7 +15,7 @@ const PHRASE: Partial<Record<Edge["type"], [string, boolean?]>> = {
 };
 
 /** "Product has been waiting on Legal since 13 Oct", "Support uses API v1". `name` resolves an id to a label. */
-export function describeEdge(e: Pick<Edge, "from" | "to" | "type" | "validFrom">, name: (id: string) => string): string {
+export function describeEdge(e: Pick<Edge, "from" | "to" | "type" | "validFrom">, name: (id: string) => string, dated = true): string {
   const [verb, since] = PHRASE[e.type] ?? [e.type.toLowerCase().replaceAll("_", " ")];
-  return `${name(e.from)} ${verb} ${name(e.to)}${since ? ` since ${day(e.validFrom)}` : ""}`;
+  return `${name(e.from)} ${verb} ${name(e.to)}${since && dated ? ` since ${day(e.validFrom)}` : ""}`;
 }

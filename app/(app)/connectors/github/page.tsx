@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
@@ -48,7 +49,7 @@ export default function GithubConnectorPage(props: { searchParams: Promise<{ con
         <h1 className="text-lg font-medium text-strong">GitHub</h1>
         <p className="text-sm text-faint">Repos, pull requests and CODEOWNERS ownership.</p>
       </div>
-      <Suspense><Github searchParams={props.searchParams} /></Suspense>
+      <Suspense fallback={<PageLoading />}><Github searchParams={props.searchParams} /></Suspense>
     </div>
   );
 }

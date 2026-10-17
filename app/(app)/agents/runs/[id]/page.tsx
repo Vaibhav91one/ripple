@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { Suspense } from "react";
 import { RunDetailScreen } from "@/components/agents/RunDetailScreen";
 
@@ -7,7 +8,7 @@ async function Run({ params }: { params: Promise<{ id: string }> }) {
 
 export default function RunPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense>
+    <Suspense fallback={<PageLoading />}>
       <Run params={params} />
     </Suspense>
   );

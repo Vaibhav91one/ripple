@@ -4,6 +4,7 @@ import * as mo from "@/lib/motion";
 // CubeCard: the small dark meter card with a price pill and a folder row.
 import { Box, Folder } from "lucide-react";
 import { m } from "motion/react";
+import type { ReactNode } from "react";
 
 type PillTone = "conflict" | "gap" | "covered";
 const PILL: Record<PillTone, string> = { conflict: "bg-conflict", gap: "bg-gap", covered: "bg-covered" };
@@ -22,9 +23,35 @@ export type AgentCardProps = {
   glyph: string;
   status: string;
   statusTone?: "body" | "gap";
+  /** "sm" is the roster card: name, team, status pill, last run and the job on one line. Default is the showcase card. */
+  size?: "sm" | "lg";
+  /** sm only: controls under the job line (a switch, a disclosure). */
+  footer?: ReactNode;
 };
 
+function AgentCardSm(p: AgentCardProps) {
+  return (
+    <div className="flex h-full w-full min-w-0 flex-col rounded-card border border-hairline bg-surface p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-mono text-sm font-medium text-strong">{p.title}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-faint"><Folder className="size-3 shrink-0" aria-hidden />{p.folder}</p>
+        </div>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-2xs font-medium text-[var(--accent-ink)] ${PILL[p.pillTone ?? "conflict"]}`}>
+          <span className="size-1.5 rounded-full bg-[var(--accent-ink)] opacity-70" aria-hidden />{p.pill}
+        </span>
+      </div>
+      <p className="mt-3 truncate text-xs text-body" title={p.task}>{p.task}</p>
+      <p className={`mt-1 flex items-center gap-1.5 font-mono text-2xs ${p.statusTone === "gap" ? "text-gap" : "text-faint"}`} aria-live="polite">
+        <span aria-hidden>{p.glyph}</span>{p.status}<span aria-hidden>·</span>{p.folderNote}
+      </p>
+      {p.footer && <div className="mt-3 border-t border-hairline pt-3">{p.footer}</div>}
+    </div>
+  );
+}
+
 export function AgentCard(p: AgentCardProps) {
+  if (p.size === "sm") return <AgentCardSm {...p} />;
   return (
     <div className="w-full max-w-[480px] overflow-hidden rounded-card border-[3px] border-hairline bg-surface shadow-sm">
       <div className="flex items-center justify-between border-b-2 border-hairline px-7 py-[18px]">

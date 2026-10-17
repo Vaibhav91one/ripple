@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { id, ts } from "./common";
 import { Source } from "./core";
+import { Subject } from "./approvals";
 import { Inbox, NotificationList } from "./inbox";
 import { RippleAngle } from "./overview";
 
@@ -24,7 +25,7 @@ export const HomeBrief = z.object({
   /** null for anonymous demo viewers: the shared demo is read-only, so no ack tokens are minted. */
   tokens: z.object({ seen: z.string(), concern: z.string(), not_relevant: z.string() }).nullable(),
 });
-export const HomeApproval = z.object({ id: z.string(), kind: z.string(), requestedAt: z.string() });
+export const HomeApproval = z.object({ id: z.string(), kind: z.string(), requestedAt: z.string(), subject: Subject.nullable() });
 export const HomeTask = z.object({
   id, title: z.string(), status: z.enum(["open", "in_review"]), dueAt: ts.nullable(), mine: z.boolean(),
 });

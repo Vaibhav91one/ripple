@@ -28,35 +28,37 @@ function Roster({ a, canEdit, now, onPatch }: { a: AgentInfo; canEdit: boolean; 
   const last = a.lastRun;
   const tone = !a.enabled || !last || last.status === "running" ? "gap" : last.status === "done" ? "covered" : "conflict";
   return (
-    <li className="flex min-w-0 flex-col gap-2">
+    <li className="min-w-0">
       <AgentCard
+        size="sm"
         title={a.name} pill={!a.enabled ? "off" : last?.status ?? "idle"} pillTone={tone}
         folder={a.team === "everyone" ? "Everyone" : a.team} folderNote={`${a.runs24h} runs · 24h`}
-        progress={last?.status === "done" ? 1 : last?.status === "running" ? 0.5 : 0}
-        agent={a.group} task={a.job || a.tools.slice(0, 4).join(", ") || "No tools"}
+        progress={0} agent={a.group} task={a.job || a.tools.slice(0, 4).join(", ") || "No tools"}
         glyph={a.enabled ? "●" : "○"} status={last ? `Last run ${ago(last.startedAt, now)}` : "Never run"}
         statusTone={a.enabled ? "body" : "gap"}
+        footer={
+          <details className="text-xs">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 outline-none focus-visible:outline-2 focus-visible:outline-ripple">
+              <span className="text-strong">Enabled for this org</span>
+              <Switch on={a.enabled} label={`${a.name} enabled`} disabled={!canEdit} onChange={(enabled) => onPatch({ enabled })} />
+            </summary>
+            <div className="mt-3 space-y-2">
+              <p className="text-faint"><span className="text-body">Triggers</span> {a.triggers.length ? a.triggers.join(", ") : "on demand"}</p>
+              {a.writes.length === 0 ? (
+                <p className="text-faint">Read-only: it proposes nothing.</p>
+              ) : (
+                a.writes.map((k) => (
+                  <label key={k} className="flex items-center justify-between gap-3">
+                    <span className="text-body">Auto-approve <span className="text-strong">{kindLabel(k).toLowerCase()}</span></span>
+                    <Switch on={a.autoApprove[k] ?? false} label={`Auto-approve ${kindLabel(k)}`} disabled={!canEdit} onChange={(v) => onPatch({ autoApprove: { [k]: v } })} />
+                  </label>
+                ))
+              )}
+              {!canEdit && <p className="text-faint">Only admins change these.</p>}
+            </div>
+          </details>
+        }
       />
-      <div className="w-full max-w-[480px] space-y-2 rounded-card border border-hairline bg-surface px-4 py-3 text-xs">
-        <p className="text-faint">
-          <span className="text-body">Triggers</span> {a.triggers.length ? a.triggers.join(", ") : "on demand"}
-        </p>
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-strong">Enabled for this org</span>
-          <Switch on={a.enabled} label={`${a.name} enabled`} disabled={!canEdit} onChange={(enabled) => onPatch({ enabled })} />
-        </label>
-        {a.writes.length === 0 ? (
-          <p className="text-faint">Read-only: it proposes nothing.</p>
-        ) : (
-          a.writes.map((k) => (
-            <label key={k} className="flex items-center justify-between gap-3">
-              <span className="text-body">Auto-approve <span className="text-strong">{kindLabel(k).toLowerCase()}</span></span>
-              <Switch on={a.autoApprove[k] ?? false} label={`Auto-approve ${kindLabel(k)}`} disabled={!canEdit} onChange={(v) => onPatch({ autoApprove: { [k]: v } })} />
-            </label>
-          ))
-        )}
-        {!canEdit && <p className="text-faint">Only admins change these.</p>}
-      </div>
     </li>
   );
 }
@@ -107,7 +109,7 @@ export function AgentsScreen() {
       <section aria-labelledby="roster" className="space-y-3">
         <h2 id="roster" className="text-sm font-medium text-strong">Roster</h2>
         {agents.isPending ? <LoadingBlock label="Loading agents" /> : (
-          <ul className="grid gap-5 lg:grid-cols-2">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {agents.data?.agents.map((a) => (
               <Roster key={a.name} a={a} canEdit={canEdit && !patch.isPending} now={now} onPatch={(p) => patch.mutate({ name: a.name, ...p })} />
             ))}

@@ -1,5 +1,5 @@
 // Payload -> words. A pending action's payload is JSON; people read a summary line and label/value fields.
-import type { ApprovalRow } from "../schemas/approvals";
+import type { ApprovalRow, Subject } from "../schemas/approvals";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -31,6 +31,15 @@ function line(kind: string, p: Obj): string {
   return `${verb[kind] ?? human(kind)}${title ? `: ${title}` : ""}`;
 }
 
+const end = (r: unknown) => (isObj(r) ? { label: str(r.label) ?? "", id: str(r.id) ?? "" } : undefined);
+function subjectOf(kind: string, p: Obj): Subject | null {
+  if (kind !== "graph_merge") return null;
+  if (p.op === "merge_edge" || p.op === "end_edge") return { op: p.op, type: str(p.type), from: end(p.from), to: end(p.to) };
+  if (p.op === "merge_node") return { op: p.op, label: str(p.label), id: str(p.id) };
+  if (p.op === "suggest_merge") return { op: p.op, mention: str(p.mention), id: str(p.nodeId) };
+  return null;
+}
+
 /** The connector or source behind a proposal when no agent run made it ("github:pr/12" -> "github"). */
 function sourceOf(p: Obj, ev: { src?: string }[]) {
   const src = str(p.src) ?? ev.find((e) => e.src)?.src;
@@ -47,11 +56,12 @@ export function summarize(kind: string, payload: unknown, evidence: unknown, age
   const question = kind === "graph_merge" && p.op === "suggest_merge";
   return {
     summary: line(kind, p),
+    subject: subjectOf(kind, p),
     fields: flatten(ev.length ? Object.fromEntries(Object.entries(p).filter(([k]) => !["quote", "confidence", "structured"].includes(k))) : p), // those three are the Evidence section
     evidence: ev,
     proposer: agent ?? sourceOf(p, ev),
     changeId,
     group: question ? null : changeId ?? str(p.src) ?? null, // "same entity?" is a judgement call: never bulk
     question: question ? { name: str(p.mention) ?? "", nodeId: str(p.nodeId) ?? "" } : null,
-  } satisfies Pick<ApprovalRow, "summary" | "fields" | "evidence" | "proposer" | "changeId" | "group" | "question">;
+  } satisfies Pick<ApprovalRow, "summary" | "subject" | "fields" | "evidence" | "proposer" | "changeId" | "group" | "question">;
 }

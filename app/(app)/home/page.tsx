@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { HomeScreen } from "@/components/home/HomeScreen";
@@ -10,7 +11,7 @@ async function Lensed() {
 
 export default function HomePage() {
   return (
-    <Suspense>
+    <Suspense fallback={<PageLoading />}>
       <Lensed />
     </Suspense>
   );

@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { Suspense } from "react";
 import { AuthArea } from "@/components/auth/AuthArea";
 import { LensArea } from "@/components/shell/LensArea";
@@ -11,7 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="h-[calc(100dvh-4.5rem)] min-h-[640px] bg-page">
       <Suspense>
         <AppShell lensSlot={<Suspense><LensArea /></Suspense>} authSlot={<Suspense><AuthArea /></Suspense>}>
-          <Suspense>{children}</Suspense>
+          <Suspense fallback={<PageLoading />}>{children}</Suspense>
         </AppShell>
       </Suspense>
       {/* Overlays driven by URL state: ?ask=1, ?src=<artifact> */}

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { ago, kindLabel, STATUS_TONE } from "@/components/approvals/shared";
+import { ago, kindLabel, STATUS_TONE, useNames } from "@/components/approvals/shared";
 import CodeBlock from "@/components/kit/beautifului/code-block";
 import ToolChips, { type ToolRowData } from "@/components/kit/beautifului/tool-chips";
 import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
@@ -39,6 +39,7 @@ function rows(steps: RunDetail["steps"]): ToolRowData[] {
 
 export function RunDetailScreen({ id }: { id: string }) {
   const [now] = useState(() => Date.now());
+  const { title } = useNames();
   const { data, isPending, error, refetch } = useQuery({ queryKey: ["run", id], queryFn: () => getRun(id), retry: false });
   if (isPending) return <div className="mx-auto w-full max-w-[760px] px-4 py-8"><LoadingBlock label="Loading run" /></div>;
   if (!data) {
@@ -86,7 +87,7 @@ export function RunDetailScreen({ id }: { id: string }) {
               <li key={p.id}>
                 <Link href={`/approvals?a=${p.id}`} className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-raised focus-visible:bg-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ripple">
                   <span className="hidden w-28 shrink-0 font-mono text-2xs text-faint sm:block">{kindLabel(p.kind)}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-strong">{p.summary}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-strong">{title(p)}</span>
                   <Pill tone={STATUS_TONE[p.status] ?? "gap"} dot>{p.status}</Pill>
                 </Link>
               </li>

@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { MembersTable, type MemberRow } from "@/components/settings/MembersTable";
@@ -41,7 +42,7 @@ export default function MembersPage() {
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-lg font-medium text-strong">Members</h1>
-      <Suspense><Members /></Suspense>
+      <Suspense fallback={<PageLoading />}><Members /></Suspense>
     </div>
   );
 }
