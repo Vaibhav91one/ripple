@@ -16,9 +16,9 @@ Ripple keeps one FalkorDB graph per company:
 - `(:System)<-[:DEPENDS_ON]-(:System)`
 - tickets, deals, contracts and customers point at systems (`ABOUT`, `PROMISED`, `GUARANTEES`, `USES`)
 - teams `OWNS` and `CARES_ABOUT` systems
-- and the edges that matter most: `NOTIFIES` and `ACKED` between a decision and a team
+- and the edges that matter most: `INVOLVED_IN` and `ACKED` from a team to a decision
 
-**Telling a team is an edge, so a missing edge is the finding.** "Who wasn't told" is a team that the traversal reaches but that has no `NOTIFIES`/`ACKED` edge from the decision. That one choice made the hardest question the simplest query.
+**Telling a team is an edge, so a missing edge is the finding.** "Who wasn't told" is a team that the traversal reaches but that has no `INVOLVED_IN`/`ACKED` edge to the decision. That one choice made the hardest question the simplest query.
 
 Every edge also carries `valid_from` / `valid_to`, so the graph can say what was true last week, replay how a ripple formed, and show what changed when the sunset date moves.
 

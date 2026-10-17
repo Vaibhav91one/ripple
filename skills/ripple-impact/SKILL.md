@@ -11,7 +11,7 @@ Needs the `ripple` MCP server (see the README: "Use Ripple from your agent"). Ri
 
 1. **Find the decision.** Call `list_decisions`, then `search` with the thing being changed (system, API, price). Pick the matching decision id. If none matches, say "no decision for X exists in the graph" and stop; do not invent one.
 2. **Impact.** Call `ripple_impact` with the decision id. Then call it again with `depth: 4` and compare: teams or gaps that appear only at depth 4 are hidden dependencies, so call them out.
-3. **Who wasn't told.** Call `who_wasnt_told`. Telling a team is an edge (NOTIFIES / ACKED), so a team with no edge is the finding.
+3. **Who wasn't told.** Call `who_wasnt_told`. Telling a team is an edge (INVOLVED_IN / ACKED), so a team with no edge is the finding.
 4. **Contracts and money.** Call `check_contract_conflict` (clauses that promise past the new date, with quotes) and `deals_at_risk` (open deals, amount, stage, the PROMISED quote). `affected_controls` is coarse, treat it as a hint.
 5. **Write it up** (PR description or plan):
    - Summary of the change and the decision id.
