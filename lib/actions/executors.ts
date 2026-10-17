@@ -6,6 +6,7 @@ import { env, type Env } from "../env";
 import { query, type Graph } from "../graph/client";
 import { load } from "../graph/queries";
 import type { ActionKind } from "../agent/define";
+import { applyProposal } from "../connectors/apply";
 
 export type ActionCtx = { org: { id: string }; now: number; writer: () => Graph };
 
@@ -53,6 +54,7 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
     return r;
   },
   graph_merge: async (payload, { writer, now }) => {
+    if (payload && typeof payload === "object" && "op" in payload) return applyProposal(writer(), payload, now); // a connector proposal
     const { label, id, props } = GraphMerge.parse(payload);
     return query(writer(), `MERGE (n:${label} {id: $id}) SET n += $props, n.updatedAt = $now RETURN n.id AS id`, { id, props, now });
   },
