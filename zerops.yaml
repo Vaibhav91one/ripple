@@ -32,6 +32,10 @@ zerops:
         # standalone needs static + public copied next to server.js (Next docs: self-hosting guide)
         - cp -r .next/static .next/standalone/.next/static
         - cp -r public .next/standalone/public
+        # migrations run from the standalone folder (node scripts/migrate.mjs), so it needs the script + sql
+        - mkdir -p .next/standalone/scripts .next/standalone/lib/db
+        - cp scripts/migrate.mjs .next/standalone/scripts/
+        - cp -r lib/db/migrations .next/standalone/lib/db/
       deployFiles:
         # whole folder lands in /var/www/.next/standalone (paths are kept; "~" shortening not relied on)
         - .next/standalone
@@ -47,11 +51,16 @@ zerops:
         PORT: "3000"
         FALKORDB_HOST: falkordb # services reach each other by hostname (docs: "app:3000")
         FALKORDB_PORT: "6379"
+        DATABASE_URL: ${db_connectionString} # direct 5432 string from the `db` service; UNCONFIRMED until it exists
         # FALKORDB_PASSWORD, RESET_TOKEN, LLM_API_KEY come from project-level secrets (UNCONFIRMED: that
         # project env vars are visible by bare name in every service; otherwise add them here).
         LLM_PROVIDER: openai
         MODEL_AGENT: gpt-5.4
         MODEL_EXTRACT: gpt-5.4-nano
+      # Postgres (service `db`, see docs/deploy.md). initCommands run on every container start; execOnce
+      # makes the migration run once per deploy version. The script skips itself when DATABASE_URL is unset.
+      initCommands:
+        - zsc execOnce ${ZEROPS_appVersionId} -- node scripts/migrate.mjs
       # server.js does process.chdir(__dirname), so the .cypher files resolve from the standalone folder.
       start: HOSTNAME=0.0.0.0 node .next/standalone/server.js # HOSTNAME is a reserved Zerops env key, so set it inline
       healthCheck:

@@ -14,7 +14,9 @@
     "embed": "tsx lib/ingest/embed.ts",
     "shots": "tsx scripts/shots.ts",
     "eval": "tsx lib/eval/run.ts",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.81",
@@ -34,6 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.5.0",
+    "drizzle-orm": "^0.45.4",
     "falkordb": "^6.8.0",
     "lucide-react": "^1.58.0",
     "motion": "^14.3.0",
@@ -41,6 +44,7 @@
     "nuqs": "^2.10.2",
     "ollama-ai-provider-v2": "^4.0.1",
     "onnxruntime-node": "1.30.0",
+    "postgres": "^3.4.9",
     "radix-ui": "^1.8.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -57,6 +61,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "playwright-core": "^1.64.1",
