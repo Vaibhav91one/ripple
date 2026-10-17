@@ -12,6 +12,7 @@ export default async function routeEvent(jobs: Job<{ eventId: string; type: stri
   for (const j of jobs) {
     const [row] = await d.select().from(events).where(eq(events.id, j.data.eventId));
     if (!row) { console.warn("[worker] route-event: event not found", j.data.eventId); continue; }
+    if (row.type === "slack.inbound") continue; // queued on slack-inbound by the ingest route; nothing to route
     const event = RippleEvent.parse({ type: row.type, orgId: row.orgId, subject: { kind: row.subjectKind, id: row.subjectId }, payload: row.payload, dedupeKey: row.dedupeKey });
     const [org] = await d.select().from(orgs).where(eq(orgs.id, row.orgId));
     const [{ reader }, prefs] = await Promise.all([loadGraphReader(await graphFor(org?.graphName ?? row.orgId)), loadPrefsReader(row.orgId, d)]);

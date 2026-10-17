@@ -12,6 +12,7 @@ const sample: Record<string, object> = {
   "access.needed": { userId: "u1", resource: "r" }, "access.granted": { userId: "u1", resource: "r" },
   "pr.opened": { url: "https://github.com/a/b/pull/1" }, "pr.updated": { url: "https://github.com/a/b/pull/1" },
   "digest.weekly": { weekStart: "2026-10-12" },
+  "slack.inbound": { kind: "event", teamId: "T1", body: { type: "message" } },
 };
 const make = (type: string, dedupeKey = type) =>
   ({ type, orgId: "o", subject: { kind: "change", id: "c1" }, payload: sample[type], dedupeKey }) as RippleEvent;
