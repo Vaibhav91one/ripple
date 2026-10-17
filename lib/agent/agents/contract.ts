@@ -28,7 +28,7 @@ export const contract = defineAgent({
   group: "understand",
   team: "legal",
   model: "reasoning",
-  tools: ["contract_conflicts", "contract_clauses", "contract_renewals", "search", "propose_draft", "propose_task"],
+  tools: ["recall", "contract_conflicts", "contract_clauses", "contract_renewals", "search", "propose_draft", "propose_task"],
   writes: ["draft_doc", "create_task"],
   budget: { maxSteps: 10, maxTokens: 80_000 },
   trigger: { events: ["contract.added", "change.confirmed"], cron: "0 6 * * *" },

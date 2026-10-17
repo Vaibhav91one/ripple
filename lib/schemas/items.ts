@@ -23,6 +23,10 @@ export const ItemWhy = z.object({
   path: z.array(z.object({ id: z.string(), label: z.string(), name: z.string().nullish() })),
   rels: z.array(z.object({ type: z.string(), src: z.string().nullable(), quote: z.string().nullable() })),
 });
+/** An agent finding about this node (#210). A finding derived from sources you may not see arrives with empty text (redaction) and is not shown. */
+export const ItemFinding = z.object({
+  id: z.string(), text: z.string(), at: z.number().int(), agent: z.string().nullable(), confidence: z.number().nullable(), sources: z.array(z.string()).nullable().transform((s) => s ?? []),
+});
 /** GET /api/items/[kind]/[id]: everything about one graph node, permission-aware. */
 export const ItemView = z.object({
   kind: z.string(),
@@ -36,6 +40,7 @@ export const ItemView = z.object({
   why: z.array(ItemWhy),
   neighbours: z.array(Ref.extend({ type: z.string(), dir: z.enum(["out", "in"]) })),
   edges: z.array(ItemEdge),
+  findings: z.array(ItemFinding).default([]).transform((fs) => fs.filter((f) => f.text)),
   whoKnows: z.array(WhoKnowsRow.extend({ evidence: z.array(z.string()), score: z.number() })),
   // the summaries; redaction first stamps a restricted artifact with its owner team id (a string), which handle() then replaces
   restricted: z.union([z.array(RestrictedSummary), z.string()]).optional(),

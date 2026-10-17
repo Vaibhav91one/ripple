@@ -139,6 +139,24 @@ function Item({ v }: { v: ItemView }) {
           </Section>
         )}
 
+        {v.findings.length > 0 && (
+          <Section title="What Ripple concluded" count={v.findings.length}>
+            <ul className={box}>
+              {v.findings.map((f) => (
+                <li key={f.id} className="space-y-1.5 px-4 py-3">
+                  <p className="text-sm text-body">{f.text.replace(/\s*\[\[[^\]]+\]\]/g, "")}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
+                    <time className="font-mono">{date(f.at)}</time>
+                    {f.agent && <span>{f.agent}</span>}
+                    {f.confidence !== null && <span className="font-mono">{Math.round(f.confidence * 100)}% sure</span>}
+                    {f.sources.map((s) => <SourceChip key={s} artifactId={s} quote="" />)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
         {spec?.extra && (
           <Section title={spec.extra.title} count={extra.length}>
             {extra.length === 0 ? (

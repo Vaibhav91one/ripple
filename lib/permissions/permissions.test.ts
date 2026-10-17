@@ -28,7 +28,7 @@ let up = false;
 
 /** owner team -> strings that must not reach anyone else. */
 const SENTINELS = {
-  legal: ["SENTINEL_CONTRACT", "SENTINEL_CLAUSE", "7770001"],
+  legal: ["SENTINEL_CONTRACT", "SENTINEL_CLAUSE", "7770001", "SENTINEL_AGENT_FINDING"],
   sales: ["SENTINEL_DEAL", "7770002", "7770003"], // 7770003 = customer ARR
   security: ["SENTINEL_FINDING", "SENTINEL_CONTROL"],
 } as const;
@@ -70,6 +70,12 @@ beforeAll(async () => {
       "MATCH ()-[r:GUARANTEES|PROMISED|HAS_CLAUSE]->() SET r.quote = 'SENTINEL_SRC ' + coalesce(r.quote, '')",
       "MATCH ()-[r:GUARANTEES|PROMISED|HAS_CLAUSE]->() WITH collect(DISTINCT r.src) AS ids MATCH (a:Artifact) WHERE a.id IN ids SET a.text = 'SENTINEL_SRC ' + a.text, a.title = a.title + ' SENTINEL_SRC'",
     ]) await query(g, q);
+    // an agent finding derived from a Legal source (the executor sets restrictedTo from the sources' owner)
+    const { EXECUTORS } = await import("../actions/executors");
+    await EXECUTORS.record_finding!(
+      { id: "fnd-sentinel", text: "SENTINEL_AGENT_FINDING the Northwind MSA guarantees v1 past the shutdown", entityIds: ["cust-1", "api-v1", "legal"], sources: ["art-msa-northwind"], confidence: 0.9, supersedes: [] },
+      { org: { id: "perm" }, now: NOW, writer: () => g },
+    );
   } catch (e) {
     console.warn(`SKIPPING permission tests: FalkorDB unreachable (${String(e)})`);
   }
@@ -209,6 +215,17 @@ describe("sentinel leak: GET routes", () => {
     expect(art.title).toBe("Restricted source");
   });
 
+  t("an agent finding derived from Legal sources is invisible to Sales, visible to Legal (recall, item pages)", async () => {
+    const { redactToolOut } = await import("./redact");
+    const recall = async (v: V) => JSON.stringify(await redactToolOut(g, pv(v), await TOOLS.recall.run({ g, now: NOW, demo: true, viewer: pv(v) }, { entityIds: ["cust-1", "api-v1"] })));
+    expect(await recall("legal")).toContain("SENTINEL_AGENT_FINDING");
+    for (const v of ["sales", "eng", "security", "leadership", "change-owner"] as const) expect(await recall(v), v).not.toContain("SENTINEL_AGENT_FINDING");
+    const item = async (v: V, kind: string, id: string) => { as(v); return JSON.parse((await get("items/[kind]/[id]", `/api/items/${kind}/${id}`, { kind, id })).text); };
+    expect((await item("legal", "customer", "cust-1")).findings.map((f: { text: string }) => f.text).join()).toContain("SENTINEL_AGENT_FINDING");
+    expect((await item("sales", "customer", "cust-1")).findings).toEqual([]);
+    expect((await item("sales", "system", "api-v1")).findings).toEqual([]);
+  });
+
   t("topology is identical for every viewer; only payload differs", async () => {
     const topo: unknown[] = [];
     for (const v of VIEWERS) {
@@ -324,6 +341,8 @@ const ARGS: Record<string, Record<string, unknown>> = {
   affected_controls: { decisionId: "d-1" }, // Security-only: control and finding rows are restricted, every other viewer gets counts
   affected_tickets: { decisionId: "d-1" },
   decision_costs: { decisionId: "d-1" }, // arrAtRisk for leadership and Sales, customer arr for Sales only, contract detail Legal-only
+  recall: { entityIds: ["d-1", "legal", "cust-1", "api-v1"] }, // the SENTINEL_AGENT_FINDING row is Legal's: its text is blanked for everyone else
+  record_finding: { text: "t", entityIds: ["legal"], sources: [], confidence: 0.5, supersedes: [] },
   propose_doc: { kind: "audit_note", decisionId: "d-1", pageId: null, title: "t", body: "b" },
 };
 const usage = {

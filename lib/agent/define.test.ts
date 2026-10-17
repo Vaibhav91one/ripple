@@ -33,8 +33,8 @@ describe("registry", () => {
     expect(agent("ask")?.writes).toEqual([]);
     expect(agent("missing")).toBeUndefined();
   });
-  it("lists impact (read-only) and contract (drafts and tasks only)", () => {
-    expect(agent("impact")?.writes).toEqual([]);
+  it("lists impact (its only write is record_finding) and contract (drafts and tasks only)", () => {
+    expect(agent("impact")?.writes).toEqual(["record_finding"]);
     expect(agent("contract")?.writes).toEqual(["draft_doc", "create_task"]);
   });
   it("lists the team specialists and the Decision Advisor with the narrowest writes", () => {

@@ -20,6 +20,7 @@ export const ImpactReport = z.object({
   customers: z.array(Entity),
   contracts: z.array(Entity),
   deals: z.array(Entity),
+  memory: z.object({ answeredFromMemory: z.boolean(), asOf: z.string().nullable().describe("YYYY-MM-DD of the finding you answered from, else null") }),
   hiddenAtDepth4: z.array(Entity).describe("Teams or systems that appear only when following dependencies 4 hops deep, not at 3"),
 });
 
@@ -28,18 +29,19 @@ export const impact = defineAgent({
   group: "understand",
   team: "change-owner",
   model: "reasoning",
-  tools: ["ripple", "why_affected", "search", "who_knows", "edge_freshness"],
-  writes: [],
-  budget: { maxSteps: 8, maxTokens: 60_000 },
+  tools: ["recall", "ripple", "why_affected", "search", "who_knows", "edge_freshness", "record_finding"],
+  writes: ["record_finding"],
+  budget: { maxSteps: 10, maxTokens: 60_000 },
   trigger: { events: ["change.confirmed", "change.updated"] },
   input: z.object({ decisionId: z.string() }),
   output: ImpactReport,
   system: ({ now }) => `You are the Impact Analyst. The change owner gave you a decision id. Explain what the change touches.
 Today is ${new Date(now * 1000).toISOString().slice(0, 10)}.
-Work in this order, one tool call per step:
+Work in this order, one tool call per step (the memory rules below come first: recall, then answer from it when it is current):
 1. ripple with depth 3, then ripple with depth 4. Anything present at 4 and absent at 3 goes in hiddenAtDepth4.
 2. why_affected for every hit team other than the decision's own team, to get the path and quotes.
 3. edge_freshness (depth 4) to set confidence (edge confidence, lowered when the newest edge is old) and freshness. Edges observed more than 90 days ago are stale.
 4. who_knows or search only when a path needs a person or a document.
-Rules: cite every claim as [[artifact-id]] using ids a tool returned this run; never invent an id or a quote. Restricted details show as "[restricted]" or counts: say "restricted to <team>", never guess them. Do not propose anything: you only report. If a tool says nothing is connected, say so plainly.`,
+5. record_finding once per hit team (entityIds: that team id and the decision id; sources: the artifact ids on its path; supersedes: the stale finding ids recall returned). Record only what a tool showed this run.
+Rules: cite every claim as [[artifact-id]] using ids a tool returned this run; never invent an id or a quote. Restricted details show as "[restricted]" or counts: say "restricted to <team>", never guess them. Your only write is record_finding; propose nothing else. If a tool says nothing is connected, say so plainly.`,
 });

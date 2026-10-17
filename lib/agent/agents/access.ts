@@ -23,7 +23,7 @@ export const access = defineAgent({
   group: "act",
   team: "it",
   model: "reasoning",
-  tools: ["access_gap", "search", "propose_access_request"],
+  tools: ["recall", "access_gap", "search", "propose_access_request"],
   writes: ["access_request"],
   budget: { maxSteps: 8, maxTokens: 60_000 },
   trigger: { events: ["change.confirmed"] },

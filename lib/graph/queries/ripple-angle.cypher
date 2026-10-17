@@ -1,7 +1,7 @@
 // What the decision means for one team ($team, $decision, $since). Each branch returns kind + rows.
 // changes: recent edges that touch the team, its people, or things it owns/manages/handles (newest 80; the wrapper keeps those inside the decision's ripple)
 MATCH (a)-[r]->(b)
-WHERE r.valid_from > $since AND type(r) <> 'BETWEEN'
+WHERE r.valid_from > $since AND type(r) <> 'BETWEEN' AND NOT a:AgentFinding
   AND (a.id = $team OR b.id = $team OR a.teamId = $team OR b.teamId = $team OR a.ownerTeamId = $team
     OR (a)-[:MANAGED_BY]->(:Team {id: $team}) OR (a)-[:OWNED_BY]->(:Team {id: $team})
     OR (a)-[:HANDLED_BY]->(:Person {teamId: $team}) OR (:Team {id: $team})-[:OWNS]->(a))

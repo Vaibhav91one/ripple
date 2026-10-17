@@ -23,11 +23,11 @@ export async function itemView(g: Graph, kind: string, id: string): Promise<{ da
   const ad = Object.hasOwn(ITEM_KINDS, kind) ? ITEM_KINDS[kind] : undefined;
   if (!ad) throw new NotFound(`unknown item kind ${kind}`);
   const p = { id, label: ad.graphLabel };
-  const cs = ["item-node", "item-edges", "item-why"].map(load);
+  const cs = ["item-node", "item-edges", "item-why", "item-findings"].map(load);
   const [node] = z.array(z.object({ props: z.record(z.string(), z.unknown()) })).parse(await roQuery(g, cs[0].text, p));
   if (!node) throw new NotFound(`unknown ${kind} ${id}`);
-  const [edgeRows, whyRows, who] = await Promise.all([
-    roQuery(g, cs[1].text, p), roQuery(g, cs[2].text, p), KNOWABLE.has(kind) ? whoKnows(g, id) : null,
+  const [edgeRows, whyRows, findingRows, who] = await Promise.all([
+    roQuery(g, cs[1].text, p), roQuery(g, cs[2].text, p), roQuery(g, cs[3].text, p), KNOWABLE.has(kind) ? whoKnows(g, id) : null,
   ]);
   const edges = z.array(Edge).parse(edgeRows).sort((x, y) => y.validFrom - x.validFrom).map((e) => ({
     type: e.type, dir: e.dir, other: { id: e.otherId, label: e.otherLabel ?? "Node", title: e.otherTitle ?? e.otherId },
@@ -51,7 +51,7 @@ export async function itemView(g: Graph, kind: string, id: string): Promise<{ da
   return {
     data: {
       kind, id, label: ad.label, icon: ad.icon, title: ad.title(props), status: ad.status(props), owner: ad.owner(props), sourceUrl: ad.sourceUrl(props),
-      why, neighbours, edges, whoKnows: who?.data ?? [],
+      why, neighbours, edges, findings: findingRows as ItemView["findings"], whoKnows: who?.data ?? [],
     },
     cypher: [...cs, ...(who?.cypher ?? [])],
   };

@@ -97,6 +97,36 @@ describe.skipIf(!dbUrl)("pending actions (Postgres + FalkorDB)", () => {
     await db().delete(orgPolicy).where(eq(orgPolicy.orgId, org.id));
   });
 
+  it("record_finding: an agent's own notes are approved by default, an org can turn that off, and the finding keeps its sources' owner", async (c) => {
+    if (!graphUp) c.skip();
+    const { db } = await import("../db");
+    const { orgPolicy } = await import("../db/schema");
+    const { propose } = await import("./propose");
+    const { executeAction } = await import("./execute");
+    const { eq } = await import("drizzle-orm");
+    const f = (n: string, extra = {}) => ({ id: `fnd-${n}`, text: `Legal is hit [[art-msa-northwind]] ${n}`, entityIds: ["legal", "d-1"], sources: ["art-msa-northwind"], confidence: 0.8, supersedes: [], ...extra });
+    enqueue.mockClear();
+    const on = await propose(proposer, "record_finding", f("on"));
+    expect(on.status).toBe("approved"); // no policy row: record_finding defaults to auto-approve
+    expect(await row(on.id)).toMatchObject({ approver: "policy" });
+    expect(executions()).toBe(1);
+    expect(await executeAction(on.id, g)).toBe("executed");
+    const [node] = await query<{ about: number; restrictedTo: string | null; status: string }>(g, "MATCH (f:AgentFinding {id: 'fnd-on'})-[:ABOUT]->(e) RETURN count(e) AS about, f.restrictedTo AS restrictedTo, f.status AS status");
+    expect(node).toMatchObject({ about: 2, restrictedTo: "legal", status: "current" }); // art-msa-northwind backs a Legal-only guarantee
+    await executeAction(on.id, g); // idempotent: still one node
+    expect(await query(g, "MATCH (f:AgentFinding {id: 'fnd-on'}) RETURN f.id AS id")).toHaveLength(1);
+
+    await db().insert(orgPolicy).values({ orgId: org.id, actionKind: "record_finding", autoApprove: false });
+    expect((await propose(proposer, "record_finding", f("off"))).status).toBe("pending"); // the org turned it off: a person decides
+    await db().delete(orgPolicy).where(eq(orgPolicy.orgId, org.id));
+
+    const open = await propose(proposer, "record_finding", f("open", { sources: ["art-rfc14"], entityIds: ["devrel"] }));
+    await executeAction(open.id, g);
+    expect((await query<{ r: string | null }>(g, "MATCH (f:AgentFinding {id: 'fnd-open'}) RETURN f.restrictedTo AS r"))[0].r).toBeNull(); // open sources stay open
+    const bad = await propose(proposer, "record_finding", f("none", { entityIds: ["no-such-node"] }));
+    expect(await executeAction(bad.id, g)).toBe("failed"); // a finding about nothing is not written
+  });
+
   it("reject never executes", async (c) => {
     if (!graphUp) c.skip();
     const { propose } = await import("./propose");

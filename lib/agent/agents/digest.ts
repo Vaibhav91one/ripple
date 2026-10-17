@@ -22,7 +22,7 @@ export const digest = defineAgent({
   group: "understand",
   team: "everyone",
   model: "reasoning",
-  tools: ["list_decisions", "ripple", "trace_decision", "search"],
+  tools: ["recall", "list_decisions", "ripple", "trace_decision", "search"],
   writes: [],
   budget: { maxSteps: 8, maxTokens: 50_000 },
   // hourly: the worker's digest tick enqueues a run only for people whose local time is their digest day, 08:00-08:59

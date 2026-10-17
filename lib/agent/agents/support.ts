@@ -18,7 +18,7 @@ export const support = defineAgent({
   group: "act",
   team: "support",
   model: "reasoning",
-  tools: ["affected_tickets", "ripple", "search", "propose_doc"],
+  tools: ["recall", "affected_tickets", "ripple", "search", "propose_doc"],
   writes: ["draft_doc"],
   budget: { maxSteps: 8, maxTokens: 60_000 },
   trigger: { events: ["change.confirmed"] },
