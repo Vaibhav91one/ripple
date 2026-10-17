@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { decodeAckToken } from "@/lib/ack-token";
 import { recordAck } from "@/lib/notify";
+import { markDelivery } from "@/lib/notify/track";
 import { audit } from "@/lib/audit";
 import { env } from "@/lib/env";
 import { graphFor } from "@/lib/graph/client";
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   if (t.state === "invalid") return Response.json({ error: "invalid token" }, { status: 400 });
   if (t.state === "expired") return Response.json({ error: "token expired" }, { status: 410 });
   try {
-    const { teamId, decisionId, o = DEMO_GRAPH, p } = t.payload;
+    const { teamId, decisionId, o = DEMO_GRAPH, p, d } = t.payload;
     const ctx = await getContext(req);
     // The token's org picks the graph (not the clicker's session); RIPPLE_GRAPH is the test override.
     const g = await graphFor(env().RIPPLE_GRAPH || (o === DEMO_GRAPH ? DEMO_GRAPH : graphNameFor(o)));
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     const me = ctx.viewer.kind === "user" && ctx.viewer.orgId === o ? ctx.viewer : undefined;
     const onBehalfOf = me?.personId && me.personId !== p ? me.personId : undefined;
     const { gap, by } = await recordAck(g, { teamId, decisionId, kind: body.data.kind, by: p, onBehalfOf });
+    if (d) await markDelivery(d, "acked"); // no-ops without DATABASE_URL
     await audit(
       { org: { id: o }, viewer: { kind: ctx.viewer.kind, id: me?.userId } },
       { action: "ack", resourceType: "decision", resourceId: decisionId, meta: { teamId, kind: body.data.kind, by, onBehalfOf } },

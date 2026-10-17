@@ -7,6 +7,7 @@ const Payload = z.object({
   teamId: z.string().min(1),
   o: z.string().min(1).optional(), // org id (absent on old tokens = demo)
   p: z.string().min(1).optional(), // person the brief was sent to
+  d: z.string().min(1).optional(), // delivery id: the click is recorded on that delivery (#151)
   decisionId: z.string().min(1),
   exp: z.number().int(), // epoch seconds
   r: z.enum(["seen", "concern", "not_relevant"]).optional(), // suggested reply

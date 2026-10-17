@@ -26,6 +26,7 @@ const shape = {
   GITHUB_APP_INSTALLATION_ID: str,
   GITHUB_APP_PRIVATE_KEY: str,
   GITHUB_REPO: str,
+  APP_URL: str, // public base URL used in message links (https://ripple.example); worker + email
   RIPPLE_GRAPH: str, // test-only graph override
   RIPPLE_NOW: str, // test-only clock override (ISO date)
   // future (Phase 0): optional until the features land

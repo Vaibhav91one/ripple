@@ -325,6 +325,27 @@ describe("sentinel leak: agent tools", () => {
   });
 });
 
+// ---------- notification messages ----------
+describe("sentinel leak: notification messages", () => {
+  t("buildMessage quotes hold no foreign sentinel, for any recipient", async () => {
+    const { buildMessage, quotesFor } = await import("../notify/message");
+    const { loadIndex } = await import("./redact");
+    const index = await loadIndex(g);
+    const n = { title: "t", body: { reason: "r", subject: { kind: "decision", id: "d-1" } } };
+    let seenSrc = false;
+    for (const v of VIEWERS) {
+      for (const team of [...TEAMS, undefined]) {
+        const quotes = await quotesFor(g, "d-1", NOW, team);
+        const m = buildMessage(n, { orgId: "o", personId: "p", now: NOW, viewer: pv(v), index, quotes, ack: { teamId: team ?? "eng", decisionId: "d-1" } });
+        const text = JSON.stringify(m);
+        for (const s of forbidden(v)) expect(text, `${v} message for ${team} leaked ${s}: ${snip(text, s)}`).not.toContain(s);
+        if (text.includes("SENTINEL_SRC")) seenSrc = true;
+      }
+    }
+    expect(seenSrc).toBe(true); // the owners do see their own quotes
+  });
+});
+
 // ---------- MCP ----------
 const MCP_ARGS: Record<string, Record<string, unknown>> = {
   list_decisions: {},
