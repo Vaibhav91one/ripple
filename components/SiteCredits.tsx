@@ -4,6 +4,7 @@ const credits = [
   ["Beautiful UI", "https://www.beautifului.dev"],
   ["Bencho", "https://bencho.dev"],
   ["Obsidian UI", "https://www.obsidianui.dev"],
+  ["SakaniUI", "https://sakaniui.com"],
 ] as const;
 
 export function SiteCredits() {

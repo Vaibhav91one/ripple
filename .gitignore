@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local agent worktrees and settings
 .claude/
+
+# third-party reference screenshots for /styleguide/refs: local only, never commit
+/public/refs/
