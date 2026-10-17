@@ -5,16 +5,21 @@ import { dispatchAgents } from "./handlers/route-event";
 vi.mock("server-only", () => ({}));
 
 describe("route-event -> agent jobs", () => {
-  it("change.confirmed queues Impact, Contract Sentinel, Customer Exposure and Access Planner with the decision id", async () => {
+  it("change.confirmed queues Impact, Contract Sentinel, Customer Exposure, Access Planner and the Docs, Security and Support specialists with the decision id", async () => {
     const enqueue = vi.fn(async (_n: string, _d: object) => "job");
     const names = await dispatchAgents({ type: "change.confirmed", orgId: "o1", payload: { changeId: "d-1" } }, enqueue);
-    expect(names.sort()).toEqual(["access", "contract", "exposure", "impact"]);
+    expect(names.sort()).toEqual(["access", "contract", "docs", "exposure", "impact", "security", "support"]);
     expect(enqueue.mock.calls.map((c) => c[1])).toEqual(expect.arrayContaining([
       { orgId: "o1", agent: "impact", trigger: "event:change.confirmed", input: { reason: "change.confirmed", decisionId: "d-1", contractId: null } },
       { orgId: "o1", agent: "contract", trigger: "event:change.confirmed", input: { reason: "change.confirmed", decisionId: "d-1", contractId: null } },
       { orgId: "o1", agent: "exposure", trigger: "event:change.confirmed", input: { reason: "change.confirmed", decisionId: "d-1", contractId: null } },
       { orgId: "o1", agent: "access", trigger: "event:change.confirmed", input: { reason: "change.confirmed", decisionId: "d-1", contractId: null } },
     ]));
+  });
+  it("conflict.found queues the Decision Advisor with the decision id", async () => {
+    const enqueue = vi.fn(async (_n: string, _d: object) => "job");
+    expect(await dispatchAgents({ type: "conflict.found", orgId: "o1", payload: { changeId: "d-1", conflictsWith: "ctr-1" } }, enqueue)).toEqual(["advisor"]);
+    expect(enqueue.mock.calls[0][1]).toEqual({ orgId: "o1", agent: "advisor", trigger: "event:conflict.found", input: { reason: "conflict.found", decisionId: "d-1", contractId: null } });
   });
   it("change.updated is impact only, contract.added is the Sentinel only, other events queue nothing", async () => {
     const enqueue = vi.fn(async (_n: string, _d: object) => "job");

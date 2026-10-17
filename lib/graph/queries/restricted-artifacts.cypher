@@ -3,6 +3,6 @@ MATCH ()-[r:GUARANTEES|HAS_CLAUSE|PROMISED|FOUND_IN|COVERS]->()
 WHERE r.src IS NOT NULL
 RETURN DISTINCT r.src AS id, type(r) AS type
 UNION
-// Approved draft notices/amendments (executors draft_doc) quote clause text: owned by Legal.
+// Approved drafts (executors draft_doc) that quote restricted text. restrictedTo names the owning team: legal for notices and amendments, security for audit notes.
 MATCH (a:Artifact) WHERE a.restrictedTo IS NOT NULL
-RETURN a.id AS id, 'DRAFT_DOC' AS type
+RETURN a.id AS id, 'RESTRICTED:' + a.restrictedTo AS type

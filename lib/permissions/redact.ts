@@ -27,7 +27,7 @@ export async function loadIndex(g: Graph): Promise<Index> {
   }
   const artifacts: Index["artifacts"] = new Map();
   for (const r of z.array(z.object({ id: z.string(), type: z.string() })).parse(await roQuery(g, load("restricted-artifacts").text))) {
-    const owner = EDGE_OWNER[r.type];
+    const owner = r.type.startsWith("RESTRICTED:") ? r.type.slice(11) : EDGE_OWNER[r.type];
     if (owner && !artifacts.has(r.id)) artifacts.set(r.id, owner);
   }
   return { ids, artifacts };

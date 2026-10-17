@@ -326,6 +326,82 @@ export const TOOLS = {
       return { rows: [{ teamId: hit.teamId, personId: a.personId, resourceId: a.resourceId, ...(await propose("access_request", payload, { change: gap.change, gap: hit })) }], sources: [], cypher: [rc] };
     },
   }),
+  // ---- team specialists (#189): Docs, Security, Support, Decision Advisor ----
+  docs_pages: def({
+    description: "Docs pages that describe the sunset system (path, 30-day views, thumbs-down) for a decision, most viewed first, with the source of the sunset. Coarse: the graph has no page-to-system edge, so these are the pages flagged as v1 docs.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["docs-pages", "artifact-text"],
+    run: async ({ g }, { decisionId }) => {
+      const c = load("docs-pages");
+      const rows = await roQuery<{ src: string | null }>(g, c.text, { id: decisionId });
+      if (!rows.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [c] };
+      const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
+      return { rows: rows as Row[], sources: s.sources, cypher: [c, s.cypher] };
+    },
+  }),
+  affected_controls: def({
+    description: "Security controls (SOC 2 / ISO 27001) and open findings tied to a decision: control status and audit-blocking flag, finding severity, status and SLA. Restricted to Security: other viewers get counts only. Coarse for controls (no control-to-system edge): the v1-related controls.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["controls-affected", "findings-affected", "artifact-text"],
+    run: async ({ g }, { decisionId }) => {
+      const cc = load("controls-affected");
+      const fc = load("findings-affected");
+      const [controls, findings] = await Promise.all([roQuery<Row>(g, cc.text, { id: decisionId }), roQuery<{ src: string | null }>(g, fc.text, { id: decisionId })]);
+      if (!controls.length && !findings.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [cc, fc] };
+      const s = await sourcesFor(g, findings.flatMap((r) => (r.src ? [r.src] : [])));
+      return { rows: [...controls, ...findings] as Row[], sources: s.sources, cypher: [cc, fc, s.cypher] };
+    },
+  }),
+  affected_tickets: def({
+    description: "Open tickets about the system a decision sunsets (or systems that depend on it), with the customer who raised each. Quotes come from the ticket text. Customer ARR is never included.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["support-tickets", "artifact-text"],
+    run: async ({ g }, { decisionId }) => {
+      const c = load("support-tickets");
+      const rows = await roQuery<{ id: string }>(g, c.text, { id: decisionId });
+      if (!rows.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [c] };
+      const s = await sourcesFor(g, rows.map((r) => r.id));
+      return { rows: rows as Row[], sources: s.sources, cypher: [c, s.cypher] };
+    },
+  }),
+  decision_costs: def({
+    description: "What each way out of a contract conflict costs, from the graph: ARR at risk, the customers behind the conflicting contracts and how long their guarantees run, teams to involve, open tasks, open deals. ARR shows as null to viewers who may not see it.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["decision", "ripple", "conflicts-list", "decision-costs", "open-tasks-by-team"],
+    run: async ({ g, now }, { decisionId }) => {
+      const r = await ripple(g, decisionId, now).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
+      if (!r) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
+      const cc = load("decision-costs");
+      const tc = load("open-tasks-by-team");
+      const teams = r.teams.map((t) => t.teamId);
+      const [customers, tasks] = await Promise.all([
+        roQuery<Row>(g, cc.text, { id: decisionId, ids: r.conflicts.flatMap((c) => c.contractIds) }),
+        roQuery<{ open: number }>(g, tc.text, { teams }),
+      ]);
+      const rows: Row[] = [{
+        decision: r.decision, counts: r.counts, teams, conflicts: r.conflicts.map((c) => ({ id: c.id, severity: c.severity, contractIds: c.contractIds })),
+        contractCustomers: customers, openTasksByTeam: tasks, openTasks: tasks.reduce((n, t) => n + t.open, 0),
+      }];
+      return { rows, sources: dedupe(r.conflicts.flatMap((c) => c.sources)), cypher: [...r.cypher, cc, tc] };
+    },
+  }),
+  propose_doc: def({
+    description: "Propose a draft document for a team to review: a docs change or banner, an FAQ, a support reply macro, or a security audit-impact note. It is saved as a pending draft_doc that a person approves; nothing is published or sent.",
+    input: z.object({
+      kind: z.enum(["docs_change", "faq", "reply_macro", "audit_note"]),
+      decisionId: z.string().describe("Decision id the draft responds to, e.g. d-1"),
+      pageId: z.string().nullable().describe("Docs page id the draft changes, e.g. pg-1, or null"),
+      title: z.string().min(1),
+      body: z.string().min(1).describe("The full draft text, citing [[artifact-id]] for each claim"),
+    }),
+    templates: [],
+    proposes: "draft_doc",
+    run: async ({ readonly, propose }, args) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      return { rows: [{ ...(await propose("draft_doc", args, args)) }], sources: [], cypher: [] };
+    },
+  }),
   create_tasks: def({
     description: "Propose one open Task (with a NOTIFIES edge) for every team the decision never reached. A person approves each proposal before it is created. Without an approver it only reports what it would create.",
     input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),

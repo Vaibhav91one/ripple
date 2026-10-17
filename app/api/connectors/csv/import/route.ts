@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     await ctx.audit({ action: "connector.csv_import", resourceType: "connector", resourceId: "csv", outcome: "deny" });
     return Response.json({ error: "forbidden" }, { status: 403 });
   }
-  const res = await importRows(ctx.writer(), body.data, ctx.now);
+  const res = await importRows(ctx.writer(), body.data, ctx.now, ctx.org.id);
   await ctx.audit({ action: "connector.csv_import", resourceType: "connector", resourceId: "csv", meta: { type: body.data.type, uploadId: body.data.uploadId, applied: res.applied, errors: res.errors.length } });
   return Response.json(res);
 }

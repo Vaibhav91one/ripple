@@ -62,12 +62,13 @@ async function listConflicts(g: Graph, decisionId: string): Promise<Result<Confl
 /**
  * Detect sunset-vs-guarantee conflicts, MERGE them as Conflict nodes, resolve the ones no longer true.
  * The only conflict writer: call it where state changes (seed, change-sunset), never on a read path.
- * Covers every decision unless `decisionId` is given.
+ * Covers every decision unless `decisionId` is given. `created` lists the conflicts that are new (or reopened) this run, so callers can emit conflict.found once.
  */
-export async function detectConflicts(g: Graph, now: number, decisionId?: string): Promise<Result<Conflict[]>> {
+export async function detectConflicts(g: Graph, now: number, decisionId?: string): Promise<Result<Conflict[]> & { created: string[] }> {
   const ids = decisionId ? [decisionId] : (await decisions(g)).data.map((d) => d.id);
   const merge = load("conflicts-merge");
   const data: Conflict[] = [];
+  const created: string[] = [];
   const cypher: Cypher[] = [];
   for (const id of ids) {
     const det = await run(g, "conflicts-detect", { id }, Detected);
@@ -75,6 +76,8 @@ export async function detectConflicts(g: Graph, now: number, decisionId?: string
     for (const r of det.rows) {
       const cid = `conf-${id}-${r.systemId}`;
       keep.push(cid);
+      const [prev] = await roQuery<{ status: string }>(g, "MATCH (k:Conflict {id: $cid}) RETURN k.status AS status", { cid });
+      if (prev?.status !== "open") created.push(cid);
       const sources: Source[] = [
         ...(r.sunsetSrc && r.sunsetQuote ? [{ artifactId: r.sunsetSrc, quote: r.sunsetQuote }] : []),
         ...r.guaranteeSources.flatMap((s) => (s.artifactId && s.quote ? [{ artifactId: s.artifactId, quote: s.quote }] : [])),
@@ -86,7 +89,7 @@ export async function detectConflicts(g: Graph, now: number, decisionId?: string
     data.push(...list.data);
     cypher.push(det.c, merge, resolve.c, ...list.cypher);
   }
-  return { data, cypher };
+  return { data, cypher, created };
 }
 
 // ---------- ripple ----------
@@ -270,11 +273,11 @@ export async function whyAffected(g: Graph, decisionId: string, teamId: string):
 
 // ---------- live change ----------
 /** End the current SUNSETS edge and write a new one with `on = newOn`; re-checks conflicts. */
-export async function changeSunset(g: Graph, decisionId: string, newOn: number, now: number): Promise<Result<Conflict[]>> {
+export async function changeSunset(g: Graph, decisionId: string, newOn: number, now: number): Promise<Result<Conflict[]> & { created: string[] }> {
   const c = load("change-sunset");
   await query(g, c.text, { id: decisionId, newOn, now });
   const cf = await detectConflicts(g, now, decisionId);
-  return { data: cf.data, cypher: [c, ...cf.cypher] };
+  return { data: cf.data, cypher: [c, ...cf.cypher], created: cf.created };
 }
 
 // ---------- lookups ----------

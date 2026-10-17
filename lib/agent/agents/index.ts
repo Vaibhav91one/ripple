@@ -4,3 +4,7 @@ export { impact } from "./impact";
 export { contract } from "./contract";
 export { exposure } from "./exposure";
 export { access } from "./access";
+export { docs } from "./docs";
+export { security } from "./security";
+export { support } from "./support";
+export { advisor } from "./advisor";

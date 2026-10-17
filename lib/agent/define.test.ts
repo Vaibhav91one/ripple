@@ -14,7 +14,7 @@ describe("defineAgent", () => {
   it("accepts a valid definition", () => expect(defineAgent(base).name).toBe("t"));
   it("throws on an unknown tool", () => expect(() => defineAgent({ ...base, tools: ["nope" as never] })).toThrow(/unknown tool "nope"/));
   it("rejects a propose tool unless writes lists its kind", () => {
-    for (const [tool, kind] of [["propose_draft", "draft_doc"], ["propose_task", "create_task"], ["create_tasks", "create_task"]] as const) {
+    for (const [tool, kind] of [["propose_draft", "draft_doc"], ["propose_doc", "draft_doc"], ["propose_task", "create_task"], ["create_tasks", "create_task"]] as const) {
       expect(() => defineAgent({ ...base, tools: [tool] }), tool).toThrow(/proposes/);
       expect(defineAgent({ ...base, tools: [tool], writes: [kind] }).tools).toEqual([tool]);
     }
@@ -36,5 +36,12 @@ describe("registry", () => {
   it("lists impact (read-only) and contract (drafts and tasks only)", () => {
     expect(agent("impact")?.writes).toEqual([]);
     expect(agent("contract")?.writes).toEqual(["draft_doc", "create_task"]);
+  });
+  it("lists the team specialists and the Decision Advisor with the narrowest writes", () => {
+    expect(agent("docs")?.writes).toEqual(["draft_doc"]);
+    expect(agent("support")?.writes).toEqual(["draft_doc"]);
+    expect(agent("security")?.writes).toEqual(["create_task", "draft_doc"]);
+    expect(agent("advisor")?.writes).toEqual(["create_task"]);
+    expect(agent("advisor")?.trigger.events).toEqual(["conflict.found"]);
   });
 });

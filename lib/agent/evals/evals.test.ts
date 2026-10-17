@@ -4,7 +4,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "../../graph/client";
 import { seed } from "../../ingest/seed";
 import { access } from "../agents/access";
+import { advisor } from "../agents/advisor";
 import { ask } from "../agents/ask";
+import { docs } from "../agents/docs";
+import { security } from "../agents/security";
+import { support } from "../agents/support";
 import { contract } from "../agents/contract";
 import { exposure } from "../agents/exposure";
 import { impact } from "../agents/impact";
@@ -187,6 +191,71 @@ describe("Customer Exposure and Access Planner eval sets, offline", () => {
       const prompt = JSON.stringify(model.doGenerateCalls[2].prompt); // after ripple and customer_usage
       for (const arr of ["24000", "120000"]) expect(prompt.includes(`\\"arr\\":${arr}`), `${teamIds} arr ${arr}`).toBe(sees);
     }
+  });
+});
+
+describe("team specialists and the Decision Advisor, offline", () => {
+  const defs = { docs, security, support, advisor };
+  for (const [agent, def] of Object.entries(defs))
+    for (const s of EVAL_SETS[agent])
+      t(`${agent}: ${s.name}`, async () => {
+        const r = await run(def, s);
+        expect(r.failures).toEqual([]);
+        expect(r.metrics).toMatchObject({ citeRecall: 1, citePrecision: 1, proposalRecall: 1, quoteRate: 1 });
+      });
+  it("each covers the three injection documents", () => {
+    for (const a of Object.keys(defs)) expect(EVAL_SETS[a].filter((s) => s.name.startsWith("injection:"))).toHaveLength(3);
+  });
+
+  it("nobody but the Security Specialist and the Advisor can create tasks; none can send anything", () => {
+    for (const [a, d] of Object.entries(defs)) {
+      expect(d.tools.filter((x) => /send|email|slack|comment/.test(x)), a).toEqual([]);
+      expect(d.writes.every((w) => w === "draft_doc" || w === "create_task"), a).toBe(true);
+    }
+    expect(Object.entries(defs).filter(([, d]) => d.writes.includes("create_task")).map(([a]) => a).sort()).toEqual(["advisor", "security"]);
+  });
+
+  t("the Advisor gives four options with costs, including $180k at risk, and writes nothing", async () => {
+    const r = await run(advisor, EVAL_SETS.advisor[0]);
+    const out = r.output as { options: { kind: string; cost: { arrAtRisk: number | null } }[] };
+    expect(out.options.map((o) => o.kind)).toEqual(["move_date", "grandfather", "amend_contract", "accept_breach"]);
+    expect(out.options.some((o) => o.cost.arrAtRisk === 180_000)).toBe(true);
+  });
+
+  t("the Advisor's costs come from the graph: the tool result holds $180k, two customers and the open tasks", async () => {
+    const s = EVAL_SETS.advisor[0];
+    const model = replayModel(s.trace!);
+    await runEval(advisor, s, { model, g, now: NOW });
+    const prompt = JSON.stringify(model.doGenerateCalls[1].prompt);
+    expect(prompt).toContain("\\\"arrAtRisk\\\":180000");
+    expect(prompt).toContain("Northwind Capital");
+    expect(prompt).toContain("\\\"openTasks\\\":6");
+  });
+
+  t("a Support viewer gets no ARR from the Advisor's tool, leadership gets the total but no customer ARR", async () => {
+    const s = EVAL_SETS.advisor[0];
+    for (const [viewer, total, arr] of [[{ kind: "agent", id: "support", teamIds: ["support"] }, false, false], [{ kind: "agent", id: "advisor", teamIds: ["leadership"] }, true, false]] as const) {
+      const model = replayModel(s.trace!);
+      await runEval(advisor, s, { model, g, now: NOW, viewer });
+      const prompt = JSON.stringify(model.doGenerateCalls[1].prompt);
+      expect(prompt.includes("\\\"arrAtRisk\\\":180000")).toBe(total);
+      expect(prompt.includes("\\\"arr\\\":120000")).toBe(arr);
+    }
+  });
+
+  t("Security rows are counts only for a Support viewer, full for Security", async () => {
+    const s = EVAL_SETS.security[0];
+    const asSupport = replayModel(s.trace!);
+    await runEval(security, s, { model: asSupport, g, now: NOW, viewer: { kind: "agent", id: "support", teamIds: ["support"] } });
+    expect(JSON.stringify(asSupport.doGenerateCalls[1].prompt)).not.toContain("Logical access: key rotation");
+    const asSecurity = replayModel(s.trace!);
+    await runEval(security, s, { model: asSecurity, g, now: NOW, viewer: { kind: "agent", id: "security", teamIds: ["security"] } });
+    expect(JSON.stringify(asSecurity.doGenerateCalls[1].prompt)).toContain("CC6.1 Logical access: key rotation");
+  });
+
+  t("a specialist cannot use another's write tool", async () => {
+    const r = await run(docs, withTrace(EVAL_SETS.docs[0], { calls: [[{ tool: "propose_task", input: { teamId: "devrel", decisionId: "d-1", title: "t", body: "b" } }]] }));
+    expect(r.failures).toContain("tool outside allowlist: propose_task");
   });
 });
 

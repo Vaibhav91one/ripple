@@ -7,6 +7,8 @@ import { ImportBody, importRows } from ".";
 import { suggestMapping, type CsvType } from "./map";
 
 vi.mock("server-only", () => ({}));
+const emitted = vi.fn(async () => {});
+vi.mock("../../events/conflicts", () => ({ emitConflictsFound: emitted }));
 
 const SAMPLES: Record<CsvType, string> = {
   customers: "Company,Website,ARR,Tier,Region\nAcme,acme.com,\"$24,000\",Growth,EU\nGlobex,globex.io,,,\n",
@@ -19,9 +21,9 @@ const SAMPLES: Record<CsvType, string> = {
 let g: Graph;
 const name = `test_csv_${randomUUID().replaceAll("-", "")}`;
 const count = async (cypher: string) => (await query<{ n: number }>(g, cypher))[0].n;
-const run = (type: CsvType, csv = SAMPLES[type]) => {
+const run = (type: CsvType, csv = SAMPLES[type], orgId?: string) => {
   const { data, meta } = Papa.parse<Record<string, string>>(csv, { header: true, skipEmptyLines: true });
-  return importRows(g, ImportBody.parse({ type, mapping: suggestMapping(type, meta.fields!), uploadId: "u1", rows: data }), 1_800_000_000);
+  return importRows(g, ImportBody.parse({ type, mapping: suggestMapping(type, meta.fields!), uploadId: "u1", rows: data }), 1_800_000_000, orgId);
 };
 
 describe("csv import (FalkorDB)", () => {
@@ -51,6 +53,11 @@ describe("csv import (FalkorDB)", () => {
     expect(await count("MATCH (:Person)-[:HAS_INSTALLED]->(:Software {name:'Figma'}) RETURN count(*) AS n")).toBe(1);
     expect(await count("MATCH (:System {id:'design-hub'})-[:REQUIRES]->(:Software) RETURN count(*) AS n")).toBe(1);
     expect(await count("MATCH (:Customer {name:'Acme'})-[:HAS_DEAL]->(:Deal {amount: 12000}) RETURN count(*) AS n")).toBe(1);
+  });
+
+  it("takes an org id for conflict events; no CSV type writes a guarantee, sunset or contract yet, so nothing is emitted", async () => {
+    expect((await run("deals", SAMPLES.deals, "org-1")).errors).toEqual([]);
+    expect(emitted).not.toHaveBeenCalled();
   });
 
   it("reports a bad row with its file row number and still imports the rest", async () => {

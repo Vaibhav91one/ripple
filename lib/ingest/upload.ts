@@ -29,7 +29,7 @@ export async function uploadFile(
       const c = contractProposals(parsed.text, { ...meta, title });
       let linked = !meta.customerId;
       for (const p of c.proposals) {
-        const a = await applyProposal(env.writer(), p, env.now);
+        const a = await applyProposal(env.writer(), p, env.now, env.org.id);
         if (!a.applied && p.op === "merge_edge" && p.type === "PARTY_TO") linked = false;
         else if (a.applied && p.op === "merge_edge" && p.type === "PARTY_TO") linked = true;
       }

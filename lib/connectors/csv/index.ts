@@ -19,13 +19,13 @@ export const ImportBody = z.object({
 export type ImportResult = { applied: number; errors: { row: number; message: string }[] };
 
 /** A bad row is reported with its file row number (header = row 1) and writes nothing; the other rows still import. */
-export async function importRows(g: Graph, body: z.output<typeof ImportBody>, now: number): Promise<ImportResult> {
+export async function importRows(g: Graph, body: z.output<typeof ImportBody>, now: number, orgId?: string): Promise<ImportResult> {
   const out: ImportResult = { applied: 0, errors: [] };
   for (const [i, row] of body.rows.entries()) {
     const rowNo = body.offset + i + 2;
     try {
       const proposals = csv.map({ ...body, row, rowNo }, { acct: undefined as never });
-      for (const p of proposals) await applyProposal(g, p, now);
+      for (const p of proposals) await applyProposal(g, p, now, orgId);
       out.applied++;
     } catch (e) {
       out.errors.push({ row: rowNo, message: e instanceof Error ? e.message : String(e) });
