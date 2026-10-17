@@ -65,6 +65,8 @@ beforeAll(async () => {
       "MATCH (f:Finding) SET f.title = f.title + ' SENTINEL_FINDING'",
       "MATCH (c:Control) SET c.name = c.name + ' SENTINEL_CONTROL'",
       "MATCH (cu:Customer) SET cu.arr = 7770003",
+      // an access request whose justification quote is cited from a contract: restricted like any quote behind restricted payload
+      "CREATE (:AccessRequest {id: 'ar-sentinel', status: 'open', personId: 'p-ana', teamId: 'support', resourceId: 'group:v2-console', resourceKind: 'group', decisionId: 'd-1', justification: 'needs it', src: 'art-msa-northwind', quote: 'Ledgerly guarantees availability', expiresAt: 1, deadline: 2, approvers: ['it']})",
       "MATCH ()-[r:GUARANTEES|PROMISED|HAS_CLAUSE]->() SET r.quote = 'SENTINEL_SRC ' + coalesce(r.quote, '')",
       "MATCH ()-[r:GUARANTEES|PROMISED|HAS_CLAUSE]->() WITH collect(DISTINCT r.src) AS ids MATCH (a:Artifact) WHERE a.id IN ids SET a.text = 'SENTINEL_SRC ' + a.text, a.title = a.title + ' SENTINEL_SRC'",
     ]) await query(g, q);
@@ -110,6 +112,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "agents/runs": [{ url: "/api/agents/runs" }],
   "agents/runs/[id]": [{ url: "/api/agents/runs/00000000-0000-4000-8000-00000000b001", params: { id: "00000000-0000-4000-8000-00000000b001" } }],
   "health": [{ url: "/api/health" }],
+  "it": [{ url: "/api/it" }], // the IT queue: a request's justification quote is cited from a contract
   "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
   "search": [{ url: "/api/search?q=SENTINEL_SRC" }],
   "mcp": [{ url: "/api/mcp" }],
@@ -305,6 +308,11 @@ const ARGS: Record<string, Record<string, unknown>> = {
   contract_renewals: { withinDays: 365 },
   propose_draft: { kind: "notice", contractId: "ctr-1", decisionId: "d-1", title: "t", body: "b" },
   propose_task: { teamId: "legal", decisionId: "d-1", title: "t", body: "b" },
+  deals_at_risk: { decisionId: "d-1" }, // Sales-only deal rows
+  customer_usage: { decisionId: "d-1" }, // customer ARR is Sales'
+  access_gap: { decisionId: "d-1" },
+  propose_customer_draft: { kind: "email", customerId: "cust-1", decisionId: "d-1", title: "t", body: "b" },
+  propose_access_request: { decisionId: "d-1", personId: "p-ana", resourceId: "group:v2-console", justification: "j" },
 };
 const usage = {
   inputTokens: { total: 3, noCache: 3, cacheRead: undefined, cacheWrite: undefined },
@@ -355,6 +363,25 @@ describe("sentinel leak: agent tools", () => {
       expect(r.rows, v).toEqual([]);
       expect(r.restricted, v).toContainEqual(expect.objectContaining({ kind: "clause", owner: "legal" }));
     }
+  });
+
+  t("customer_usage: only Sales sees customer ARR", async () => {
+    const { redactToolOut } = await import("./redact");
+    const out = await TOOLS.customer_usage.run({ g, now: NOW, demo: true }, { decisionId: "d-1" });
+    expect(JSON.stringify(out.rows)).toContain("7770003");
+    for (const v of VIEWERS) {
+      const text = JSON.stringify(await redactToolOut(g, pv(v), out));
+      expect(text.includes("7770003"), v).toBe(v === "sales");
+    }
+  });
+
+  t("the IT queue: the quote behind a contract is Legal's, the queue itself is open", async () => {
+    as("support");
+    const sup = await get("it", "/api/it");
+    expect(sup.text).toContain("ar-sentinel");
+    expect(sup.text).not.toContain("Ledgerly guarantees availability");
+    as("legal");
+    expect((await get("it", "/api/it")).text).toContain("Ledgerly guarantees availability");
   });
 
   t("create_tasks output is redacted too", async () => {

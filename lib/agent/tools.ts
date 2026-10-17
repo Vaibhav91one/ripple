@@ -56,6 +56,23 @@ const unknownSystem = async (g: Graph, id: string): Promise<Row[]> => {
 };
 const dedupe = (xs: Source[]) => [...new Map(xs.map((s) => [s.artifactId, s])).values()];
 
+type GapRow = { personId: string; name: string | null; teamId: string; resourceId: string; resourceName: string; resourceKind: "group" | "software"; systemId: string; status: "missing" | "unknown" };
+type GapChange = { id: string; title: string | null; effectiveAt: number | null; src: string | null; quote: string | null };
+/** Affected teams' people minus the software and access groups the change's systems REQUIRE. Held and fresh = has; no identity data newer than 90 days = unknown, never missing. */
+async function accessGap(g: Graph, now: number, decisionId: string) {
+  const r = await ripple(g, decisionId, now).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
+  if (!r) return null;
+  const gc = load("access-gap");
+  const cc = load("access-change");
+  const [rows, [change]] = await Promise.all([
+    roQuery<Omit<GapRow, "status"> & { heldAt: number | null; lastIdentity: number | null }>(g, gc.text, { id: decisionId, teams: r.teams.map((t) => t.teamId) }),
+    roQuery<GapChange>(g, cc.text, { id: decisionId }),
+  ]);
+  const fresh = (t: number | null) => t !== null && t >= now - STALE_DAYS * 86400;
+  const all = rows.map(({ heldAt, lastIdentity, ...x }) => ({ ...x, status: heldAt !== null ? (fresh(heldAt) ? "has" : "unknown") : fresh(lastIdentity) ? "missing" : "unknown" }) as Omit<GapRow, "status"> & { status: GapRow["status"] | "has" });
+  return { gaps: all.filter((x): x is GapRow => x.status !== "has"), checked: all.length, change, cypher: [gc, cc] };
+}
+
 export const TOOLS = {
   search: def({
     description: "Full-text search over documents, tickets, messages and PRs. Use for open-ended questions.",
@@ -224,6 +241,89 @@ export const TOOLS = {
       if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
       const payload = { id: `task-${a.decisionId}-${a.teamId}-${createHash("sha1").update(a.title).digest("hex").slice(0, 6)}`, ...a };
       return { rows: [{ teamId: a.teamId, ...(await propose("create_task", payload, a)) }], sources: [], cypher: [] };
+    },
+  }),
+  deals_at_risk: def({
+    description: "Open deals in a decision's ripple: amount, stage, and the verbatim PROMISED quote (what Sales told the customer). Restricted to Sales: other viewers get a count.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["deals-at-risk"],
+    run: async ({ g }, { decisionId }) => {
+      if (!(await decisions(g)).data.some((d) => d.id === decisionId)) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
+      const c = load("deals-at-risk");
+      const rows = await roQuery<Row & { src: string | null; quote: string | null }>(g, c.text, { id: decisionId });
+      return { rows: rows.length ? rows : [{ found: false, note: `No open deal promised a system decision ${decisionId} touches.` }], sources: dedupe(rows.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : []))), cypher: [c] };
+    },
+  }),
+  customer_usage: def({
+    description: "Customers that use the systems a decision touches, ranked by usage (calls in the last 30 days, last seen) then ARR. ARR is only shown to Sales.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["customer-usage", "artifact-text"],
+    run: async ({ g, now }, { decisionId }) => {
+      const known = (await decisions(g)).data;
+      if (!known.some((d) => d.id === decisionId)) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
+      const c = load("customer-usage");
+      const rows = await roQuery<Row & { src: string | null }>(g, c.text, { id: decisionId });
+      if (!rows.length) return { rows: [{ found: false, note: `No customer is recorded as using a system decision ${decisionId} touches.` }], sources: [], cypher: [c] };
+      const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
+      return { rows: rows.map(({ src: _s, ...r }) => (void _s, { ...r, stale: typeof r.lastSeen !== "number" || r.lastSeen < now - STALE_DAYS * 86400 })), sources: s.sources, cypher: [c, s.cypher] };
+    },
+  }),
+  access_gap: def({
+    description: "For a change: the people in the affected teams who lack software or an access group its systems REQUIRE. status missing = fresh identity data and not held; unknown = identity data older than 90 days or none, so do not request on it. Also returns the change's date and sentence for the justification.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["ripple", "access-gap", "access-change", "artifact-text"],
+    run: async ({ g, now }, { decisionId }) => {
+      const a = await accessGap(g, now, decisionId);
+      if (!a) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
+      const s = await sourcesFor(g, a.change?.src ? [a.change.src] : []);
+      if (!a.checked) return { rows: [{ found: false, note: `No system decision ${decisionId} touches REQUIRES software or an access group, or no one in the affected teams was found.` }], sources: s.sources, cypher: [...a.cypher, s.cypher] };
+      const rows: Row[] = [{ change: a.change, checked: a.checked, missing: a.gaps.filter((x) => x.status === "missing").length, unknown: a.gaps.filter((x) => x.status === "unknown").length }, ...a.gaps];
+      return { rows, sources: dedupe([...(a.change?.src && a.change.quote ? [{ artifactId: a.change.src, quote: a.change.quote }] : []), ...s.sources]), cypher: [...a.cypher, s.cypher] };
+    },
+  }),
+  propose_customer_draft: def({
+    description: "Propose a draft customer email or a talk track for Sales or CS to review. It is saved as a pending draft_doc that a person approves; nothing is sent to the customer.",
+    input: z.object({
+      kind: z.enum(["email", "talk_track"]),
+      customerId: z.string().describe("Customer id, e.g. cust-3"),
+      decisionId: z.string().describe("Decision id the draft responds to, e.g. d-1"),
+      title: z.string().min(1),
+      body: z.string().min(1).describe("The full draft text"),
+    }),
+    templates: [],
+    proposes: "draft_doc",
+    run: async ({ readonly, propose }, args) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      return { rows: [{ ...(await propose("draft_doc", args, args)) }], sources: [], cypher: [] };
+    },
+  }),
+  propose_access_request: def({
+    description: "Propose that IT grants one person one required software or access group for a change. Only a person returned as missing by access_gap is accepted. Expiry defaults to 90 days. The justification quote and the approvers (system owner and IT) are filled in for you. A person approves it; Ripple never grants access itself.",
+    input: z.object({
+      decisionId: z.string().describe("Decision id, e.g. d-1"),
+      personId: z.string().describe("Person id from access_gap"),
+      resourceId: z.string().describe("resourceId from access_gap, e.g. group:v2-console"),
+      justification: z.string().min(1).describe("One sentence: why this person needs it for the change"),
+      expiryDays: z.number().int().min(1).max(365).optional().describe("Days until the access expires (default 90)"),
+    }),
+    templates: ["access-gap", "access-change", "access-resource"],
+    proposes: "access_request",
+    run: async ({ g, now, readonly, propose }, a) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      const gap = await accessGap(g, now, a.decisionId);
+      const hit = gap?.gaps.find((x) => x.personId === a.personId && x.resourceId === a.resourceId);
+      if (!gap || !hit) return { rows: [{ proposed: false, reason: "not_a_gap", note: `${a.personId} is not recorded as lacking ${a.resourceId} for ${a.decisionId}. Only access_gap rows can be requested.` }], sources: [], cypher: [] };
+      if (hit.status !== "missing") return { rows: [{ proposed: false, reason: "identity_data_stale", note: `${a.personId}'s identity data is older than ${STALE_DAYS} days, so ${a.resourceId} is unknown, not missing.` }], sources: [], cypher: [] };
+      const rc = load("access-resource");
+      const [res] = await roQuery<{ owners: string[] }>(g, rc.text, { person: a.personId, resource: a.resourceId });
+      const payload = {
+        id: `ar-${a.decisionId}-${a.personId}-${a.resourceId}`, personId: a.personId, teamId: hit.teamId, resourceId: a.resourceId, resourceKind: hit.resourceKind,
+        decisionId: a.decisionId, justification: a.justification, src: gap.change?.src ?? null, quote: gap.change?.quote ?? null,
+        expiresAt: now + (a.expiryDays ?? 90) * 86400, approvers: [...new Set([...(res?.owners ?? []), "it"])],
+      };
+      return { rows: [{ teamId: hit.teamId, personId: a.personId, resourceId: a.resourceId, ...(await propose("access_request", payload, { change: gap.change, gap: hit })) }], sources: [], cypher: [rc] };
     },
   }),
   create_tasks: def({

@@ -9,3 +9,4 @@ export * from "./change";
 export { RestrictedSummary } from "./common";
 export * from "./items";
 export * from "./approvals";
+export * from "./it";

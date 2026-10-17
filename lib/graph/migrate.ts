@@ -11,6 +11,8 @@ export const MIGRATIONS: { id: string; cypher: string }[] = [
   // #169 CSV import adds :Software and :AccessGroup nodes; live graphs need their id indexes (ensureSchema may have made them already).
   { id: "002-software-id-index", cypher: "CREATE INDEX FOR (n:Software) ON (n.id)" },
   { id: "003-access-group-id-index", cypher: "CREATE INDEX FOR (n:AccessGroup) ON (n.id)" },
+  // #187 access_request actions write :AccessRequest nodes for the /it queue.
+  { id: "004-access-request-id-index", cypher: "CREATE INDEX FOR (n:AccessRequest) ON (n.id)" },
 ];
 
 /** Apply the migrations this graph has not recorded yet, in order; returns the ids applied now. Idempotent. */

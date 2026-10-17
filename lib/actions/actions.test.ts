@@ -172,4 +172,38 @@ describe.skipIf(!dbUrl)("pending actions (Postgres + FalkorDB)", () => {
     await d.delete(documents).where(eq(documents.orgId, org.id));
     await d.delete(agentRuns).where(eq(agentRuns.orgId, org.id));
   }, 30_000);
+
+  it("an approved access_request opens an AccessRequest + access.needed; IT granting it closes the gap + access.granted, and only a lead may", async (c) => {
+    if (!graphUp) c.skip();
+    const { db } = await import("../db");
+    const { orgs, events } = await import("../db/schema");
+    const { and, eq } = await import("drizzle-orm");
+    const { propose } = await import("./propose");
+    const { approve } = await import("./decide");
+    const { executeAction } = await import("./execute");
+    const { decideIt, computeIt } = await import("../it");
+    const d = db();
+    await d.insert(orgs).values({ id: org.id, slug: org.id, graphName: gname }).onConflictDoNothing();
+    await query(g, "MERGE (:AccessGroup {id: 'group:v2-console', name: 'v2 console'})");
+    const NOW = 1_800_000_000;
+    const body = { id: "ar-d-1-p-nia-v2", personId: "p-nia", teamId: "support", resourceId: "group:v2-console", resourceKind: "group", decisionId: "d-1", justification: "Nia needs the v2 console.", src: "art-rfc14", quote: "API v1 will be shut down on Jan 31, 2027", expiresAt: NOW + 90 * 86400, approvers: ["eng", "it"] };
+    const p = await propose(proposer, "access_request", body);
+    await approve(user("lead", "u-lead"), p.id);
+    expect(await executeAction(p.id, g)).toBe("executed");
+    const evs = async (type: string) => d.select().from(events).where(and(eq(events.orgId, org.id), eq(events.type, type)));
+    expect((await evs("access.needed"))[0]).toMatchObject({ subjectId: body.id, payload: { userId: "p-nia", resource: "group:v2-console" } });
+    const node = await query<{ status: string; deadline: number; team: string; ok: boolean }>(g, "MATCH (a:AccessRequest {id: $id})-[:FOR]->(p:Person) RETURN a.status AS status, a.deadline AS deadline, a.teamId AS team, a.approvers = ['eng', 'it'] AS ok", { id: body.id });
+    expect(node[0]).toMatchObject({ status: "open", deadline: 1801386000, team: "support", ok: true });
+    // the queue shows it, earliest change date first, and Ripple holds no grant of its own
+    const ctx = (role: string) => ({ viewer: { kind: "user", userId: "it-1", orgId: org.id, teamIds: [], role }, org: { id: org.id, graphName: gname, isDemo: false }, readonly: false, graph: g, now: NOW, audit: async () => {}, writer: () => g }) as never;
+    expect((await computeIt(ctx("lead"))).requests[0]).toMatchObject({ id: body.id, status: "open", personName: "Nia", resourceName: "v2 console", deadline: 1801386000 });
+    expect(await query(g, "MATCH (:Person {id: 'p-nia'})-[h:HAS_ACCESS]->(:AccessGroup {id: 'group:v2-console'}) RETURN h")).toHaveLength(0);
+    await expect(decideIt(ctx("member"), [body.id], "grant")).rejects.toThrow(/only an admin or team lead/);
+    expect(await decideIt(ctx("lead"), [body.id], "grant")).toEqual({ decided: [body.id], status: "granted" });
+    expect(await decideIt(ctx("lead"), [body.id], "deny")).toEqual({ decided: [], status: "denied" }); // already decided: a no-op
+    expect(await query(g, "MATCH (:Person {id: 'p-nia'})-[h:HAS_ACCESS]->(:AccessGroup {id: 'group:v2-console'}) RETURN h")).toHaveLength(1);
+    expect((await evs("access.granted"))[0]).toMatchObject({ subjectId: body.id, payload: { userId: "p-nia" } });
+    expect((await computeIt(ctx("lead"))).requests[0]).toMatchObject({ status: "granted", decidedBy: "it-1" });
+    await d.delete(events).where(eq(events.orgId, org.id));
+  }, 30_000);
 });

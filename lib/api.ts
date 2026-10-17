@@ -3,7 +3,7 @@
 import { z } from "zod";
 import {
   AgentList, ApprovalList, DecideResult, RunDetail, RunList, type SettingsPatch,
-  Artifact, BottleneckRow, Change, Decision, Home, Inbox, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
+  Artifact, BottleneckRow, Change, Decision, Home, Inbox, ItDecided, ItQueue, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import * as mock from "@/lib/mock/api";
@@ -142,3 +142,9 @@ export const getRun = (id: string): Promise<RunDetail> =>
 /** Admin only. */
 export const patchAgentSettings = (name: string, patch: SettingsPatch): Promise<unknown> =>
   call(z.unknown(), `/api/agents/${encodeURIComponent(name)}/settings`, { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify(patch) });
+/** The IT queue: access requests tied to changes, earliest change date first. Per viewer, never cached. */
+export const getIt = (): Promise<ItQueue> => (OFFLINE ? Promise.resolve({ requests: [], canDecide: false }) : call(ItQueue, "/api/it"));
+
+/** IT marks open requests granted or denied (bookkeeping: Ripple never writes to an identity provider). */
+export const decideIt = (ids: string[], verb: "grant" | "deny"): Promise<ItDecided> =>
+  call(ItDecided, "/api/it", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids, verb }) });

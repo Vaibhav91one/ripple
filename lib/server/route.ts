@@ -6,6 +6,8 @@ import { loadIndex, redact } from "../permissions/redact";
 import { getContext, type Context } from "./context";
 
 export const DEMO_READONLY = "demo_readonly";
+/** Thrown inside a handle() callback when the viewer may not do this: answered as 403. */
+export class Forbidden extends Error {}
 
 /** 403 + a `deny` audit event for anonymous demo viewers; null when the write may go ahead. Call before any state changes. */
 export async function denyIfReadonly(ctx: Context, action: string, resourceId?: string): Promise<Response | null> {
@@ -39,6 +41,7 @@ export async function handle<S extends z.ZodType>(
     return json(r.restricted.length && body && typeof body === "object" && !Array.isArray(body) ? { ...body, restricted: r.restricted } : body);
   } catch (e) {
     if (e instanceof NotFound) return json({ error: "not_found", message: e.message }, 404);
+    if (e instanceof Forbidden) return json({ error: "forbidden", message: e.message }, 403);
     return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);
   }
 }
