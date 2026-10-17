@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   // v1 URLs: /ripple?d=X opens that decision, bare /ripple opens the overview
   async redirects() {
     return [
+      { source: "/inbox", destination: "/home", permanent: true }, // Home shows everything the inbox did
       { source: "/ripple", has: [{ type: "query", key: "d", value: "(?<d>.+)" }], destination: "/decisions/:d", permanent: false },
       { source: "/ripple", destination: "/overview", permanent: false },
     ];

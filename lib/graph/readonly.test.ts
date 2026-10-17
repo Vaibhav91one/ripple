@@ -15,7 +15,7 @@ let g: Graph;
 let up = false;
 
 const urls: [string, string, unknown?][] = [
-  ["ripple", "/api/ripple?d=d-1"], ["graph", "/api/graph?d=d-1"], ["inbox", "/api/inbox?p=p-priya"],
+  ["ripple", "/api/ripple?d=d-1"], ["graph", "/api/graph?d=d-1"], ["inbox", "/api/inbox?p=p-priya"], ["home", "/api/home"],
   ["overview", "/api/overview"], ["changes", "/api/changes?since=0"], ["decisions", "/api/decisions"],
   ["people", "/api/people"], ["names", "/api/names"], ["bottleneck", "/api/bottleneck"],
   ["who-knows", "/api/who-knows?system=api-v1"],

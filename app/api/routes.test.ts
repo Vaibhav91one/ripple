@@ -95,6 +95,18 @@ describe("route handlers (in order: /api/change mutates the graph)", () => {
     expect(mei.sent).toEqual([]);
   });
 
+  t("GET /api/home composes inbox, hits, tasks and signed ack tokens for the viewer's team", async () => {
+    const h = await ok(s.Home, await get("home", "/api/home")); // RIPPLE_VIEW_AS starts with legal
+    expect(h.teamId).toBe("legal");
+    expect(h.briefs).toHaveLength(1);
+    expect(h.briefs[0].tokens).toBeNull(); // anonymous viewer: no ack tokens
+    expect(JSON.stringify(h)).not.toMatch(/"seen":/);
+    expect(h.hits.map((x) => [x.decisionId, x.status])).toEqual([["d-1", "conflict"]]);
+    expect(h.conflicts).toBe(1);
+    expect(h.tasks.map((x) => x.id)).toEqual(["task-7"]);
+    expect(h.approvals).toEqual([]); // no Postgres here
+  });
+
   t("GET /api/source/[id]", async () => {
     const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
     const a = await ok(s.Artifact, await get("source/[id]", "/api/source/art-rfc14", ctx("art-rfc14")));

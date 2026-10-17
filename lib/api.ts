@@ -2,7 +2,7 @@
 // NEXT_PUBLIC_RIPPLE_OFFLINE=1 serves lib/mock instead (demo without FalkorDB); it is never the default.
 import { z } from "zod";
 import {
-  Artifact, BottleneckRow, Change, Decision, Inbox, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
+  Artifact, BottleneckRow, Change, Decision, Home, Inbox, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
 import * as mock from "@/lib/mock/api";
@@ -52,6 +52,15 @@ export const getWhoKnows = (systemId: string): Promise<WhoKnowsRow[]> =>
 
 export const getInbox = (personId: string): Promise<Inbox> =>
   OFFLINE ? mock.getInbox(personId) : call(Inbox, `/api/inbox?${qs({ p: personId })}`);
+
+/** Home: what needs the viewer today (briefs, approvals, tasks, what hits their team). Per viewer, never cached. */
+export const getHome = (): Promise<Home> => (OFFLINE ? mock.getHome() : call(Home, "/api/home"));
+
+/** Answer a brief inline with the signed token from /api/home (the same path as the email and Slack buttons). */
+export async function ackBrief(token: string, kind: "seen" | "concern" | "not_relevant"): Promise<void> {
+  const res = await fetch("/api/ack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, kind }) });
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `ack failed (${res.status})`);
+}
 
 /** Everything about one graph node (a PR, a contract, a team...), with the viewer's permissions applied. */
 export const getItem = (kind: string, id: string): Promise<ItemView> =>

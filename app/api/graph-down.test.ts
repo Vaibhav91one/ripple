@@ -10,7 +10,7 @@ it("every route answers 503 {error:'graph_down'} when FalkorDB is unreachable", 
   const urls: [string, string][] = [
     ["decisions", "/api/decisions"], ["ripple", "/api/ripple?d=d-1"], ["changes", "/api/changes?since=0"],
     ["bottleneck", "/api/bottleneck"], ["inbox", "/api/inbox?p=p-priya"], ["who-knows", "/api/who-knows?system=api-v1"],
-    ["people", "/api/people"], ["names", "/api/names"], ["overview", "/api/overview"],
+    ["people", "/api/people"], ["home", "/api/home"], ["names", "/api/names"], ["overview", "/api/overview"],
   ];
   for (const [route, url] of urls) {
     const res = await (await import(`./${route}/route`)).GET(new Request(`http://t${url}`));
