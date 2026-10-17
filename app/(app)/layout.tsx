@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AuthArea } from "@/components/auth/AuthArea";
+import { LensArea } from "@/components/shell/LensArea";
 import { AppShell } from "@/components/shell/AppShell";
 import { AskDrawer } from "@/components/ask/AskDrawer";
 import { SourcePanel } from "@/components/panels/SourcePanel";
@@ -10,7 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-[calc(100dvh-4.5rem)] min-h-[640px] bg-page">
       <Suspense>
-        <AppShell authSlot={<Suspense><AuthArea /></Suspense>}>
+        <AppShell lensSlot={<Suspense><LensArea /></Suspense>} authSlot={<Suspense><AuthArea /></Suspense>}>
           <Suspense>{children}</Suspense>
         </AppShell>
       </Suspense>

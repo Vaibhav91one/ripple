@@ -27,7 +27,7 @@ async function* answer(question: string, req: Request): AsyncGenerator<StreamEve
   try {
     const ctx = await getContext(req);
     // the agent has write tools (create_tasks, ack_brief) on the demo org, so it gets the writable graph
-    yield* runAgent({ model, question, g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, onUsage: spend, audit: ctx.audit });
+    yield* runAgent({ model, question, g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, readonly: ctx.readonly, onUsage: spend, audit: ctx.audit });
   } catch (e) {
     yield { type: "text_delta", text: `Ask failed: ${e instanceof Error ? e.message : String(e)}` };
     yield { type: "done" };

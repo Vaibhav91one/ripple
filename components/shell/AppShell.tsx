@@ -11,7 +11,7 @@ import { NAV, routeInfo } from "./nav";
 import { TeamSwitcher } from "./TeamSwitcher";
 
 /** Dashboard chrome: grouped sidebar, header (title, status slot, Team chip, Ask). Nav lives in ./nav. */
-export function AppShell({ status, authSlot, children }: { status?: string; authSlot?: React.ReactNode; children: React.ReactNode }) {
+export function AppShell({ status, authSlot, lensSlot, children }: { status?: string; authSlot?: React.ReactNode; lensSlot?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname();
   const { activeId, title } = routeInfo(pathname);
   const [, setAsk] = useQueryState("ask", parseAsString);
@@ -28,6 +28,7 @@ export function AppShell({ status, authSlot, children }: { status?: string; auth
       sidebarFooter={<HealthPill />}
       headerActions={
         <>
+          {lensSlot}
           <TeamSwitcher />
           {authSlot}
           <DashboardButton variant="primary" size="md" onClick={() => setAsk("1")}>

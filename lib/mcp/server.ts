@@ -81,6 +81,7 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
       input: z.object({ decisionId, teamId: z.string().describe("Team id, e.g. legal"), kind: z.enum(["seen", "concern", "not_relevant"]).default("seen") }),
       write: true,
       run: async ({ decisionId: id, teamId, kind }: Id & { teamId: string; kind: "seen" | "concern" | "not_relevant" }) => {
+        if (ctx.readonly) throw new Error("demo_readonly");
         if (!ctx.demo) throw new Error("ack_brief only runs on the demo graph");
         const r = await ripple(g, id, now);
         if (!r.teams.some((t) => t.teamId === teamId)) throw new Error(`team ${teamId} is not affected by ${id}`);
@@ -103,6 +104,7 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
           const body = { ...out, trace: { tool: name, args, ms: Date.now() - t0, rows: out.rows.length } };
           return { content: [{ type: "text", text: JSON.stringify(body) }], structuredContent: body };
         } catch (e) {
+          if (e instanceof Error && e.message === "demo_readonly") await audit?.({ action: "mcp.tool", resourceType: "tool", resourceId: name, outcome: "deny" });
           return { isError: true, content: [{ type: "text", text: JSON.stringify({ error: e instanceof Error ? e.message : String(e) }) }] };
         }
       },

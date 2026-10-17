@@ -7,7 +7,7 @@ import type { Source } from "../schemas";
 
 export type Row = Record<string, unknown>;
 export type ToolOut = { rows: Row[]; sources: Source[]; cypher: Cypher[] };
-export type Ctx = { g: Graph; now: number; demo: boolean };
+export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean };
 type Def<I extends z.ZodType> = {
   description: string;
   input: I;
@@ -130,7 +130,8 @@ export const TOOLS = {
     description: "Create one open Task (with a NOTIFIES edge) for every team the decision never reached. Writes to the graph; demo only.",
     input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
     templates: ["ripple", "gap", "create-tasks"],
-    run: async ({ g, now, demo }, { decisionId }) => {
+    run: async ({ g, now, demo, readonly }, { decisionId }) => {
+      if (readonly) throw new Error("demo_readonly");
       if (!demo) throw new Error("create_tasks only runs on the demo graph");
       const r = await ripple(g, decisionId, now);
       const c = load("create-tasks");

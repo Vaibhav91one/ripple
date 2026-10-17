@@ -17,5 +17,5 @@ export async function POST(req: Request) {
     await changeSunset(ctx.writer(), decisionId, newOn, now);
     await ctx.audit({ action: "change", resourceType: "decision", resourceId: decisionId, meta: { newOn } });
     return ripple(ctx.graph, decisionId, now);
-  });
+  }, { action: "change", resourceId: decisionId });
 }
