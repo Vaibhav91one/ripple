@@ -5,6 +5,6 @@ import { clickDelivery } from "@/lib/notify/track";
 export async function GET(req: Request, ctx: RouteContext<"/r/[id]">) {
   const { id } = await ctx.params;
   const s = await clickDelivery(id).catch(() => null);
-  const path = s ? `/items/${encodeURIComponent(s.kind)}/${encodeURIComponent(s.id)}` : "/";
+  const path = !s ? "/" : s.kind === "digest" ? `/agents/runs/${encodeURIComponent(s.id)}` : `/items/${encodeURIComponent(s.kind)}/${encodeURIComponent(s.id)}`; // a digest is an agent run
   return Response.redirect(new URL(path, req.url), 302);
 }

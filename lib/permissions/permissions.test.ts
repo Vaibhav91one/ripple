@@ -297,6 +297,9 @@ describe("change owners (and leadership) get summaries, never details", () => {
 // ---------- agent tools ----------
 const ARGS: Record<string, Record<string, unknown>> = {
   search: { text: "v1 sunset" },
+  list_decisions: {},
+  list_agents: {},
+  run_agent: { name: "t-all", input: {} }, // no model in tests: the result is {ran:false}; the real hand-off is covered by "sentinel leak: run_agent" below
   ripple: { decisionId: "d-1", depth: 4 },
   who_knows: { systemId: "api-v1" },
   trace_decision: { decisionId: "d-1" },
@@ -431,6 +434,8 @@ describe("sentinel leak: notification messages", () => {
 // ---------- MCP ----------
 const MCP_ARGS: Record<string, Record<string, unknown>> = {
   list_decisions: {},
+  list_agents: {},
+  run_agent: { name: "t-all", input: {} },
   search: { text: "v1 sunset" },
   ripple_impact: { decisionId: "d-1", depth: 4 },
   who_knows: { systemId: "api-v1" },
@@ -471,6 +476,37 @@ describe("sentinel leak: MCP tools", () => {
     expect(r).toContain("SENTINEL_DEAL");
     await client.close();
   });
+});
+
+// ---------- Ask hand-off (#190) ----------
+describe("sentinel leak: run_agent", () => {
+  t("an inline run reads as the caller, over the agent tool and over MCP", async () => {
+    const { replayModel } = await import("../agent/evals/run");
+    const trace = {
+      calls: [[
+        { tool: "contract_clauses", input: { contractId: "ctr-1" } }, { tool: "deals_at_risk", input: { decisionId: "d-1" } },
+        { tool: "customer_usage", input: { decisionId: "d-1" } }, { tool: "contract_conflicts", input: { decisionId: "d-1" } }, { tool: "ripple", input: { decisionId: "d-1" } },
+      ]],
+      output: { answer: "ok" },
+    };
+    for (const v of VIEWERS) {
+      const viaTool = replayModel(trace);
+      const direct = await TOOLS.run_agent.run({ g, now: NOW, demo: true, viewer: pv(v), model: viaTool }, { name: "t-legal", input: {} });
+      expect(direct.rows[0]).toMatchObject({ ran: true });
+
+      const viaMcp = replayModel(trace);
+      const [a, b] = InMemoryTransport.createLinkedPair();
+      await createRippleServer({ g, now: NOW, demo: true, viewer: pv(v), model: viaMcp }).connect(a);
+      const client = new Client({ name: "test", version: "0" });
+      await client.connect(b);
+      const result = JSON.stringify(await client.callTool({ name: "run_agent", arguments: { name: "t-legal", input: {} } }));
+      await client.close();
+
+      for (const [where, text] of [["tool result", JSON.stringify(direct)], ["tool prompt", JSON.stringify(viaTool.doGenerateCalls[1].prompt)], ["mcp result", result], ["mcp prompt", JSON.stringify(viaMcp.doGenerateCalls[1].prompt)]])
+        for (const x of forbidden(v)) expect(text, `${v} run_agent ${where} leaked ${x}: ${snip(text, x)}`).not.toContain(x);
+      if (v === "legal") expect(JSON.stringify(viaTool.doGenerateCalls[1].prompt)).toContain("SENTINEL_CLAUSE"); // the owner does see it
+    }
+  }, 120_000);
 });
 
 // ---------- MCP API keys (#100) ----------
@@ -534,7 +570,12 @@ vi.mock("../agent/registry", async () => {
     name: "t-all", group: "understand", team: "eng", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
     system: () => "test", tools: ["search", "ripple", "who_knows", "trace_decision", "bottleneck", "why_affected"], budget: { maxSteps: 4, maxTokens: 100_000 },
   });
-  return { agents: () => [a], agent: (n: string) => (n === a.name ? a : undefined) };
+  // t-legal reads every restricted kind, to prove an Ask hand-off (run_agent) reads as the caller
+  const b = defineAgent({
+    name: "t-legal", group: "understand", team: "legal", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
+    system: () => "test", tools: ["contract_clauses", "deals_at_risk", "customer_usage", "contract_conflicts", "ripple"], budget: { maxSteps: 4, maxTokens: 100_000 },
+  });
+  return { agents: () => [a, b], agent: (n: string) => [a, b].find((x) => x.name === n) };
 });
 describe.skipIf(!process.env.DATABASE_URL)("sentinel leak: runBackground prompts (Postgres)", () => {
   t("the model is never prompted with a foreign sentinel", async () => {

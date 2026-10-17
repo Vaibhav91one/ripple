@@ -28,6 +28,10 @@ describe("buildMessage", () => {
     const m = buildMessage(n, ctx({ ack: undefined }));
     expect(m.actions).toEqual([{ kind: "open", url: m.deepLink }]);
   });
+  it("a digest opens its agent run", () => {
+    const m = buildMessage({ ...n, body: { ...n.body, subject: { kind: "digest", id: "run-1" } } }, ctx({ ack: undefined }));
+    expect(m.deepLink).toBe("https://r.test/agents/runs/run-1");
+  });
   it("shows an owner the quote and a non-owner the placeholder", () => {
     expect(buildMessage(n, ctx()).quotes.map((q) => q.text)).toEqual(["v1 until 2027", "ok"]);
     const out = buildMessage(n, ctx({ viewer: { teamIds: ["eng"] } }));

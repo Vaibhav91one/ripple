@@ -50,11 +50,20 @@ describe("ripple MCP server (tests run in order: ack_brief mutates the graph)", 
   t("lists every tool; only ack_brief is destructive", async () => {
     const { tools } = await client.listTools();
     expect(tools.map((x) => x.name).sort()).toEqual([
-      "ack_brief", "affected_controls", "bottleneck", "check_contract_conflict", "deals_at_risk", "list_decisions",
-      "ripple_impact", "search", "trace_decision", "who_knows", "who_wasnt_told", "why_affected",
+      "ack_brief", "affected_controls", "bottleneck", "check_contract_conflict", "deals_at_risk", "list_agents", "list_decisions",
+      "ripple_impact", "run_agent", "search", "trace_decision", "who_knows", "who_wasnt_told", "why_affected",
     ]);
     expect(tools.filter((x) => x.annotations?.destructiveHint).map((x) => x.name)).toEqual(["ack_brief"]);
     expect(tools.filter((x) => x.name !== "ack_brief").every((x) => x.annotations?.readOnlyHint)).toBe(true);
+  });
+
+  t("list_agents names the agents; run_agent is read-only and says why when it cannot run", async () => {
+    const list = await call("list_agents", {});
+    expect(list.rows.map((r: { name: string }) => r.name)).toEqual(expect.arrayContaining(["impact", "contract", "digest"]));
+    expect(list.rows.some((r: { name: string }) => r.name === "ask")).toBe(false);
+    expect((await call("run_agent", { name: "nope", input: {} })).rows[0]).toMatchObject({ ran: false });
+    expect((await call("run_agent", { name: "impact", input: { wrong: 1 } })).rows[0]).toMatchObject({ ran: false, reason: "invalid_input" });
+    expect((await client.listTools()).tools.find((x) => x.name === "run_agent")?.annotations?.readOnlyHint).toBe(true);
   });
 
   t("why_affected d-1 -> legal runs through the contract; unknown team is found:false", async () => {

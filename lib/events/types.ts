@@ -38,7 +38,8 @@ export const RippleEvent = z.discriminatedUnion("type", [
   ev("access.granted", { userId: id, resource: id }),
   ev("pr.opened", prPayload),
   ev("pr.updated", prPayload),
-  ev("digest.weekly", { weekStart: id }),
+  // personId: one person's digest (their own time zone); absent = everyone. summary: the digest's first lines, shown as the title.
+  ev("digest.weekly", { weekStart: id, personId: z.string().optional(), summary: z.string().optional() }),
   ev("slack.inbound", { kind: z.enum(["event", "interactive", "command"]), teamId: id, body: z.unknown() }),
 ]);
 export type RippleEvent = z.infer<typeof RippleEvent>;

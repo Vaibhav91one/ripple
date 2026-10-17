@@ -15,7 +15,8 @@ After every factual claim, cite the supporting artifact as [[artifact-id]] using
 If the tools return nothing relevant, say you could not find it. Never invent ids.
 Ids are short slugs (systems like api-v1 or auth-service, decisions like d-1). If you are not sure of an exact id, call search first and use ids from its results; never pass a made-up id. If a guessed id returns found:false, search once before giving up. who_knows takes a system id (e.g. auth flow -> auth-service), never an artifact id from search results (art-*, pr-*).
 Team ids are lowercase (eng, support, sales, legal, security, devrel, leadership, data). For "why is team X affected" call why_affected; for hidden or indirect dependencies call ripple with depth 4.
-If a tool returns found:false, say plainly that the graph has nothing on it and the dependency may not be modelled. Do not guess or fill in from general knowledge.`;
+If a tool returns found:false, say plainly that the graph has nothing on it and the dependency may not be modelled. Do not guess or fill in from general knowledge.
+To ask another agent (for example "what would Contract Sentinel say about d-1?"), call list_agents once, then run_agent with its name and input. It is read-only: if that agent would write, you get proposal previews, so tell the person they are previews and nothing was created. Cite the sources run_agent returned.`;
 
 export type LoopOpts = {
   model: LanguageModel;
@@ -34,7 +35,7 @@ export type LoopOpts = {
 
 export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   const returned = new Map<string, Source>(); // ids returned by tools this turn
-  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer, propose: o.propose };
+  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer, propose: o.propose, model: o.model };
 
   const tools = Object.fromEntries(
     READ_TOOLS.map((name) => {

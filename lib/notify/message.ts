@@ -42,7 +42,7 @@ export function buildMessage(
 ): Message {
   const base = ctx.baseUrl ?? "";
   const { kind, id } = n.body.subject;
-  const deepLink = `${base}/items/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`;
+  const deepLink = kind === "digest" ? `${base}/agents/runs/${encodeURIComponent(id)}` : `${base}/items/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`; // a digest is an agent run
   // Redact on the artifact-id shape: a restricted source loses its title and quote text for a non-owner.
   const quotes = redact((ctx.quotes ?? []).map((q) => ({ id: q.artifactId, title: q.title, quote: q.quote })), ctx.viewer, ctx.index)
     .value.map((q) => ({ text: q.quote, source: q.title, url: `${base}/source/${encodeURIComponent(q.id)}` }));

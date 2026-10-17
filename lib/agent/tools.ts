@@ -8,6 +8,7 @@ import type { ActionKind } from "./define";
 import type { Source } from "../schemas";
 import type { RestrictedSummary } from "../schemas/common";
 import type { PermViewer } from "../permissions/redact";
+import type { LanguageModel } from "ai";
 
 export type Row = Record<string, unknown>;
 export type ToolOut = { rows: Row[]; sources: Source[]; cypher: Cypher[]; /** what redaction withheld from this viewer */ restricted?: RestrictedSummary[] };
@@ -21,7 +22,7 @@ export type RunCtx = {
   /** Records a pending action for a person to approve (lib/actions/propose). Agents never write directly. */
   propose: (kind: ActionKind, payload: unknown, evidence?: unknown) => Promise<{ id: string; status: string; created: boolean }>;
 };
-export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean; viewer?: Viewer } & Partial<Omit<RunCtx, "viewer">>;
+export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean; viewer?: Viewer; /** run_agent: the model its inline runs use; unset = the configured agent model. Also the offline-eval seam. */ model?: LanguageModel } & Partial<Omit<RunCtx, "viewer">>;
 type Def<I extends z.ZodType> = {
   description: string;
   input: I;
@@ -420,6 +421,27 @@ export const TOOLS = {
       const out = await Promise.all(rows.map(async ({ teamId, payload }) => ({ teamId, ...(await propose("create_task", payload, claimsFor(r, teamId))) })));
       return { rows: out as Row[], sources: [], cypher: [] };
     },
+  }),
+  list_decisions: def({
+    description: "Every decision (id, title, status), oldest first. Start here to find a decision id like d-1.",
+    input: z.object({}),
+    templates: ["decisions"],
+    run: async ({ g }) => {
+      const d = await decisions(g);
+      return { rows: d.data, sources: [], cypher: d.cypher };
+    },
+  }),
+  list_agents: def({
+    description: "The agents run_agent can run: name, what it does, who it serves, whether it would write (then run_agent returns proposal previews only) and its input shape.",
+    input: z.object({}),
+    templates: [],
+    run: async () => (await import("./handoff")).listAgents(),
+  }),
+  run_agent: def({
+    description: "Run another Ripple agent now, as you, and return its report with its sources. Read-only: an agent that would write returns its proposals as previews; nothing is created or sent. Call list_agents first for names and input shapes.",
+    input: z.object({ name: z.string().describe("Agent name from list_agents, e.g. contract"), input: z.record(z.string(), z.unknown()).describe("The agent's input object, as list_agents shows") }),
+    templates: [],
+    run: async (ctx, { name, input }) => (await import("./handoff")).runInline(ctx, name, input),
   }),
 };
 export type ToolName = keyof typeof TOOLS;

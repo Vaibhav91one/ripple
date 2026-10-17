@@ -8,3 +8,4 @@ export { docs } from "./docs";
 export { security } from "./security";
 export { support } from "./support";
 export { advisor } from "./advisor";
+export { digest } from "./digest";
