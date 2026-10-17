@@ -84,8 +84,10 @@ export type RunList = z.infer<typeof RunList>;
 export const RunDetail = z.object({
   run: RunSummary.extend({ input: z.unknown(), output: z.unknown() }),
   steps: z.array(z.object({
-    n: z.number(), kind: z.enum(["tool", "text"]), tool: z.string().nullable(), args: z.unknown(),
+    n: z.number(), kind: z.enum(["tool", "text", "validation"]), tool: z.string().nullable(), args: z.unknown(),
     cypher: z.array(z.string()), sources: z.array(z.string()), tokens: z.number(),
+    /** Execution trace of a tool call (#211). */
+    durationMs: z.number().nullable(), rowCount: z.number().nullable(),
   })),
   proposals: z.array(z.object({ id: z.string(), kind: z.string(), status: z.string(), summary: z.string(), subject: Subject.nullable() })),
 });

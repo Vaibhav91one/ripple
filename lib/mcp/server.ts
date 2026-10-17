@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { TOOLS, type Ctx, type Row, type ToolOut } from "../agent/tools";
+import { countRows, validateAnswer } from "../agent/validate";
 import { roQuery } from "../graph/client";
 import { decisions, load, ripple } from "../graph/queries";
 import { recordAck } from "../notify";
@@ -107,7 +108,7 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
           const out = await redactToolOut(g, ctx.viewer, await t.run(args as never)); // every MCP tool, before JSON.stringify
           const ev = { action: "mcp.tool", resourceType: "tool", resourceId: name, read: !t.write };
           if (t.write) await audit?.(ev); else void audit?.(ev); // tool name only, never the payload
-          const body = { ...out, trace: { tool: name, args, ms: Date.now() - t0, rows: out.rows.length } };
+          const body = { ...out, outcome: validateAnswer("", [{ tool: name, args, rows: out.rows }], new Map()).outcome, trace: { tool: name, args, ms: Date.now() - t0, rows: out.rows.length, rowCount: countRows(out.rows) } };
           return { content: [{ type: "text", text: JSON.stringify(body) }], structuredContent: body };
         } catch (e) {
           if (e instanceof Error && (e.message === "demo_readonly" || e.message.startsWith("forbidden"))) await audit?.({ action: "mcp.tool", resourceType: "tool", resourceId: name, outcome: "deny" });

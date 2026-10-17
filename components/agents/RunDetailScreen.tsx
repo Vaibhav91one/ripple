@@ -21,10 +21,12 @@ const dur = (ms: number | null) => (ms === null ? "running" : ms < 1000 ? `${ms}
 /** A tool call becomes a row: arguments as the chip, then Cypher (CodeBlock) and the sources it cited when opened. */
 function rows(steps: RunDetail["steps"]): ToolRowData[] {
   return steps.map((s) =>
-    s.kind === "text"
+    s.kind === "validation"
+      ? { icon: "think", label: "Rejected", chip: "Answer failed validation", mono: false, detailMono: false, detail: [{ text: `${((s.args as { rejected?: string[] })?.rejected ?? []).join("; ")} (outcome: ${(s.args as { outcome?: string })?.outcome})` }] }
+      : s.kind === "text"
       ? { icon: "think", label: "Replied", chip: "Wrote the answer", mono: false, detailMono: false, detail: [{ text: "The model's text for this step is not stored, only its cost." }], meta: `${s.tokens} tok` }
       : {
-          icon: s.cypher.length ? "run" : "read", label: s.tool ?? "tool", chip: compact(s.args), mono: true, detailMono: true, detail: [], meta: `${s.tokens} tok`,
+          icon: s.cypher.length ? "run" : "read", label: s.tool ?? "tool", chip: compact(s.args), mono: true, detailMono: true, detail: [], meta: `${s.rowCount ?? 0} ${s.rowCount === 1 ? "row" : "rows"} · ${s.durationMs === null ? "?" : dur(s.durationMs)} · ${s.tokens} tok`,
           body: (
             <div className="space-y-2 py-1">
               {s.cypher.map((c, i) => <CodeBlock key={i} code={c} language="Cypher" title={`query ${i + 1}`} stream={false} className="max-w-none" />)}

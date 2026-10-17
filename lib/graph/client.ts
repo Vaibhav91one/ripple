@@ -64,10 +64,16 @@ export async function closeClient(): Promise<void> {
   if (p) await (await p).close();
 }
 
+const graphNames = new WeakMap<object, string>();
+/** The tenant name a graph handle was opened with (a cache key that survives new handles per request). */
+export const graphName = (g: Graph): string | undefined => graphNames.get(g);
+
 /** One graph per tenant; the demo tenant is `demo`. */
 export async function graphFor(tenant: string): Promise<Graph> {
   // The first connect retries forever (reconnectStrategy), so bound the wait; the pending connect stays cached.
-  return (await timeout(client(), env().FALKORDB_QUERY_TIMEOUT_MS, "FalkorDB connect")).selectGraph(tenant);
+  const g = (await timeout(client(), env().FALKORDB_QUERY_TIMEOUT_MS, "FalkorDB connect")).selectGraph(tenant);
+  graphNames.set(g, tenant);
+  return g;
 }
 
 /** Parameterised query; never interpolate values into `cypher`. */
@@ -107,11 +113,14 @@ export class ReadOnlyGraphError extends Error {
 
 /** Wrap a graph so only `roQuery` works: `query()` (and so every write helper) throws ReadOnlyGraphError. */
 export function readOnly(g: Graph): Graph {
-  return new Proxy(g, {
+  const ro = new Proxy(g, {
     get(t, p) {
       if (p === "query") return () => { throw new ReadOnlyGraphError(); };
       const v = Reflect.get(t, p, t);
       return typeof v === "function" ? v.bind(t) : v;
     },
   });
+  const n = graphNames.get(g);
+  if (n) graphNames.set(ro, n);
+  return ro;
 }

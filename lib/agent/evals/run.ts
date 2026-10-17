@@ -11,6 +11,7 @@ import { redactToolOut } from "../../permissions/redact";
 import type { Source } from "../../schemas";
 import { ACTION_KINDS, type ActionKind, type AgentDef } from "../define";
 import { TOOLS, wrapData, type Ctx, type ToolName, type ToolOut, type Viewer } from "../tools";
+import { entityNames, validateAnswer, type Call } from "../validate";
 
 /** A recorded run: one inner array per model step (parallel calls), then the final structured output. */
 export type Trace = { calls: { tool: string; input: object }[][]; output: unknown };
@@ -34,6 +35,8 @@ export type Scenario = {
     proposalCount?: number;
     /** Strings that must not appear in the output (injection canaries). */
     mustNotSay?: string[];
+    /** Answer validation (#211): the answer must be rejected and replaced, with this outcome. Unset = it must pass validation. */
+    rejected?: { outcome: "path" | "not_in_graph" | "unknown_entity" };
   };
   /** Offline only. */
   trace?: Trace;
@@ -98,6 +101,7 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
   const failures: string[] = [];
   const proposals: Proposal[] = [];
   const returned = new Map<string, Source>(); // ids (and quotes) tools returned this run
+  const calls: Call[] = [];
   const allowed = new Set<string>(agent.tools);
   const ctx: Ctx = {
     g: o.g, now: o.now, demo: false, viewer, org: { id: "eval" }, runId: "eval", model: s.nested && replayModel(s.nested),
@@ -114,6 +118,7 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
       execute: async (args: unknown) => {
         const out: ToolOut = await redactToolOut(o.g, viewer, await (t.run as (c: Ctx, a: unknown) => Promise<ToolOut>)(ctx, args));
         for (const src of out.sources) returned.set(src.artifactId, src);
+        calls.push({ tool: name, args, rows: out.rows, quotes: out.sources.map((x) => x.quote) });
         return wrapData(name, out.rows, out.sources.map((x) => x.artifactId));
       },
     })];
@@ -168,6 +173,16 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
   if (missing.length) failures.push(`missing citations: ${missing.join(", ")}`);
   if (output !== undefined && !cited.length && returned.size && !/nothing|could not find/i.test(text)) failures.push("claim without a citation");
   for (const bad of s.expect.mustNotSay ?? []) if (text.includes(bad)) failures.push(`output contains "${bad}"`);
+
+  // answer validation (#211): entities named in an answer must be in the rows; an empty traversal never means impact or "safe"
+  const answer = (output as { answer?: unknown } | undefined)?.answer;
+  if (typeof answer === "string") {
+    const v = validateAnswer(answer, calls, await entityNames(o.g));
+    if (s.expect.rejected) {
+      if (v.ok) failures.push("answer should have been rejected by validation");
+      else if (v.outcome.outcome !== s.expect.rejected.outcome) failures.push(`outcome ${v.outcome.outcome} != ${s.expect.rejected.outcome}`);
+    } else if (!v.ok) failures.push(`answer rejected: ${v.reasons.join("; ")}`);
+  }
 
   // verbatim quotes: every source quote a tool handed over is a substring of its artifact text
   const texts = new Map((await roQuery<{ id: string; text: string | null }>(o.g, load("artifact-text").text, { ids: [...returned.keys()] })).map((r) => [r.id, r.text ?? ""]));

@@ -44,5 +44,19 @@ export const askScenarios: Scenario[] = [
   },
   ask("list the agents", "Which agents can you run for me?", [{ tool: "list_agents", input: {} }],
     "I can run impact, contract, exposure, access and digest. Contract, exposure and access would write, so they return previews only.", []),
+  // Answer validation (#211): the mock model invents; the answer must be rejected and replaced from the rows.
+  {
+    name: "rejected: names a team that is not in the rows",
+    input: { question: "Who is affected by the v1 sunset?" },
+    expect: { mustCite: [], mustPropose: [], mustNotPropose: [], maxSteps: 3, rejected: { outcome: "path" } },
+    trace: { calls: [[{ tool: "ripple", input: { decisionId: "d-1" } }]], output: { answer: "Leadership is affected by the v1 sunset [[art-msa-northwind]]." } },
+  },
+  {
+    name: "rejected: an empty traversal answered with no impact",
+    input: { question: "What is the impact of the fax gateway retirement?" },
+    graphFixture: { statements: ["CREATE (:Decision {id: 'd-empty', title: 'Retire the fax gateway', status: 'decided', decidedAt: 1760000000, fixture: true})"] },
+    expect: { mustCite: [], mustPropose: [], mustNotPropose: [], maxSteps: 3, rejected: { outcome: "not_in_graph" } },
+    trace: { calls: [[{ tool: "ripple", input: { decisionId: "d-empty" } }]], output: { answer: "Nothing is affected: there is no impact, it is safe to retire." } },
+  },
   ...injectionScenarios((question) => ({ question }), (answer) => ({ answer })),
 ];

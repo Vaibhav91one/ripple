@@ -12,7 +12,10 @@ import { pickModel, roleFor } from "../llm";
 import { redactToolOut } from "../permissions/redact";
 import { propose as proposeAction } from "../actions/propose";
 import { agent as findAgent } from "./registry";
+import { audit } from "../audit";
+import type { Outcome } from "../schemas";
 import { TOOLS, wrapData, type Ctx, type ToolName, type ToolOut, type Viewer } from "./tools";
+import { countRows, entityNames, validateAnswer, type Call } from "./validate";
 
 export { runAgent as runInteractive } from "./loop";
 
@@ -29,7 +32,8 @@ export type BackgroundCtx = {
   /** Reuse an already-inserted queued run instead of inserting a new one. */
   runId?: string;
 };
-export type RunResult = { runId: string; status: RunStatus; output?: unknown; tokens: number; error?: string };
+/** `outcome` (#211): how the run's output relates to the graph. Structured output cannot be rewritten, so a rejected output is logged (run_step + audit), not replaced. */
+export type RunResult = { runId: string; status: RunStatus; output?: unknown; tokens: number; error?: string; outcome?: Outcome };
 
 /** The permission layer (#99): every tool output passes through this before the model sees it. */
 export const redactToolOutput = (out: ToolOut, viewer: Viewer, g: Graph): Promise<ToolOut> => redactToolOut(g, viewer, out);
@@ -65,7 +69,8 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
     if (!parsed.success) return await finish("failed", { error: `invalid input: ${parsed.error.message}` });
 
     const tctx: Ctx = { g: ctx.g, now: ctx.now, demo: ctx.org.id === "demo", readonly: ctx.viewer.kind === "anon", viewer: ctx.viewer, org: ctx.org, runId, propose: (kind, payload, evidence) => proposeAction({ org: ctx.org, viewer: { kind: ctx.viewer.kind ?? "agent", id: ctx.viewer.id }, runId }, kind, payload, evidence) };
-    const outs = new Map<string, ToolOut>(); // toolCallId -> output, for the step log
+    const outs = new Map<string, ToolOut & { ms: number }>(); // toolCallId -> output, for the step log
+    const calls: Call[] = [];
     const allowed = new Set<string>(def.tools);
     // Only the allowlist exists as far as the model is concerned; execute re-checks anyway.
     const tools = Object.fromEntries(def.tools.map((name: ToolName) => {
@@ -75,8 +80,11 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
         inputSchema: t.input as z.ZodType,
         execute: async (args: unknown, opts) => {
           if (!allowed.has(name)) throw new Error(`tool_not_allowed: ${name}`);
+          const t0 = Date.now();
           const out = await redactToolOutput(await (t.run as (c: Ctx, a: unknown) => Promise<ToolOut>)(tctx, args), ctx.viewer, ctx.g);
-          outs.set(opts.toolCallId, out);
+          const ms = Date.now() - t0;
+          outs.set(opts.toolCallId, { ...out, ms });
+          calls.push({ tool: name, args, rows: out.rows, ms, quotes: out.sources.map((s) => s.quote) });
           return wrapData(name, out.rows, out.sources.map((s) => s.artifactId));
         },
       })];
@@ -101,6 +109,7 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
             cypher: (out?.cypher ?? []).map((q: Cypher) => `// ${q.name}\n${q.text}`),
             sourceIds: out?.sources.map((s) => s.artifactId) ?? [],
             tokens: i === 0 ? stepTokens : 0,
+            durationMs: out?.ms ?? null, rowCount: out ? countRows(out.rows) : null,
           };
         });
         if (step.text.trim()) rows.push({ runId, n: ++n, kind: "text", tokens: rows.length ? 0 : stepTokens });
@@ -109,7 +118,13 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
     });
 
     if (tokens > def.budget.maxTokens) return await finish("budget", { error: `over ${def.budget.maxTokens} tokens` });
-    return await finish("done", { output: result.output });
+    const strings = (v: unknown): string[] => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : []);
+    const v = validateAnswer(strings(result.output).join("\n"), calls, await entityNames(ctx.g).catch(() => new Map()));
+    if (!v.ok) {
+      await d.insert(runSteps).values({ runId, n: ++n, kind: "validation", args: { rejected: v.reasons, outcome: v.outcome.outcome, rowCount: v.outcome.rowCount }, tokens: 0 });
+      await audit({ org: ctx.org, viewer: ctx.viewer as { kind: string; id?: string } }, { action: "agent.answer_rejected", resourceType: "agent_run", resourceId: runId, outcome: "deny", meta: { agent: def.name, reasons: v.reasons, outcome: v.outcome.outcome } });
+    }
+    return { ...(await finish("done", { output: result.output })), outcome: v.outcome };
   } catch (e) {
     return finish(tokens > def.budget.maxTokens ? "budget" : "failed", { error: e instanceof Error ? e.message : String(e) });
   }

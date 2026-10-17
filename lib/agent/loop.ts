@@ -8,6 +8,7 @@ import type { Graph } from "../graph/client";
 import type { Source, StreamEvent } from "../schemas";
 import { redactToolOut, type PermViewer } from "../permissions/redact";
 import { READ_TOOLS, templateText, TOOLS, type Ctx, type Row, type ToolName } from "./tools";
+import { countRows, entityNames, validateAnswer, type Call } from "./validate";
 
 export const SYSTEM = `You are Ripple's analyst for a company knowledge graph. Answer only from tool results.
 Call tools to find facts; you cannot write queries. Be concise (2-4 sentences).
@@ -35,6 +36,7 @@ export type LoopOpts = {
 
 export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   const returned = new Map<string, Source>(); // ids returned by tools this turn
+  const calls: Call[] = []; // the run's execution trace, validated against the answer at the end
   const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer, propose: o.propose, model: o.model };
 
   const tools = Object.fromEntries(
@@ -45,6 +47,7 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
         inputSchema: d.input as z.ZodType,
         execute: async (args: unknown) => {
           const ev = { action: "agent.tool", resourceType: "tool", resourceId: name, read: true };
+          const t0 = Date.now();
           const raw = await (d.run as (c: typeof ctx, a: unknown) => ReturnType<typeof d.run>)(ctx, args).catch(async (e) => {
             if (e instanceof Error && e.message === "demo_readonly") await o.audit?.({ ...ev, outcome: "deny" });
             throw e;
@@ -52,13 +55,16 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
           const out = await redactToolOut(o.g, o.viewer, raw); // before the model (and the stream) sees a row
           if (ev.read) void o.audit?.(ev); else await o.audit?.(ev); // tool name only, never the payload
           for (const s of out.sources) if (!returned.has(s.artifactId)) returned.set(s.artifactId, s);
-          return { rows: out.rows, sourceIds: out.sources.map((s) => s.artifactId), cypher: out.cypher, restricted: out.restricted };
+          const ms = Date.now() - t0;
+          calls.push({ tool: name, args, rows: out.rows, ms, quotes: out.sources.map((s) => s.quote) });
+          return { rows: out.rows, sourceIds: out.sources.map((s) => s.artifactId), cypher: out.cypher, restricted: out.restricted, ms };
         },
       })];
     }),
   );
 
   let buf = "";
+  let full = "";
   let claims = 0;
   let cited = 0;
   let spoke = false;
@@ -109,20 +115,23 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
       const t = TOOLS[part.toolName as ToolName];
       yield { type: "tool_call", tool: part.toolName, args: (part.input ?? {}) as Record<string, unknown>, cypher: t ? templateText(t.templates) : "" };
     } else if (part.type === "tool-result") {
-      const out = part.output as { rows: Row[]; sourceIds: string[] };
+      const out = part.output as { rows: Row[]; sourceIds: string[]; ms?: number };
       if (out.rows.some((r) => r.found === false)) notFound = true;
-      yield { type: "tool_result", tool: part.toolName, rows: out.rows, sourceIds: out.sourceIds };
+      yield { type: "tool_result", tool: part.toolName, rows: out.rows, sourceIds: out.sourceIds, ms: out.ms, rowCount: countRows(out.rows) };
     } else if (part.type === "tool-error") {
       yield { type: "tool_result", tool: part.toolName, rows: [{ error: String(part.error) }], sourceIds: [] };
     } else if (part.type === "text-delta") {
-      buf += part.text;
-      yield* drain(false);
+      full += part.text; // held back: a rejected answer must never reach the person
     } else if (part.type === "error") {
       throw part.error instanceof Error ? part.error : new Error(String(part.error));
     }
   }
+  const names = await entityNames(o.g).catch(() => new Map()); // validation degrades to the empty-traversal rule if the names query fails
+  const v = validateAnswer(full, calls, names);
+  if (!v.ok) await o.audit?.({ action: "agent.answer_rejected", resourceType: "agent", resourceId: "ask", outcome: "deny", meta: { reasons: v.reasons, outcome: v.outcome.outcome, rowCount: v.outcome.rowCount } });
+  buf = full.trim() ? v.answer : "";
   yield* drain(true);
-  if (spoke && cited === 0 && !notFound) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
+  if (v.ok && spoke && cited === 0 && !notFound) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
   o.onUsage?.((await result.totalUsage).totalTokens ?? 0);
-  yield { type: "done" };
+  yield { type: "done", outcome: v.outcome, ...(v.ok ? {} : { rejected: v.reasons }) };
 }

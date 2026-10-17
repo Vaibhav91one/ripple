@@ -48,9 +48,9 @@ export const SAMPLE_RUNS: RunList = {
 export const SAMPLE_RUN: RunDetail = {
   run: { ...SAMPLE_RUNS.runs[0], input: { decisionId: "d-1" }, output: { briefs: 2 } },
   steps: [
-    { n: 1, kind: "tool", tool: "who_is_affected", args: { decisionId: "d-1" }, cypher: ["// affected\nMATCH (d:Decision {id: $d})-[:SUNSETS]->(s:System)<-[:RUNS_ON]-(c:Customer)\nRETURN c.id AS customer, s.id AS system LIMIT 20"], sources: ["art-msa-acme"], tokens: 1900 },
-    { n: 2, kind: "tool", tool: "team_status", args: { decisionId: "d-1", team: "support" }, cypher: ["// told\nMATCH (t:Team {id: $t})<-[r:TOLD]-(d:Decision {id: $d}) RETURN count(r) AS told"], sources: [], tokens: 1400 },
-    { n: 3, kind: "text", tool: null, args: null, cypher: [], sources: [], tokens: 2940 },
+    { n: 1, kind: "tool", tool: "who_is_affected", args: { decisionId: "d-1" }, cypher: ["// affected\nMATCH (d:Decision {id: $d})-[:SUNSETS]->(s:System)<-[:RUNS_ON]-(c:Customer)\nRETURN c.id AS customer, s.id AS system LIMIT 20"], sources: ["art-msa-acme"], tokens: 1900, durationMs: 42, rowCount: 6 },
+    { n: 2, kind: "tool", tool: "team_status", args: { decisionId: "d-1", team: "support" }, cypher: ["// told\nMATCH (t:Team {id: $t})<-[r:TOLD]-(d:Decision {id: $d}) RETURN count(r) AS told"], sources: [], tokens: 1400, durationMs: 18, rowCount: 1 },
+    { n: 3, kind: "text", tool: null, args: null, cypher: [], sources: [], tokens: 2940, durationMs: null, rowCount: null },
   ],
   proposals: [
     { id: SAMPLE_APPROVALS.approvals[3].id, kind: "create_task", status: "pending", summary: SAMPLE_APPROVALS.approvals[3].summary, subject: null },
