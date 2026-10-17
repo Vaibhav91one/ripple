@@ -9,6 +9,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ripple.vaibhav.quest"), // absolute URLs for the OG image and icons
   title: "Ripple",
   description: "Change one thing. See everyone it touches, and who hasn't been told.",
 };
