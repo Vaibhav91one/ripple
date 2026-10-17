@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { TOOLS } from "../agent/tools";
 import { runAgent } from "../agent/loop";
 import { closeClient, graphFor, query, type Graph } from "../graph/client";
+import { ImportBody, importRows } from "../connectors/csv";
 import { seed } from "../ingest/seed";
 import { createRippleServer } from "../mcp/server";
 import { RippleResult } from "../schemas";
@@ -251,6 +252,25 @@ describe("change owners (and leadership) get summaries, never details", () => {
     as("eng"); // a plain member of Eng has neither
     expect(JSON.parse((await get("ripple", "/api/ripple?d=d-1")).text).counts.arrAtRisk).toBeNull();
     expect(JSON.parse((await get("overview", "/api/overview")).text).kpis.map((k: { id: string }) => k.id)).not.toContain("arr-at-risk");
+  });
+
+  t("ARR imported from a CSV is counted for the change owner and redacted for a plain member", async () => {
+    const [old] = await query<{ id: string }>(g, "MATCH (:Contract {id:'ctr-1'})-[:PARTY_TO]->(c:Customer) RETURN c.id AS id");
+    const csv = { type: "customers", mapping: { name: "Company", arr: "ARR" }, uploadId: "arr-test", rows: [{ Company: "Imported Co", ARR: "$4,440,001" }] };
+    expect((await importRows(g, ImportBody.parse(csv), NOW)).errors).toEqual([]);
+    const repoint = (to: string) => query(g, "MATCH (:Contract {id:'ctr-1'})-[p:PARTY_TO]->(:Customer) DELETE p WITH 1 AS x MATCH (c:Contract {id:'ctr-1'}), (u:Customer {id:$to}) CREATE (c)-[:PARTY_TO]->(u)", { to });
+    await repoint("customer:imported-co");
+    try {
+      as("change-owner");
+      expect(JSON.parse((await get("ripple", "/api/ripple?d=d-1")).text).counts.arrAtRisk).toBe(7770003 + 4440001);
+      as("eng");
+      const member = (await get("ripple", "/api/ripple?d=d-1")).text;
+      expect(JSON.parse(member).counts.arrAtRisk).toBeNull();
+      expect(member).not.toContain("4440001");
+    } finally {
+      await repoint(old.id);
+      await query(g, "MATCH (c:Customer {id:'customer:imported-co'}) DETACH DELETE c");
+    }
   });
 
   t("deals at risk reach the change owner over MCP as a count plus a total", async () => {

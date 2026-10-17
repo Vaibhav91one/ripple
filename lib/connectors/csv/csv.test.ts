@@ -9,7 +9,7 @@ import { suggestMapping, type CsvType } from "./map";
 vi.mock("server-only", () => ({}));
 
 const SAMPLES: Record<CsvType, string> = {
-  customers: "Company,Website\nAcme,acme.com\nGlobex,globex.io\n",
+  customers: "Company,Website,ARR,Tier,Region\nAcme,acme.com,\"$24,000\",Growth,EU\nGlobex,globex.io,,,\n",
   deals: "Deal,Account,Stage,Value\nAcme renewal,Acme,open,\"$12,000\"\n",
   usage: "customer,system,calls_30d,last_seen\nAcme,api-v1,1200,2026-10-01\nGlobex,api-v1,40,2026-09-20\n",
   access: "email,access group,software\nada@x.com,finance-admins,\nada@x.com,,Figma\n",
@@ -45,6 +45,7 @@ describe("csv import (FalkorDB)", () => {
     expect(await snapshot()).toEqual(first);
 
     expect(await count("MATCH (c:Customer) RETURN count(c) AS n")).toBe(2);
+    expect(await count("MATCH (c:Customer {name:'Acme', arr: 24000, tier: 'growth', region: 'EU'}) RETURN count(c) AS n")).toBe(1);
     expect(await count("MATCH (:Customer {name:'Acme'})-[u:USES {calls_30d: 1200}]->(:System {id:'api-v1'}) WHERE u.last_seen > 0 RETURN count(u) AS n")).toBe(1);
     expect(await count("MATCH (:Person {id:'person:ada@x.com'})-[:HAS_ACCESS]->(:AccessGroup) RETURN count(*) AS n")).toBe(1);
     expect(await count("MATCH (:Person)-[:HAS_INSTALLED]->(:Software {name:'Figma'}) RETURN count(*) AS n")).toBe(1);

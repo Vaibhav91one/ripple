@@ -7,9 +7,13 @@ export type Mapping = Record<string, string>; // field key -> CSV header ("" = u
 export type CsvRecord = { type: CsvType; mapping: Mapping; row: Record<string, string>; rowNo: number; uploadId: string };
 
 export const CSV_TYPES: { type: CsvType; label: string; hint: string; fields: Field[] }[] = [
-  { type: "customers", label: "Customers", hint: "name, domain", fields: [
+  { type: "customers", label: "Customers", hint: "name, domain, arr, tier, region, monthly calls", fields: [
     { key: "name", label: "Customer name", required: true, aliases: ["customer", "company", "account"] },
     { key: "domain", label: "Domain", aliases: ["website", "url"] },
+    { key: "arr", label: "ARR", aliases: ["annualrevenue", "annualrecurringrevenue", "revenue"] },
+    { key: "tier", label: "Tier", aliases: ["plan"] },
+    { key: "region", label: "Region", aliases: ["country"] },
+    { key: "monthlyCalls", label: "Monthly calls", aliases: ["calls", "monthlyrequests"] },
   ] },
   { type: "deals", label: "Deals", hint: "name, customer, stage, amount", fields: [
     { key: "name", label: "Deal name", required: true, aliases: ["deal", "title"] },
@@ -75,7 +79,12 @@ export function mapRow({ type, mapping, row, rowNo, uploadId }: CsvRecord): Grap
 
   if (type === "customers") {
     const name = need("name"), domain = get("domain").toLowerCase();
-    return [n("Customer", `customer:${slug(name)}`, { name, ...(domain && { domain }) })];
+    // ARR is stored as-is; hiding it from non-Sales viewers happens at read time (lib/permissions).
+    return [n("Customer", `customer:${slug(name)}`, {
+      name, ...(domain && { domain }),
+      ...(get("arr") && { arr: num("ARR", get("arr")) }), ...(get("tier") && { tier: get("tier").toLowerCase() }), ...(get("region") && { region: get("region") }),
+      ...(get("monthlyCalls") && { monthlyCalls: num("Monthly calls", get("monthlyCalls")) }),
+    })];
   }
   if (type === "deals") {
     const name = need("name");
