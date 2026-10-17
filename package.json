@@ -12,6 +12,7 @@
     "mcp": "tsx scripts/mcp-stdio.ts",
     "extract": "tsx lib/ingest/extract.ts",
     "embed": "tsx lib/ingest/embed.ts",
+    "shots": "tsx scripts/shots.ts",
     "eval": "tsx lib/eval/run.ts",
     "typecheck": "next typegen && tsc --noEmit"
   },
@@ -58,6 +59,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "playwright-core": "^1.64.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
