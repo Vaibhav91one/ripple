@@ -7,7 +7,16 @@ import type { Source } from "../schemas";
 
 export type Row = Record<string, unknown>;
 export type ToolOut = { rows: Row[]; sources: Source[]; cypher: Cypher[] };
-export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean };
+export type Viewer = { kind: string; id?: string };
+/** Background runs only: who the run acts for and a stub for proposing writes. Interactive /api/ask leaves them unset. */
+export type RunCtx = {
+  viewer: Viewer;
+  org: { id: string };
+  runId: string;
+  /** TODO(approvals issue): stub until proposals land. */
+  propose: (kind: string, payload: unknown) => Promise<never>;
+};
+export type Ctx = { g: Graph; now: number; demo: boolean; /** Anonymous demo viewer: write tools throw "demo_readonly". */ readonly?: boolean } & Partial<RunCtx>;
 type Def<I extends z.ZodType> = {
   description: string;
   input: I;

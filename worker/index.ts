@@ -1,13 +1,17 @@
 // Worker process: `pnpm worker`. Owns pg-boss start (migrations, maintenance) and runs the handlers.
 import { PgBoss, type Job } from "pg-boss";
 import { POLICY, QUEUES, bossOptions } from "../lib/queue";
+<<<<<<< HEAD
 import { safeMessage } from "../lib/log";
+=======
+import agent from "./handlers/agent";
+>>>>>>> 8672ae5 (feat: background agent runtime with run log and budgets (#131))
 import noop from "./handlers/noop";
 import routeEvent from "./handlers/route-event";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Handlers = Record<string, (jobs: Job<any>[]) => Promise<unknown>>;
-export const handlers: Handlers = { noop, "route-event": routeEvent };
+export const handlers: Handlers = { noop, "route-event": routeEvent, agent };
 
 /** Start a worker against `url`; returns the graceful stop function. */
 export async function startWorker(url: string, use: Handlers = handlers) {

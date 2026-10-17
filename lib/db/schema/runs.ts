@@ -1,0 +1,40 @@
+import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+export const RUN_STATUSES = ["queued", "running", "done", "failed", "budget"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+// no FK to orgs: the run log outlives a deleted org (like audit_log and event)
+export const agentRuns = pgTable(
+  "agent_run",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    agent: text("agent").notNull(),
+    trigger: text("trigger").notNull(),
+    input: jsonb("input").notNull(),
+    status: text("status", { enum: RUN_STATUSES }).notNull().default("queued"),
+    output: jsonb("output"),
+    tokens: integer("tokens").notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    error: text("error"),
+  },
+  (t) => [index("agent_run_org_started_idx").on(t.orgId, t.startedAt)],
+);
+
+export const runSteps = pgTable(
+  "run_step",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id").notNull().references(() => agentRuns.id, { onDelete: "cascade" }),
+    n: integer("n").notNull(),
+    kind: text("kind", { enum: ["tool", "text"] }).notNull(),
+    tool: text("tool"),
+    args: jsonb("args"),
+    cypher: text("cypher").array().notNull().default([]),
+    sourceIds: text("source_ids").array().notNull().default([]),
+    tokens: integer("tokens").notNull().default(0),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("run_step_run_idx").on(t.runId, t.n)],
+);
