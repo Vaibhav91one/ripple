@@ -9,11 +9,16 @@ features:
   bot_user:
     display_name: Ripple
     always_online: true
+  shortcuts:
+    - name: Save to Ripple
+      type: message
+      callback_id: save_to_ripple
+      description: Save this message as evidence in Ripple
   slash_commands:
     - command: /ripple
       url: https://ripple.vaibhav.quest/api/slack/command
       description: Ask Ripple who a change affects
-      usage_hint: "[question]"
+      usage_hint: "[question] or decision [text]"
       should_escape: false
 oauth_config:
   redirect_urls:
