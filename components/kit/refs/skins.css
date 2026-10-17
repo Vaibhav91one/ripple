@@ -130,6 +130,7 @@
   --glow-a: #1B2A1F;
   --glow-b: var(--gap);
   --glow-ink: #FFFFFF;
+  --on-overlay: #FFFFFF; /* text on the dark overlay card; other skins fall back to --strong */
   background-image: radial-gradient(rgb(0 0 0 / 9%) 1px, transparent 1px);
   background-size: 14px 14px;
 }
