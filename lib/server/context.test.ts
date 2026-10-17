@@ -12,7 +12,7 @@ describe("getContext", () => {
     process.env.RIPPLE_NOW = "2026-10-17T09:00:00Z";
     const c = await getContext();
     expect(c.org).toEqual({ id: "demo", graphName: DEMO_GRAPH, isDemo: true });
-    expect(c.viewer).toEqual({ kind: "anon", orgId: "demo", teamIds: ["eng"], role: "member" });
+    expect(c.viewer).toEqual({ kind: "anon", orgId: "demo", teamIds: ["eng"], role: "change_owner" });
     expect(c.now).toBe(Date.parse("2026-10-17T09:00:00Z") / 1000);
     expect(c.writer()).not.toBe(c.graph);
   });

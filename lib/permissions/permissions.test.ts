@@ -33,14 +33,20 @@ const SENTINELS = {
 const SRC = ["SENTINEL_SRC"]; // quote + artifact text behind restricted payload: hidden from viewers who own none of it
 const OWNERS = Object.keys(SENTINELS) as (keyof typeof SENTINELS)[];
 /** viewers: the demo lenses */
-const VIEWERS = ["eng", "legal", "sales", "security", "leadership", "support", "devrel"] as const;
+// "change-owner" = the demo lens: team eng plus the change_owner role (summaries, no details)
+const VIEWERS = ["eng", "change-owner", "legal", "sales", "security", "leadership", "support", "devrel"] as const;
 type V = (typeof VIEWERS)[number];
+/** the viewer as the permission layer sees it */
+const pv = (v: V) => (v === "change-owner" ? { teamIds: ["eng"], role: "change_owner" } : { teamIds: [v] });
 const forbidden = (v: V) => [
-  ...OWNERS.filter((o) => o !== v).flatMap((o) => SENTINELS[o]),
-  ...(OWNERS.includes(v as never) ? [] : SRC),
+  ...OWNERS.filter((o) => !pv(v).teamIds.includes(o)).flatMap((o) => SENTINELS[o]),
+  ...(OWNERS.some((o) => pv(v).teamIds.includes(o)) ? [] : SRC),
 ];
 const snip = (t: string, s: string) => t.slice(Math.max(0, t.indexOf(s) - 150), t.indexOf(s) + 60);
-const as = (v: V) => void (process.env.RIPPLE_VIEW_AS = v);
+const as = (v: V) => {
+  process.env.RIPPLE_VIEW_AS = pv(v).teamIds.join(",");
+  process.env.RIPPLE_VIEW_ROLE = pv(v).role ?? "";
+};
 
 beforeAll(async () => {
   process.env.RIPPLE_GRAPH = name;
@@ -67,6 +73,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   delete process.env.RIPPLE_VIEW_AS;
+  delete process.env.RIPPLE_VIEW_ROLE;
   try {
     if (up) await g.delete();
   } finally {
@@ -187,6 +194,38 @@ describe("sentinel leak: GET routes", () => {
   });
 });
 
+describe("change owners (and leadership) get summaries, never details", () => {
+  t("the change owner sees ARR at risk, KPIs and totals but no sentinel", async () => {
+    as("change-owner");
+    const r = JSON.parse((await get("ripple", "/api/ripple?d=d-1")).text);
+    expect(r.counts.arrAtRisk).toBe(2 * 7770003); // the number is visible, customer-level ARR is not
+    const o = JSON.parse((await get("overview", "/api/overview")).text);
+    expect(o.kpis.map((k: { id: string }) => k.id)).toContain("arr-at-risk");
+    const d = JSON.parse((await get("teams/[team]", "/api/teams/sales", { team: "sales" })).text);
+    expect(d.deals).toEqual([]);
+    expect(d.kpis.length).toBeGreaterThan(0);
+    const deals = d.restricted.find((x: { kind: string }) => x.kind === "deal");
+    expect(deals.count).toBeGreaterThanOrEqual(3);
+    expect(deals.total).toBe(deals.count * 7770002); // a total, not the rows
+    const c = JSON.parse((await get("teams/[team]", "/api/teams/support", { team: "support" })).text);
+    expect(c.customers.every((x: { arr: unknown }) => x.arr === null)).toBe(true);
+    as("eng"); // a plain member of Eng has neither
+    expect(JSON.parse((await get("ripple", "/api/ripple?d=d-1")).text).counts.arrAtRisk).toBeNull();
+    expect(JSON.parse((await get("overview", "/api/overview")).text).kpis.map((k: { id: string }) => k.id)).not.toContain("arr-at-risk");
+  });
+
+  t("deals at risk reach the change owner over MCP as a count plus a total", async () => {
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await createRippleServer({ g, now: NOW, demo: true, viewer: pv("change-owner") }).connect(a);
+    const client = new Client({ name: "test", version: "0" });
+    await client.connect(b);
+    const out = JSON.parse(((await client.callTool({ name: "deals_at_risk", arguments: { decisionId: "d-1" } })).content as { text: string }[])[0].text);
+    expect(out.rows).toEqual([]);
+    expect(out.restricted).toContainEqual(expect.objectContaining({ kind: "deal", owner: "sales", count: 3, total: 3 * 7770002 }));
+    await client.close();
+  });
+});
+
 // ---------- agent tools ----------
 const ARGS: Record<string, Record<string, unknown>> = {
   search: { text: "v1 sunset" },
@@ -226,7 +265,7 @@ describe("sentinel leak: agent tools", () => {
         ],
       });
       const events = [];
-      for await (const e of runAgent({ model, question: "q", g, now: NOW, viewer: { teamIds: [v] } })) events.push(e);
+      for await (const e of runAgent({ model, question: "q", g, now: NOW, viewer: pv(v) })) events.push(e);
       const results = events.filter((e) => e.type === "tool_result");
       expect(results.length).toBe(calls.length);
       const text = JSON.stringify(events);
@@ -238,7 +277,7 @@ describe("sentinel leak: agent tools", () => {
     const { redactToolOut } = await import("./redact");
     const out = await TOOLS.create_tasks.run({ g, now: NOW, demo: true }, { decisionId: "d-1" });
     for (const v of VIEWERS) {
-      const text = JSON.stringify(await redactToolOut(g, { teamIds: [v] }, out));
+      const text = JSON.stringify(await redactToolOut(g, pv(v), out));
       for (const s of forbidden(v)) expect(text, `${v} create_tasks leaked ${s}`).not.toContain(s);
     }
   });
@@ -271,7 +310,7 @@ describe("sentinel leak: MCP tools", () => {
   t("every MCP tool is listed here and leaks nothing", async () => {
     for (const v of VIEWERS) {
       const [a, b] = InMemoryTransport.createLinkedPair();
-      await createRippleServer({ g, now: NOW, demo: true, viewer: { teamIds: [v] } }).connect(a);
+      await createRippleServer({ g, now: NOW, demo: true, viewer: pv(v) }).connect(a);
       const client = new Client({ name: "test", version: "0" });
       await client.connect(b);
       const { tools } = await client.listTools();
@@ -294,4 +333,53 @@ describe("sentinel leak: MCP tools", () => {
     expect(r).toContain("SENTINEL_DEAL");
     await client.close();
   });
+});
+
+// ---------- background runtime (#140) ----------
+describe("sentinel leak: runBackground tool outputs", () => {
+  t("the redactToolOutput hook leaves no foreign sentinel for any tool", async () => {
+    const { redactToolOutput } = await import("../agent/runtime");
+    for (const v of VIEWERS)
+      for (const [tool, args] of Object.entries(ARGS)) {
+        if (tool === "create_tasks") continue;
+        const out = await redactToolOutput(await TOOLS[tool as keyof typeof TOOLS].run({ g, now: NOW, demo: true, viewer: pv(v) }, args as never), { kind: "agent", ...pv(v) }, g);
+        const text = JSON.stringify(out);
+        for (const x of forbidden(v)) expect(text, `${v} background ${tool} leaked ${x}: ${snip(text, x)}`).not.toContain(x);
+      }
+  }, 60_000);
+});
+
+// the same through runBackground itself: what the model is prompted with (needs Postgres, like lib/agent/runtime.test.ts)
+vi.mock("server-only", () => ({}));
+vi.mock("../agent/registry", async () => {
+  const { z } = await import("zod");
+  const { defineAgent } = await import("../agent/define");
+  const a = defineAgent({
+    name: "t-all", group: "understand", team: "eng", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
+    system: () => "test", tools: ["search", "ripple", "who_knows", "trace_decision", "bottleneck", "why_affected"], budget: { maxSteps: 4, maxTokens: 100_000 },
+  });
+  return { agents: () => [a], agent: (n: string) => (n === a.name ? a : undefined) };
+});
+describe.skipIf(!process.env.DATABASE_URL)("sentinel leak: runBackground prompts (Postgres)", () => {
+  t("the model is never prompted with a foreign sentinel", async () => {
+    const { runBackground } = await import("../agent/runtime");
+    const usage2 = (n: number) => ({ inputTokens: { total: n, noCache: n, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 2, text: 2, reasoning: undefined } });
+    const gen = (content: unknown[], unified: string) => ({ content, finishReason: { unified, raw: undefined }, usage: usage2(5), warnings: [] }) as never;
+    const calls = [
+      ["search", { text: "v1 sunset" }], ["ripple", { decisionId: "d-1", depth: 4 }], ["who_knows", { systemId: "api-v1" }],
+      ["trace_decision", { decisionId: "d-1" }], ["bottleneck", {}], ["why_affected", { decisionId: "d-1", teamId: "legal" }],
+    ] as const;
+    for (const v of VIEWERS) {
+      const model = new MockLanguageModelV4({
+        doGenerate: [
+          gen(calls.map(([toolName, input], i) => ({ type: "tool-call", toolCallId: `c${i}`, toolName, input: JSON.stringify(input) })), "tool-calls"),
+          gen([{ type: "text", text: JSON.stringify({ answer: "ok" }) }], "stop"),
+        ],
+      });
+      const r = await runBackground("t-all", {}, { g, now: NOW, org: { id: `perm-${randomUUID()}` }, viewer: { kind: "agent", ...pv(v) }, model });
+      expect(r.status).toBe("done");
+      const prompt = JSON.stringify(model.doGenerateCalls[1].prompt);
+      for (const x of forbidden(v)) expect(prompt, `${v} runBackground prompt leaked ${x}`).not.toContain(x);
+    }
+  }, 120_000);
 });
