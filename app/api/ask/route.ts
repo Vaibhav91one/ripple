@@ -4,6 +4,8 @@ import { runAgent } from "@/lib/agent/loop";
 import { pickModel } from "@/lib/llm";
 import { askEvents, askQuestion } from "@/lib/mock/ledgerly";
 import type { StreamEvent } from "@/lib/schemas";
+import type { Ctx } from "@/lib/agent/tools";
+import { env } from "@/lib/env";
 import { getContext } from "@/lib/server/context";
 
 // Node runtime is the default; `export const runtime` is rejected with cacheComponents.
@@ -20,6 +22,13 @@ function* fallback(question: string, reason: string): Generator<StreamEvent> {
   }
 }
 
+/** Signed-in org with Postgres: tools propose actions for approval. Everyone else gets none (write tools only describe). */
+function proposer(ctx: Awaited<ReturnType<typeof getContext>>): Ctx["propose"] {
+  if (ctx.readonly || ctx.viewer.kind !== "user" || !env().DATABASE_URL) return undefined;
+  const pc = { org: ctx.org, viewer: { kind: "user", id: ctx.viewer.userId } };
+  return async (kind, payload, evidence) => (await import("@/lib/actions/propose")).propose(pc, kind, payload, evidence);
+}
+
 async function* answer(question: string, req: Request): AsyncGenerator<StreamEvent> {
   const model = pickModel("agent");
   if (!model) return yield* fallback(question, "No model key is configured on this server.");
@@ -27,7 +36,7 @@ async function* answer(question: string, req: Request): AsyncGenerator<StreamEve
   try {
     const ctx = await getContext(req);
     // the agent has write tools (create_tasks, ack_brief) on the demo org, so it gets the writable graph
-    yield* runAgent({ model, question, g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, readonly: ctx.readonly, viewer: ctx.viewer, onUsage: spend, audit: ctx.audit });
+    yield* runAgent({ model, question, g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, readonly: ctx.readonly, viewer: ctx.viewer, onUsage: spend, audit: ctx.audit, propose: proposer(ctx) });
   } catch (e) {
     yield { type: "text_delta", text: `Ask failed: ${e instanceof Error ? e.message : String(e)}` };
     yield { type: "done" };

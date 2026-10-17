@@ -7,7 +7,7 @@ import type { AuditEvent } from "../audit";
 import type { Graph } from "../graph/client";
 import type { Source, StreamEvent } from "../schemas";
 import { redactToolOut, type PermViewer } from "../permissions/redact";
-import { templateText, TOOLS, type Row, type ToolName } from "./tools";
+import { templateText, TOOLS, type Ctx, type Row, type ToolName } from "./tools";
 
 export const SYSTEM = `You are Ripple's analyst for a company knowledge graph. Answer only from tool results.
 Call tools to find facts; you cannot write queries. Be concise (2-4 sentences).
@@ -28,11 +28,13 @@ export type LoopOpts = {
   maxSteps?: number;
   onUsage?: (tokens: number) => void;
   audit?: (ev: AuditEvent) => Promise<void>;
+  /** Signed-in orgs with Postgres: write tools propose instead of describing. */
+  propose?: Ctx["propose"];
 };
 
 export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   const returned = new Map<string, Source>(); // ids returned by tools this turn
-  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer };
+  const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer, propose: o.propose };
 
   const tools = Object.fromEntries(
     (Object.keys(TOOLS) as ToolName[]).map((name) => {

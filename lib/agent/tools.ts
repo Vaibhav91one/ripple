@@ -3,7 +3,6 @@ import { z } from "zod";
 import { roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import { claimsBody, claimsFor } from "../briefs";
-import { EXECUTORS } from "../actions/executors";
 import type { ActionKind } from "./define";
 import type { Source } from "../schemas";
 import type { RestrictedSummary } from "../schemas/common";
@@ -141,17 +140,20 @@ export const TOOLS = {
     },
   }),
   create_tasks: def({
-    description: "Propose one open Task (with a NOTIFIES edge) for every team the decision never reached. A person approves each proposal before it is created.",
+    description: "Propose one open Task (with a NOTIFIES edge) for every team the decision never reached. A person approves each proposal before it is created. Without an approver it only reports what it would create.",
     input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
     templates: ["ripple", "gap"],
-    run: async ({ g, now, demo, readonly, propose }, { decisionId }) => {
+    run: async ({ g, now, readonly, propose }, { decisionId }) => {
       if (readonly) throw new Error("demo_readonly");
-      if (!demo && !propose) throw new Error("create_tasks only runs on the demo graph");
       const r = await ripple(g, decisionId, now);
       const rows = r.gap.map((teamId) => ({ teamId, payload: { id: `task-${decisionId}-${teamId}`, teamId, decisionId, title: `Review: ${r.decision.title}`, body: claimsBody(claimsFor(r, teamId)) } }));
-      // Background runs propose. The interactive demo (no Postgres, no approver) applies the same executor inline.
-      const out = await Promise.all(rows.map(async ({ teamId, payload }) =>
-        propose ? { teamId, ...(await propose("create_task", payload, claimsFor(r, teamId))) } : { teamId, result: await EXECUTORS.create_task!(payload, { org: { id: "demo" }, now, writer: () => g }) }));
+      if (!propose) { // no approver (no Postgres): describe, never write
+        const c = load("task-preview");
+        const prev = rows.length ? await roQuery<{ teamId: string; owner: string | null; dueAt: number }>(g, c.text, { rows: rows.map((x) => ({ teamId: x.teamId, decisionId })), now }) : [];
+        const wouldCreate = rows.map(({ teamId, payload }) => ({ teamId, title: payload.title, owner: prev.find((p) => p.teamId === teamId)?.owner ?? null, dueAt: prev.find((p) => p.teamId === teamId)?.dueAt ?? null }));
+        return { rows: [{ proposed: false, reason: "approvals_unavailable", wouldCreate }], sources: [], cypher: [c] };
+      }
+      const out = await Promise.all(rows.map(async ({ teamId, payload }) => ({ teamId, ...(await propose("create_task", payload, claimsFor(r, teamId))) })));
       return { rows: out as Row[], sources: [], cypher: [] };
     },
   }),
