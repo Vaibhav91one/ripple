@@ -28,7 +28,7 @@ export function RefRow({ n, name, from, post, license, img, crop = "center", ski
           {from} · <a href={post} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-body">source</a> · {license}
         </p>
       </header>
-      <div className={`grid grid-cols-1 gap-4 ${wide ? "" : "lg:grid-cols-3"}`}>
+      <div className={`grid grid-cols-1 gap-4 ${wide ? "" : "lg:grid-cols-[1fr_2fr_2fr]"}`}>
         <div className={pane}>
           <p className={label}>Reference</p>
           {hasRef(img) ? (
