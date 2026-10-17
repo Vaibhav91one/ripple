@@ -1,29 +1,24 @@
 // Shared plumbing for the /api route handlers: graph lookup, 503 when FalkorDB is down, Zod-checked JSON.
 import { z } from "zod";
-import { graphFor, readOnly, roQuery, type Graph } from "../graph/client";
+import { roQuery } from "../graph/client";
 import { NotFound } from "../graph/queries";
-
-/** Read per request so tests can point at a temp graph with RIPPLE_GRAPH; the demo tenant is `demo`. */
-export const graphName = () => process.env.RIPPLE_GRAPH || "demo";
-/** Epoch seconds. RIPPLE_NOW (ISO) pins the clock so the seeded wait times stay put. */
-export const nowSecs = () => Math.floor((process.env.RIPPLE_NOW ? Date.parse(process.env.RIPPLE_NOW) : Date.now()) / 1000);
+import { getContext, type Context } from "./context";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
 export async function handle<S extends z.ZodType>(
   schema: S,
-  fn: (g: Graph, now: number) => Promise<unknown>,
-  write = false, // GET routes get a read-only graph; a route that changes state (POST /api/change) opts in
+  fn: (ctx: Context) => Promise<unknown>,
 ): Promise<Response> {
-  let g: Graph;
+  let ctx: Context;
   try {
-    g = await graphFor(graphName());
-    await roQuery(g, "RETURN 1");
+    ctx = await getContext();
+    await roQuery(ctx.graph, "RETURN 1");
   } catch {
     return json({ error: "graph_down" }, 503);
   }
   try {
-    return json(schema.parse(await fn(write ? g : readOnly(g), nowSecs())));
+    return json(schema.parse(await fn(ctx))); // a route that changes state (POST /api/change) calls ctx.writer()
   } catch (e) {
     if (e instanceof NotFound) return json({ error: "not_found", message: e.message }, 404);
     return json({ error: "internal", message: e instanceof Error ? e.message : String(e) }, 500);

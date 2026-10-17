@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { decodeAckToken } from "@/lib/ack-token";
-import { DEMO_GRAPH } from "@/lib/briefs";
-import { graphFor } from "@/lib/graph/client";
 import { recordAck } from "@/lib/notify";
+import { getContext } from "@/lib/server/context";
 
 const Body = z.object({ token: z.string().min(1), kind: z.enum(["seen", "concern", "not_relevant"]) });
 
@@ -15,7 +14,7 @@ export async function POST(req: Request) {
   if (t.state === "expired") return Response.json({ error: "token expired" }, { status: 410 });
   try {
     const { teamId, decisionId } = t.payload;
-    const { gap, by } = await recordAck(await graphFor(DEMO_GRAPH()), { teamId, decisionId, kind: body.data.kind });
+    const { gap, by } = await recordAck((await getContext(req)).writer(), { teamId, decisionId, kind: body.data.kind });
     return Response.json({ ack: { teamId, decisionId, kind: body.data.kind, by }, gap });
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 500 });

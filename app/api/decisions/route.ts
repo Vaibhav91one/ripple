@@ -4,4 +4,4 @@ import { handle } from "@/lib/server/route";
 import { Decision } from "@/lib/schemas";
 
 
-export const GET = () => handle(z.array(Decision), async (g) => (await decisions(g)).data);
+export const GET = () => handle(z.array(Decision), async ({ graph }) => (await decisions(graph)).data);

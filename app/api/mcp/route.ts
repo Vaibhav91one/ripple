@@ -1,18 +1,17 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { graphFor } from "@/lib/graph/client";
 import { createRippleServer } from "@/lib/mcp/server";
-import { graphName, nowSecs } from "@/lib/server/route";
+import { getContext, type Context } from "@/lib/server/context";
 
 // No LLM runs here (fixed Cypher tools only), so no Ask-style rate limit: an MCP client spends several requests per session.
 // Stateless Streamable HTTP: a fresh server + transport per request, JSON responses (no SSE, no sessions).
 export async function POST(req: Request): Promise<Response> {
-  let g;
+  let ctx: Context;
   try {
-    g = await graphFor(graphName());
+    ctx = await getContext(req);
   } catch {
     return Response.json({ error: "graph_down" }, { status: 503 });
   }
-  const server = createRippleServer({ g, now: nowSecs(), demo: true });
+  const server = createRippleServer({ g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo });
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
   return transport.handleRequest(req);

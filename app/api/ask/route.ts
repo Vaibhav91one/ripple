@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { allow, budgetLeft, spend } from "@/lib/agent/limits";
 import { runAgent } from "@/lib/agent/loop";
-import { graphFor } from "@/lib/graph/client";
 import { pickModel } from "@/lib/llm";
 import { askEvents, askQuestion } from "@/lib/mock/ledgerly";
 import type { StreamEvent } from "@/lib/schemas";
+import { getContext } from "@/lib/server/context";
 
 // Node runtime is the default; `export const runtime` is rejected with cacheComponents.
 
@@ -20,14 +20,14 @@ function* fallback(question: string, reason: string): Generator<StreamEvent> {
   }
 }
 
-async function* answer(question: string): AsyncGenerator<StreamEvent> {
+async function* answer(question: string, req: Request): AsyncGenerator<StreamEvent> {
   const model = pickModel("agent");
   if (!model) return yield* fallback(question, "No model key is configured on this server.");
   if (!budgetLeft()) return yield* fallback(question, "The daily token budget is used up.");
   try {
-    yield* runAgent({
-      model, question, g: await graphFor("demo"), now: Math.floor(Date.now() / 1000), demo: true, onUsage: spend,
-    });
+    const ctx = await getContext(req);
+    // the agent has write tools (create_tasks, ack_brief) on the demo org, so it gets the writable graph
+    yield* runAgent({ model, question, g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, onUsage: spend });
   } catch (e) {
     yield { type: "text_delta", text: `Ask failed: ${e instanceof Error ? e.message : String(e)}` };
     yield { type: "done" };
@@ -40,7 +40,7 @@ export async function POST(req: Request): Promise<Response> {
   const body = Body.safeParse(await req.json().catch(() => null));
   if (!body.success) return Response.json({ error: "Send {question: string}." }, { status: 400 });
 
-  const events = answer(body.data.question);
+  const events = answer(body.data.question, req);
   const enc = new TextEncoder();
   return new Response(
     new ReadableStream({

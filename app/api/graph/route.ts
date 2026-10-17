@@ -13,5 +13,5 @@ const Q = z.object({
 export function GET(req: Request) {
   const q = params(req, Q);
   if (bad(q)) return q;
-  return handle(GraphView, (g, now) => graphView(g, q.d, now, { team: q.team, kinds: q.kinds }));
+  return handle(GraphView, ({ graph, now }) => graphView(graph, q.d, now, { team: q.team, kinds: q.kinds }));
 }
