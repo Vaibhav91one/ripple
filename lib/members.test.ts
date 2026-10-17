@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 const authMock = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
 vi.mock("./graph/schema", () => ({ ensureSchema: async () => {} }));
+vi.mock("./graph/migrate", () => ({ migrateGraph: async () => [] })); // getContext migrates new org graphs (#165)
 vi.mock("./graph/client", () => ({ graphFor: async (n: string) => ({ name: n }), readOnly: (g: unknown) => g }));
 
 const url = process.env.DATABASE_URL;
