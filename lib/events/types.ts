@@ -21,6 +21,8 @@ export const RippleEvent = z.discriminatedUnion("type", [
   ev("change.spotted", { changeId: id }),
   ev("change.confirmed", { changeId: id }),
   ev("change.updated", { changeId: id }),
+  ev("impact.ready", { changeId: id, runId: id }),
+  ev("contract.added", { contractId: id }),
   ev("conflict.found", { changeId: id, conflictsWith: id }),
   ev("brief.sent", { briefId: id, userId: id }),
   ev("ack.recorded", { changeId: id, userId: id }),

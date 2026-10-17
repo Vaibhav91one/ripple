@@ -1,4 +1,5 @@
 // Agent tools = the Cypher templates. The model picks a tool and fills params; it never writes Cypher.
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
@@ -31,6 +32,7 @@ type Def<I extends z.ZodType> = {
 const def = <I extends z.ZodType>(d: Def<I>) => d;
 
 const QUOTE_LEN = 160;
+const STALE_DAYS = 90;
 /** Sources for artifact ids, quoting the start of the artifact text (always a verbatim substring). */
 async function sourcesFor(g: Graph, ids: string[]): Promise<{ sources: Source[]; cypher: Cypher }> {
   const c = load("artifact-text");
@@ -137,6 +139,87 @@ export const TOOLS = {
       const { nodes, rels } = w.data;
       const sources = dedupe(rels.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : [])));
       return { rows: [{ found: true, hops: rels.length, nodes, rels }], sources, cypher: w.cypher };
+    },
+  }),
+  edge_freshness: def({
+    description: "How recent (observed_at) and how sure (confidence) the ownership, contract and deal edges behind a decision's ripple are. Edges older than 90 days are flagged stale. Use it to set confidence and freshness in an impact report.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), depth: z.number().int().min(1).max(4).describe("Dependency hops, 1-4. Use 4 to include the deepest edges.") }),
+    templates: ["edge-freshness", "artifact-text"],
+    run: async ({ g, now }, { decisionId, depth }) => {
+      const c = load("edge-freshness");
+      const rows = await roQuery<{ id: string; rel: string; systemId: string; hop: number; observedAt: number | null; confidence: number; src: string | null }>(g, c.text, { id: decisionId, maxHops: depth });
+      if (!rows.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [c] };
+      const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
+      const out: Row[] = rows.map((r) => ({ ...r, stale: r.observedAt === null || r.observedAt < now - STALE_DAYS * 86400 }));
+      return { rows: out, sources: s.sources, cypher: [c, s.cypher] };
+    },
+  }),
+  contract_conflicts: def({
+    description: "Open conflicts between a decision and contract guarantees: severity, contracts involved, and the quotes (change side and contract side). Restricted to Legal.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["conflicts-list", "artifact-text"],
+    run: async ({ g }, { decisionId }) => {
+      const c = load("conflicts-list");
+      const rows = (await roQuery<{ id: string; severity: string; status: string; decisionId: string; contractIds: string[]; detectedAt: number; sources: string }>(g, c.text, { id: decisionId })).filter((k) => k.status === "open");
+      if (!rows.length) return { rows: [{ found: false, note: `No open contract conflict for decision ${decisionId}.` }], sources: [], cypher: [c] };
+      const srcs = rows.flatMap((k) => JSON.parse(k.sources) as Source[]);
+      const s = await sourcesFor(g, srcs.map((x) => x.artifactId));
+      const out: Row[] = rows.map(({ sources: _s, ...k }) => (void _s, k));
+      return { rows: out, sources: dedupe([...srcs, ...s.sources]), cypher: [c, s.cypher] };
+    },
+  }),
+  contract_clauses: def({
+    description: "The numbered clauses of one contract (number, title, text, risk, due date) with the contract document that holds them. Restricted to Legal: other viewers get a count only.",
+    input: z.object({ contractId: z.string().describe("Contract id, e.g. ctr-1") }),
+    templates: ["contract-clauses", "artifact-text"],
+    run: async ({ g }, { contractId }) => {
+      const c = load("contract-clauses");
+      const rows = await roQuery<{ src: string | null }>(g, c.text, { id: contractId });
+      if (!rows.length) return { rows: notInGraph(`contract ${contractId}`), sources: [], cypher: [c] };
+      const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
+      return { rows: rows as Row[], sources: s.sources, cypher: [c, s.cypher] };
+    },
+  }),
+  contract_renewals: def({
+    description: "Contracts that end within the next N days, with end date and notice period. Restricted to Legal.",
+    input: z.object({ withinDays: z.number().int().min(1).max(365).describe("Look-ahead window in days, e.g. 90") }),
+    templates: ["contract-renewals"],
+    run: async ({ g, now }, { withinDays }) => {
+      const c = load("contract-renewals");
+      const rows = await roQuery<Row>(g, c.text, { now, within: withinDays * 86400 });
+      return { rows: rows.length ? rows : [{ found: false, note: `No contract ends within ${withinDays} days.` }], sources: [], cypher: [c] };
+    },
+  }),
+  propose_draft: def({
+    description: "Propose a draft notice or amendment document for Legal to review. It is saved as a pending draft_doc that a person approves; nothing is sent to anyone.",
+    input: z.object({
+      kind: z.enum(["notice", "amendment"]),
+      contractId: z.string().describe("Contract id, e.g. ctr-1"),
+      decisionId: z.string().describe("Decision id the draft responds to, e.g. d-1"),
+      title: z.string().min(1),
+      body: z.string().min(1).describe("The full draft text, quoting the clause it responds to"),
+    }),
+    templates: [],
+    run: async ({ readonly, propose }, args) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      return { rows: [{ ...(await propose("draft_doc", args, args)) }], sources: [], cypher: [] };
+    },
+  }),
+  propose_task: def({
+    description: "Propose one open task for a team (for example Legal), for a person to approve before it exists.",
+    input: z.object({
+      teamId: z.string().describe("Team id, e.g. legal"),
+      decisionId: z.string().describe("Decision id the task is about, or the contract id for a renewal task"),
+      title: z.string().min(1),
+      body: z.string().describe("What to do and why, citing the clause"),
+    }),
+    templates: [],
+    run: async ({ readonly, propose }, a) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      const payload = { id: `task-${a.decisionId}-${a.teamId}-${createHash("sha1").update(a.title).digest("hex").slice(0, 6)}`, ...a };
+      return { rows: [{ teamId: a.teamId, ...(await propose("create_task", payload, a)) }], sources: [], cypher: [] };
     },
   }),
   create_tasks: def({

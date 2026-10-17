@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { defineAgent, type AgentDef } from "./define";
 import { agent, agents } from "./registry";
+import { TOOLS } from "./tools";
 
 const base: AgentDef = {
   name: "t", group: "ask", team: "eng", model: "reasoning", tools: ["search"], writes: [],
@@ -15,10 +16,14 @@ describe("defineAgent", () => {
 });
 
 describe("registry", () => {
-  it("lists ask with all 7 tools and no writes", () => {
+  it("lists ask with every tool and no writes", () => {
     expect(agents().map((a) => a.name)).toContain("ask");
-    expect(agent("ask")?.tools).toHaveLength(7);
+    expect(agent("ask")?.tools).toHaveLength(Object.keys(TOOLS).length);
     expect(agent("ask")?.writes).toEqual([]);
     expect(agent("missing")).toBeUndefined();
+  });
+  it("lists impact (read-only) and contract (drafts and tasks only)", () => {
+    expect(agent("impact")?.writes).toEqual([]);
+    expect(agent("contract")?.writes).toEqual(["draft_doc", "create_task"]);
   });
 });

@@ -24,6 +24,10 @@ function recipients(e: RippleEvent, g: GraphReader, slack: boolean): Hit[] {
       ];
     case "conflict.found":
       return [...hits([g.changeOwner(e.payload.changeId)], "change_owner", "high"), ...hits([g.changeOwner(e.payload.conflictsWith)], "conflicting_change_owner", "high")];
+    case "impact.ready":
+      return hits([g.changeOwner(e.payload.changeId)], "change_owner", "low");
+    case "contract.added":
+      return []; // Contract Sentinel reads it from the agent queue; nobody is notified
     case "brief.sent":
       return hits([e.payload.userId], "brief_recipient", "normal", !slack) // Slack DM when the org has Slack, email otherwise;
     case "ack.recorded":

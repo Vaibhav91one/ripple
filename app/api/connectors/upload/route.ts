@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { db } from "@/lib/db";
+import { env } from "@/lib/env";
+import { emit } from "@/lib/events/emit";
 import { MAX_BYTES } from "@/lib/ingest/parse";
 import { UPLOAD_TYPES, uploadFile } from "@/lib/ingest/upload";
 import { getContext } from "@/lib/server/context";
@@ -34,6 +37,9 @@ export async function POST(req: Request) {
       ? { name: file.name, ok: false, error: `"${file.name}" is over the 20MB limit.` }
       : await uploadFile({ name: file.name, buf: Buffer.from(await file.arrayBuffer()) }, f.data.type, f.data, { org: ctx.org, writer: ctx.writer, now: ctx.now }));
   }
+  // a new Contract node wakes the Contract Sentinel (worker route-event -> agent queue)
+  if (env().DATABASE_URL)
+    for (const r of results) if (r.ok && "contractId" in r && r.contractId) await emit(db(), { type: "contract.added", orgId: ctx.org.id, subject: { kind: "contract", id: r.contractId }, payload: { contractId: r.contractId }, dedupeKey: `contract.added:${r.contractId}` });
   await ctx.audit({ action: "connector.upload", resourceType: "connector", resourceId: "upload", meta: { type: f.data.type, files: files.length, ok: results.filter((r) => r.ok).length } });
   return Response.json({ results });
 }

@@ -18,5 +18,10 @@ export default async function routeEvent(jobs: Job<{ eventId: string; type: stri
     const [{ reader }, prefs] = await Promise.all([loadGraphReader(await graphFor(org?.graphName ?? row.orgId)), loadPrefsReader(row.orgId, d)]);
     const { stored } = await routeAndStore(d, event, row.id, { graph: reader, prefs, now: Math.floor(Date.now() / 1000), enqueue, slack: !!(await slackToken(row.orgId)) });
     console.log("[worker] route-event", event.type, row.id, `stored ${stored}`);
+    // agents triggered by this event type (Impact Analyst, Contract Sentinel): queue a run each. Their input schemas pick the keys they need.
+    const { agents } = await import("../../lib/agent/registry");
+    const p = event.payload as { changeId?: string; contractId?: string };
+    for (const a of agents().filter((x) => x.trigger.events?.includes(event.type)))
+      await enqueue("agent", { orgId: row.orgId, agent: a.name, trigger: `event:${event.type}`, input: { reason: event.type, decisionId: p.changeId ?? null, contractId: p.contractId ?? null } });
   }
 }
