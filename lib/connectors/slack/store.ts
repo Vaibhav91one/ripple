@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { connectorAccounts, teamChannels as teamChannelTable } from "../../db/schema";
+import { changeChannels, connectorAccounts, teamChannels as teamChannelTable } from "../../db/schema";
 
 export type SlackAccountRef = { id: string; orgId: string };
 export type SaveInstall = { orgId: string; teamId: string; tokenEnc: string; scopes: string[] };
@@ -38,4 +38,24 @@ export async function setTeamChannel(orgId: string, teamId: string, channelId: s
   if (!channelId) { await db().delete(teamChannelTable).where(and(eq(teamChannelTable.orgId, orgId), eq(teamChannelTable.teamId, teamId))); return; }
   await db().insert(teamChannelTable).values({ orgId, teamId, slackChannelId: channelId })
     .onConflictDoUpdate({ target: [teamChannelTable.orgId, teamChannelTable.teamId], set: { slackChannelId: channelId } });
+}
+
+/** The change's Slack channel id, from change_channel. */
+export async function channelForChange(orgId: string, changeId: string): Promise<string | null> {
+  const [r] = await db().select({ c: changeChannels.channelId }).from(changeChannels)
+    .where(and(eq(changeChannels.orgId, orgId), eq(changeChannels.changeId, changeId))).limit(1);
+  return r?.c ?? null;
+}
+
+/** The change a Slack channel belongs to (keyed by channel id, so it survives a rename). */
+export async function changeForChannel(orgId: string, channelId: string): Promise<string | null> {
+  const [r] = await db().select({ c: changeChannels.changeId }).from(changeChannels)
+    .where(and(eq(changeChannels.orgId, orgId), eq(changeChannels.channelId, channelId))).limit(1);
+  return r?.c ?? null;
+}
+
+/** Courier (#188) calls this when it creates a change's channel. */
+export async function setChangeChannel(i: { orgId: string; changeId: string; slackTeamId: string; channelId: string; name: string }): Promise<void> {
+  await db().insert(changeChannels).values(i)
+    .onConflictDoUpdate({ target: [changeChannels.orgId, changeChannels.changeId], set: { channelId: i.channelId, name: i.name, slackTeamId: i.slackTeamId } });
 }

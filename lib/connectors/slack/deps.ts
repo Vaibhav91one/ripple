@@ -12,10 +12,9 @@ import { getMember } from "../../members";
 import { safeMessage } from "../../log";
 import { slackClient } from "./client";
 import type { Deps, InboundJob } from "./interactive";
-import { slackToken } from "./store";
+import { changeForChannel, slackToken } from "./store";
+import { messageHook } from "./wire";
 
-/** Hook for the Slack evidence connector (#177): called for every `message` event. Replace the body there. */
-export const onMessageEvent: Deps["onMessageEvent"] = async () => {};
 
 const respond: Deps["respond"] = async (url, body) => {
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -29,7 +28,8 @@ export async function realDeps(job: InboundJob): Promise<Deps> {
   const slack = slackClient(decrypt(tokenEnc));
   const graph = () => graphFor(org?.graphName ?? job.orgId);
   return {
-    graph, slack, respond, onMessageEvent,
+    graph, slack, respond, onMessageEvent: messageHook({ graph, slack }),
+    changeForChannel: (c) => changeForChannel(job.orgId, c),
     async asker(slackUserId) {
       try {
         const email = (await slack.call<{ user: { profile?: { email?: string } } }>("users.info", { user: slackUserId })).user.profile?.email?.toLowerCase();

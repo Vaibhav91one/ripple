@@ -21,7 +21,9 @@ export type Deps = {
   ingest: (i: { source: "doc" | "message"; title: string; text: string; ref?: string }) => Promise<{ proposals: number; duplicate: boolean }>;
   /** Run Ask as this viewer. */
   ask: (question: string, g: Graph, viewer: PermViewer) => AsyncIterable<StreamEvent>;
-  /** Hook for #177: every `message` event. */
+  /** change_channel lookup: the change a Slack channel belongs to, null when there is no row. */
+  changeForChannel: (channelId: string) => Promise<string | null>;
+  /** Evidence from every `message` event (#177, wired in #199). */
   onMessageEvent: (p: MessageEventPayload) => Promise<void>;
 };
 
@@ -29,10 +31,13 @@ const ACK_KIND = { ack: "seen", concern: "concern", not_relevant: "not_relevant"
 const DONE = { ack: "Acknowledged", concern: "Concern raised", not_relevant: "Marked not relevant" } as const;
 const section = (text: string) => ({ type: "section", text: { type: "mrkdwn", text } });
 
-/** The bot sees a #chg-<id> channel as that change's room. Returns the change id when the channel is one and the change exists. */
-async function changeOfChannel(d: Deps, channel: string): Promise<string | undefined> {
-  const name = (await d.slack.call<{ channel: { name: string } }>("conversations.info", { channel }).catch(() => null))?.channel.name;
-  const id = name?.match(/^chg-(.+)$/)?.[1];
+/** The change whose room this channel is: the stored change_channel row, else (legacy, no row) a channel named chg-<id>. Only returns changes that exist. */
+export async function changeOfChannel(d: Deps, channel: string): Promise<string | undefined> {
+  let id = (await d.changeForChannel(channel)) ?? undefined;
+  if (!id) { // name fallback only when no row exists: names can be renamed, so a row always wins
+    const name = (await d.slack.call<{ channel: { name: string } }>("conversations.info", { channel }).catch(() => null))?.channel.name;
+    id = name?.match(/^chg-(.+)$/)?.[1];
+  }
   if (!id) return undefined;
   const { roQuery } = await import("../../graph/client");
   const rows = await roQuery<{ id: string }>(await d.graph(), "MATCH (d:Decision {id: $id}) RETURN d.id AS id", { id });

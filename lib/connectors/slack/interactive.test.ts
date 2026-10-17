@@ -50,6 +50,7 @@ function setup(over: Partial<Deps> = {}) {
     asker: async () => ({ personId: "p-clicker", viewer: { teamIds: ["eng"], role: "member" } }),
     ingest: async (i) => { ingested.push(i); return { proposals: 3, duplicate: false }; },
     ask: () => (async function* () { /* none */ })(),
+    changeForChannel: async () => null,
     onMessageEvent: vi.fn(async () => {}),
     ...over,
   };
