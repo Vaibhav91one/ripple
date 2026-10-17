@@ -52,7 +52,7 @@ export function ChangesList() {
                     <span className="block truncate text-strong">{x.title}</span>
                     <span className="block truncate text-xs text-faint">
                       {camp?.kind ?? "decision"} · {x.status === "superseded" ? "resolved" : x.status}
-                      {camp?.owner ? ` · owner ${names[camp.owner] ?? camp.owner}` : ""}
+                      {camp ? (camp.owner ? ` · owner ${names[camp.owner] ?? camp.owner}` : " · No owner yet") : ""}
                       {` · effective ${day(camp?.effectiveAt ?? x.decidedAt)}`}
                     </span>
                   </span>

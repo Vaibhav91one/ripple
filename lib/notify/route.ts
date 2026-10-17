@@ -39,6 +39,8 @@ function recipients(e: RippleEvent, g: GraphReader, slack: boolean): Hit[] {
       const lead = g.teamLead(e.payload.userId) ?? g.changeOwner(e.payload.changeId);
       return [...hits([lead], "escalation:96h", "high"), ...hits([e.payload.userId], "ack_reminder:96h", "high"), ...hits([g.changeOwner(e.payload.changeId)], "escalation_cc:96h", "low")];
     }
+    case "campaign.chase": // an approved chase: the team's owner hears it as urgent, the change owner is copied (inbox only)
+      return [...hits([g.teamLeadOf(e.payload.teamId)], "chase", "high"), ...hits([g.changeOwner(e.payload.changeId)], "chase_cc", "low")];
     case "task.assigned":
       return hits([e.payload.userId], "assignee", "normal");
     case "task.due":
@@ -133,7 +135,8 @@ export function route(event: RippleEvent, graph: GraphReader, prefs: PrefsReader
   return wanted.map((h) => {
     const pf = prefs.get(h.personId);
     const sendAt = h.urgency === "high" || !pf?.quietHours ? now : afterQuiet(now, pf.quietHours);
-    const dedupeKey = `${event.type}:${event.subject.id}:${h.personId}:${revision}`;
+    // every chase is its own message (the same team can be chased twice); other events are once per subject revision
+    const dedupeKey = event.type === "campaign.chase" ? `${event.dedupeKey}:${h.personId}:${h.reason}` : `${event.type}:${event.subject.id}:${h.personId}:${revision}`;
     return {
       personId: h.personId,
       reason: h.reason,

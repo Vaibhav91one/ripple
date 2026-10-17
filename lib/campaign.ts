@@ -28,7 +28,10 @@ export async function computeCampaign(ctx: Context, changeId: string): Promise<C
     roQuery<{ id: string; title: string; status: string; dueAt: number | null; teamId: string }>(g,
       "MATCH (k:Task) WHERE k.id STARTS WITH $prefix RETURN k.id AS id, k.title AS title, k.status AS status, k.dueAt AS dueAt, k.teamId AS teamId ORDER BY k.id", { prefix: `task-${changeId}-` }),
     roQuery<{ on: number }>(g, "MATCH (:Decision {id: $id})-[s:SUNSETS]->(:System) WHERE s.valid_to IS NULL RETURN s.on AS on LIMIT 1", { id: changeId }),
-    roQuery<{ kind: string | null; owner: string | null; at: number | null }>(g, "MATCH (c:Change {id: $id}) RETURN c.kind AS kind, c.owner AS owner, c.effective_at AS at", { id: changeId }),
+    // owner: the change's own, else the author of the document the sunset cites (seeded decisions have no owner property)
+    roQuery<{ kind: string | null; owner: string | null; at: number | null }>(g,
+      `MATCH (c:Change {id: $id}) OPTIONAL MATCH (c)-[s:SUNSETS]->(:System) WHERE s.valid_to IS NULL OPTIONAL MATCH (a:Artifact {id: s.src}) OPTIONAL MATCH (p:Person {id: a.author})
+       WITH c, head(collect(DISTINCT p.id)) AS au RETURN c.kind AS kind, coalesce(c.owner, au) AS owner, c.effective_at AS at`, { id: changeId }),
   ]);
   const teamOf = new Map(people.map((p) => [p.id, p.teamId]));
 
@@ -67,20 +70,3 @@ export async function computeCampaign(ctx: Context, changeId: string): Promise<C
   return { changeId, title: r.decision.title, kind: meta[0]?.kind ?? "decision", status: r.decision.status, owner: meta[0]?.owner ?? null, effectiveAt, channel, teams };
 }
 
-/** Pending actions about one change that the viewer may decide (same rule as Home's list). Empty without Postgres. */
-export async function changeApprovals(ctx: Context, changeId: string) {
-  const v = ctx.viewer;
-  if (v.kind !== "user" || !env().DATABASE_URL) return [];
-  const [{ and, desc, eq }, { db }, { pendingActions }, { OWNER_ROLE }] = await Promise.all([
-    import("drizzle-orm"), import("./db"), import("./db/schema"), import("./actions/executors"),
-  ]);
-  const rows = await db().select().from(pendingActions)
-    .where(and(eq(pendingActions.orgId, ctx.org.id), eq(pendingActions.status, "pending"))).orderBy(desc(pendingActions.requestedAt)).limit(100);
-  return rows
-    .filter((r) => (r.payload as { decisionId?: string } | null)?.decisionId === changeId)
-    .filter((r) => v.role === "admin" || v.role === (OWNER_ROLE as Record<string, string>)[r.kind])
-    .map((r) => {
-      const p = r.payload as { title?: string; teamId?: string };
-      return { id: r.id, kind: r.kind, requestedAt: r.requestedAt.toISOString(), summary: p.title ?? p.teamId ?? r.kind };
-    });
-}

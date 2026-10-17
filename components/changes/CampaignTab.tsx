@@ -38,7 +38,7 @@ function TeamCard({ t, changeId, name }: { t: CampaignTeam; changeId: string; na
   const [note, setNote] = useState<string | null>(null);
   const chase = useMutation({
     mutationFn: () => chaseTeam(changeId, t.teamId),
-    onSuccess: () => { setNote("Reminder proposed. Approve it in the Approvals tab."); void qc.invalidateQueries({ queryKey: ["change-approvals", changeId] }); },
+    onSuccess: () => { setNote("Reminder proposed. Approve it in the Approvals tab."); void qc.invalidateQueries({ queryKey: ["approvals"] }); },
     onError: (e) => setNote(e.message === "demo_readonly" ? "The shared demo is read-only." : `Could not propose a reminder: ${e.message.slice(0, 80)}`),
   });
   const openTasks = t.tasks.filter((k) => k.status !== "done").length;

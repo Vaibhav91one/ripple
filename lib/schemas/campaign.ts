@@ -31,6 +31,3 @@ export const Campaign = z.object({
 export type Campaign = z.infer<typeof Campaign>;
 export type CampaignTeam = z.infer<typeof CampaignTeam>;
 
-/** A pending action tied to one change (payload.decisionId). */
-export const ChangeApproval = z.object({ id: z.string(), kind: z.string(), requestedAt: z.string(), summary: z.string() });
-export type ChangeApproval = z.infer<typeof ChangeApproval>;

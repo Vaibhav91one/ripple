@@ -94,10 +94,23 @@ export async function createIssue(e: GithubEnv, title: string, body: string): Pr
   }
 }
 
+export const SendReminder = z.object({ decisionId: z.string().min(1), teamId: z.string().min(1), title: z.string().optional() });
+
 export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: ActionCtx) => Promise<unknown>>> = {
   create_task: async (payload, { writer, now }) =>
     query(writer(), load("create-tasks").text, { rows: [CreateTask.parse(payload)], now }),
   draft_doc: async (payload, ctx) => saveDraft(payload, ctx),
+  // Approved chase: one campaign.chase event; the notification engine routes it to the team owner (CC the change owner) and delivers it.
+  send_reminder: async (payload, { org, approver, now }) => {
+    const p = SendReminder.parse(payload);
+    const [{ db }, { emit }] = await Promise.all([import("../db"), import("../events/emit")]);
+    const r = await emit(db(), {
+      type: "campaign.chase", orgId: org.id, subject: { kind: "change", id: p.decisionId },
+      payload: { changeId: p.decisionId, teamId: p.teamId, by: approver ?? "unknown" },
+      dedupeKey: `campaign.chase:${org.id}:${p.decisionId}:${p.teamId}:${now}`,
+    });
+    return { emitted: r.inserted, changeId: p.decisionId, teamId: p.teamId };
+  },
   access_request: async (payload, ctx) => openAccessRequest(payload, ctx),
   create_issue: async (payload) => {
     const { title, body } = CreateIssue.parse(payload);
@@ -135,5 +148,5 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
 
 /** Who may approve each kind besides an admin. */
 export const OWNER_ROLE: Record<ActionKind, "lead" | "change_owner"> = {
-  create_task: "lead", create_issue: "lead", graph_merge: "change_owner", send_slack: "lead", send_email: "lead", pr_comment: "lead", access_request: "lead", draft_doc: "lead",
+  create_task: "lead", create_issue: "lead", graph_merge: "change_owner", send_slack: "lead", send_email: "lead", pr_comment: "lead", access_request: "lead", draft_doc: "lead", send_reminder: "lead",
 };

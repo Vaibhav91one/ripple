@@ -12,7 +12,7 @@ const url = process.env.DATABASE_URL;
 
 const graph: GraphReader = {
   changeOwner: () => null, teamOwners: () => [], systemOwners: () => [], acknowledgers: () => [], taskAssignees: () => [],
-  teamLead: () => null, resourceOwners: () => [], prOwners: () => [], digestRecipients: () => [], revision: () => "0",
+  teamLead: () => null, teamLeadOf: () => null, resourceOwners: () => [], prOwners: () => [], digestRecipients: () => [], revision: () => "0",
 };
 const prefsOf = (p: Record<string, Prefs> = {}): PrefsReader => ({ get: (id) => p[id] });
 const NOW = 900 * 1_990_000; // start of a 15-minute batch bucket

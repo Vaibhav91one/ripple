@@ -2,7 +2,7 @@
 import type { z } from "zod";
 import { TOOLS, type ToolName } from "./tools";
 
-export const ACTION_KINDS = ["graph_merge", "send_slack", "send_email", "pr_comment", "create_task", "create_issue", "access_request", "draft_doc"] as const;
+export const ACTION_KINDS = ["graph_merge", "send_slack", "send_email", "pr_comment", "create_task", "create_issue", "access_request", "draft_doc", "send_reminder"] as const;
 export type ActionKind = (typeof ACTION_KINDS)[number];
 export type AgentGroup = "sense" | "understand" | "act" | "ask";
 export type AgentCtx = { now: number };

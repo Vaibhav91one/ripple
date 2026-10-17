@@ -39,7 +39,7 @@ describe("merge order: person, then org, then system", () => {
 
 describe("snapshotReader feeds route()", () => {
   const g = (over: Partial<GraphReader> = {}): GraphReader => ({
-    changeOwner: () => null, teamOwners: () => [], systemOwners: () => [], acknowledgers: () => [], taskAssignees: () => [], teamLead: () => null,
+    changeOwner: () => null, teamOwners: () => [], systemOwners: () => [], acknowledgers: () => [], taskAssignees: () => [], teamLead: () => null, teamLeadOf: () => null,
     resourceOwners: () => [], prOwners: () => [], digestRecipients: () => ["p1", "p2"], revision: () => "0", ...over,
   });
   const brief = { id: "e1", orgId: "o", type: "brief.sent", subject: { kind: "brief", id: "b" }, payload: { briefId: "b", userId: "p1" }, occurredAt: 0 } as never;

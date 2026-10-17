@@ -43,6 +43,7 @@ const graph: GraphReader = {
     const lead = p && leadOf(p.teamId);
     return lead && lead !== id ? lead : null;
   },
+  teamLeadOf: (t) => leadOf(t) ?? null,
   resourceOwners: (r) => (r === "auth-service" ? ["p-lena"] : []),
   prOwners: (url) => (url.includes("/ledgerly/api/") ? ["p-kenji", "p-lena"] : []),
   digestRecipients: () => ["p-priya", "p-ana", "p-vera"],
@@ -118,6 +119,11 @@ const table: Row[] = [
   ["brief.sent: the recipient", ev("brief.sent", { briefId: "b1", userId: "p-tomas" }), [["p-tomas", "normal", ["email", "inbox"], "brief_recipient"]]],
   ["ack.recorded: change owner, low, inbox only", ev("ack.recorded", { changeId: "c1", userId: "p-ana" }), [["p-priya", "low", INBOX, "change_owner"]]],
   ["ack.missing_48h: the person, normal", ev("ack.missing_48h", { changeId: "c1", userId: "p-tomas" }), [["p-tomas", "normal", DM, "ack_reminder:48h"]]],
+  [
+    "campaign.chase: the team lead hears it high, the change owner is copied (inbox)",
+    ev("campaign.chase", { changeId: "c1", teamId: "support", by: "u1" }),
+    [["p-ana", "high", HIGH, "chase"], ["p-priya", "low", INBOX, "chase_cc"]],
+  ],
   [
     "ack.missing_96h: escalates to the team lead, person also high",
     ev("ack.missing_96h", { changeId: "c1", userId: "p-tomas" }),

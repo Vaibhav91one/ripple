@@ -5,7 +5,7 @@ import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
 import { ConflictDetail, type Choice } from "@/components/panels/ConflictDetail";
 import { LoadingBlock } from "@/components/states/States";
-import { getChangeApprovals, getChanges, getNames } from "@/lib/api";
+import { getChanges, getNames } from "@/lib/api";
 import { describeEdge } from "@/lib/changes";
 import type { EdgeType, RippleResult } from "@/lib/schemas";
 import { filterChanges, nameOf as nameFrom, typeCounts } from "./helpers";
@@ -33,24 +33,6 @@ export function ConflictsTab({ data }: { data: RippleResult }) {
         </div>
       ))}
     </div>
-  );
-}
-
-/** This change's pending actions. #203's approvals screen owns deciding; until it lands this is a list. */
-export function ApprovalsTab({ changeId }: { changeId: string }) {
-  const { data, isPending } = useQuery({ queryKey: ["change-approvals", changeId], queryFn: () => getChangeApprovals(changeId) });
-  if (isPending) return <LoadingBlock label="Loading approvals" />;
-  if (!data?.length) return empty("Nothing is waiting for approval on this change.");
-  return (
-    <ul className="divide-y divide-hairline overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
-      {data.map((a) => (
-        <li key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm">
-          <span className="rounded-md bg-raised px-1.5 py-0.5 font-mono text-xs text-body">{a.kind}</span>
-          <span className="min-w-0 flex-1 truncate text-strong">{a.summary}</span>
-          <span className="shrink-0 text-xs text-faint">{day(Math.floor(Date.parse(a.requestedAt) / 1000))}</span>
-        </li>
-      ))}
-    </ul>
   );
 }
 

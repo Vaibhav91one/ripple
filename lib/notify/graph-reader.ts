@@ -25,6 +25,7 @@ export function snapshotGraphReader(s: Snapshot): GraphReader {
     changeOwner: (id) => { const o = change.get(id)?.owner; return o && person.has(o) ? o : null; },
     // gap = teams owning a touched system that have not acknowledged
     teamOwners: (id) => { const acked = ackedTeams(id); return uniq((change.get(id)?.systems ?? []).flatMap(ownersOf).filter((t) => !acked.has(t)).map(leadOf)); },
+    teamLeadOf: (teamId) => leadOf(teamId),
     systemOwners: (id) => uniq((change.get(id)?.systems ?? []).flatMap(ownersOf).map(leadOf)),
     acknowledgers: (id) => uniq(s.acks.filter((a) => a.changeId === id).map((a) => a.by)),
     taskAssignees: (id) => uniq([s.tasks.find((t) => t.id === id)?.assigneeId]),
@@ -43,7 +44,9 @@ export async function loadSnapshot(g: Graph): Promise<Snapshot> {
     roQuery<Snapshot["changes"][number]>(g,
       `MATCH (c) WHERE c:Change OR c:Decision
        OPTIONAL MATCH (c)-[r:AFFECTED|SUNSETS]->(s:System) WHERE r.valid_to IS NULL
-       RETURN c.id AS id, c.owner AS owner, collect(DISTINCT s.id) AS systems,
+       OPTIONAL MATCH (a:Artifact {id: r.src})
+       WITH c, collect(DISTINCT s.id) AS systems, head(collect(DISTINCT a.author)) AS au
+       RETURN c.id AS id, coalesce(c.owner, au) AS owner, systems,
          coalesce(c.status, '') + ':' + toString(coalesce(c.effective_at, 0)) AS revision`),
     roQuery<Snapshot["acks"][number]>(g, "MATCH (t:Team)-[a:ACKED]->(d) RETURN d.id AS changeId, t.id AS teamId, a.by AS by"),
     roQuery<Snapshot["owns"][number]>(g, "MATCH (t:Team)-[:OWNS]->(s:System) RETURN t.id AS teamId, s.id AS systemId"),

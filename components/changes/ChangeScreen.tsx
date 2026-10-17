@@ -11,7 +11,8 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, NotFoundBlock } from "@/components/states/States";
 import { UnderlineTabs } from "@/components/kit/refs/sakani/underline-tabs";
 import { getCampaign, getNames, getRipple, isGraphDown } from "@/lib/api";
-import { ActivityTab, ApprovalsTab, ConflictsTab } from "./ChangeTabs";
+import { ApprovalsScreen } from "@/components/approvals/ApprovalsScreen";
+import { ActivityTab, ConflictsTab } from "./ChangeTabs";
 import { CampaignTab } from "./CampaignTab";
 
 const TABS = ["impact", "conflicts", "campaign", "approvals", "activity"] as const;
@@ -55,7 +56,7 @@ export function ChangeScreen() {
         {active === "impact" && <RippleHome />}
         {active === "conflicts" && <ConflictsTab data={data} />}
         {active === "campaign" && (campaign.data ? <CampaignTab c={campaign.data} name={name} /> : <p className="text-sm text-faint">{campaign.isPending ? "Loading campaign…" : "The campaign could not be loaded."}</p>)}
-        {active === "approvals" && <ApprovalsTab changeId={id} />}
+        {active === "approvals" && <ApprovalsScreen changeId={id} />}
         {active === "activity" && <ActivityTab nodeIds={new Set(data.nodes.map((n) => n.id))} />}
       </div>
     </div>

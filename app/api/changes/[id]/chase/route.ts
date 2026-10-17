@@ -4,7 +4,7 @@ import { handle } from "@/lib/server/route";
 
 const Body = z.object({ teamId: z.string().min(1) });
 
-/** Chase a team: propose a Slack reminder for the change. Nothing is sent until someone approves it (Approvals tab). */
+/** Chase a team: propose a reminder (send_reminder) for the change. Nothing is sent until someone approves it (Approvals tab). */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const body = Body.safeParse(await req.json().catch(() => null));
@@ -16,8 +16,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { propose } = await import("@/lib/actions/propose");
     return propose(
       { org: c.org, viewer: { kind: c.viewer.kind, id: c.viewer.kind === "user" ? c.viewer.userId : undefined } },
-      "send_slack",
-      { decisionId: id, teamId, title: `Reminder: ${r.decision.title}`, text: `Reminder for ${teamId}: please acknowledge "${r.decision.title}".` },
+      "send_reminder",
+      { decisionId: id, teamId, title: `Chase ${teamId}: ${r.decision.title}` },
     );
   }, { action: "chase", resourceId: id });
 }
