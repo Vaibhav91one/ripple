@@ -1,6 +1,7 @@
 // Graph writes for connector proposals. One writer, used by the sync runner (structured) and the graph_merge executor (approved).
 import { query, type Graph } from "../graph/client";
 import { detectConflicts } from "../graph/queries";
+import { WEIGHTED } from "../graph/schema";
 import { GraphProposal } from "./define";
 
 /** Writes that can start or end a sunset-vs-guarantee conflict. */
@@ -33,7 +34,8 @@ async function write(g: Graph, p: ReturnType<typeof GraphProposal.parse>, now: n
   const [have] = await query<{ na: number; nb: number }>(g, `OPTIONAL MATCH (a:${p.from.label} {id: $a}) OPTIONAL MATCH (b:${p.to.label} {id: $b}) RETURN count(a) AS na, count(b) AS nb`, { a: p.from.id, b: p.to.id });
   if (!have.na) return { applied: false, reason: "missing_endpoint", missing: p.from };
   if (!have.nb) return { applied: false, reason: "missing_endpoint", missing: p.to };
-  if (p.op === "merge_edge") await query(g, `${match} MERGE (a)-[r:${p.type}]->(b) SET r += $props, r.valid_from = coalesce(r.valid_from, $now), r.src = $src, r.endedAt = null, r.valid_to = null, r.updatedAt = $now`, params);
+  const weight = WEIGHTED.has(p.type) ? ", r.weight = coalesce($props.weight, r.weight, 1)" : ""; // after `+=`, so a proposal may set its own weight
+  if (p.op === "merge_edge") await query(g, `${match} MERGE (a)-[r:${p.type}]->(b) SET r += $props, r.valid_from = coalesce(r.valid_from, $now), r.src = $src, r.endedAt = null, r.valid_to = null, r.updatedAt = $now${weight}`, params);
   else await query(g, `${match} MATCH (a)-[r:${p.type}]->(b) WHERE r.endedAt IS NULL SET r.endedAt = $now, r.valid_to = $now`, params);
   return { applied: true };
 }

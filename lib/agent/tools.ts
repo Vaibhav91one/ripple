@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { roQuery, type Graph } from "../graph/client";
-import { bottleneck, decisions, load, NotFound, ripple, search, whoKnows, whyAffected, type Cypher } from "../graph/queries";
+import { bottleneck, decisions, load, NotFound, ripple, search, weightedPath, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import { claimsBody, claimsFor } from "../briefs";
 import type { ActionKind } from "./define";
 import type { Source } from "../schemas";
@@ -33,6 +33,11 @@ type Def<I extends z.ZodType> = {
   run: (ctx: Ctx, args: z.infer<I>) => Promise<ToolOut>;
 };
 const def = <I extends z.ZodType>(d: Def<I>) => d;
+
+/** Every list-returning tool takes this: 1..20, default 10. Zod caps it; the Cypher templates enforce it with LIMIT $limit. */
+export const MAX_LIMIT = 20;
+export const DEFAULT_LIMIT = 10;
+const Limit = z.number().int().min(1).max(MAX_LIMIT).optional().describe(`Most rows to return (1-${MAX_LIMIT}, default ${DEFAULT_LIMIT})`);
 
 const QUOTE_LEN = 160;
 const STALE_DAYS = 90;
@@ -77,10 +82,10 @@ async function accessGap(g: Graph, now: number, decisionId: string) {
 export const TOOLS = {
   search: def({
     description: "Full-text search over documents, tickets, messages and PRs. Use for open-ended questions.",
-    input: z.object({ text: z.string().min(1).describe("Search words") }),
+    input: z.object({ text: z.string().min(1).describe("Search words"), limit: Limit }),
     templates: ["search", "artifact-text"],
-    run: async ({ g }, { text }) => {
-      const hits = await search(g, text);
+    run: async ({ g }, { text, limit = DEFAULT_LIMIT }) => {
+      const hits = await search(g, text, limit);
       const s = await sourcesFor(g, hits.data.map((h) => h.id));
       return { rows: hits.data.length ? hits.data : notInGraph(`"${text}"`), sources: s.sources, cypher: [...hits.cypher, s.cypher] };
     },
@@ -106,10 +111,10 @@ export const TOOLS = {
   }),
   who_knows: def({
     description: "Top active people who know a system best (authored/reviewed PRs, handled tickets), with the evidence artifacts.",
-    input: z.object({ systemId: z.string().describe("System id, e.g. api-v1 or auth-service") }),
+    input: z.object({ systemId: z.string().describe("System id, e.g. api-v1 or auth-service"), limit: Limit }),
     templates: ["who-knows", "artifact-text"],
-    run: async ({ g }, { systemId }) => {
-      const w = await whoKnows(g, systemId);
+    run: async ({ g }, { systemId, limit = DEFAULT_LIMIT }) => {
+      const w = await whoKnows(g, systemId, limit);
       if (!w.data.length) return { rows: await unknownSystem(g, systemId), sources: [], cypher: [...w.cypher, load("systems")] };
       const s = await sourcesFor(g, w.data.flatMap((p) => p.evidence).slice(0, 25));
       return { rows: w.data, sources: s.sources, cypher: [...w.cypher, s.cypher] };
@@ -190,11 +195,11 @@ export const TOOLS = {
   }),
   contract_clauses: def({
     description: "The numbered clauses of one contract (number, title, text, risk, due date) with the contract document that holds them. Restricted to Legal: other viewers get a count only.",
-    input: z.object({ contractId: z.string().describe("Contract id, e.g. ctr-1") }),
+    input: z.object({ contractId: z.string().describe("Contract id, e.g. ctr-1"), limit: Limit }),
     templates: ["contract-clauses", "artifact-text"],
-    run: async ({ g }, { contractId }) => {
+    run: async ({ g }, { contractId, limit = DEFAULT_LIMIT }) => {
       const c = load("contract-clauses");
-      const rows = await roQuery<{ src: string | null }>(g, c.text, { id: contractId });
+      const rows = await roQuery<{ src: string | null }>(g, c.text, { id: contractId, limit });
       if (!rows.length) return { rows: notInGraph(`contract ${contractId}`), sources: [], cypher: [c] };
       const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
       return { rows: rows as Row[], sources: s.sources, cypher: [c, s.cypher] };
@@ -202,11 +207,11 @@ export const TOOLS = {
   }),
   contract_renewals: def({
     description: "Contracts that end within the next N days, with end date and notice period. Restricted to Legal.",
-    input: z.object({ withinDays: z.number().int().min(1).max(365).describe("Look-ahead window in days, e.g. 90") }),
+    input: z.object({ withinDays: z.number().int().min(1).max(365).describe("Look-ahead window in days, e.g. 90"), limit: Limit }),
     templates: ["contract-renewals"],
-    run: async ({ g, now }, { withinDays }) => {
+    run: async ({ g, now }, { withinDays, limit = DEFAULT_LIMIT }) => {
       const c = load("contract-renewals");
-      const rows = await roQuery<Row>(g, c.text, { now, within: withinDays * 86400 });
+      const rows = await roQuery<Row>(g, c.text, { now, within: withinDays * 86400, limit });
       return { rows: rows.length ? rows : [{ found: false, note: `No contract ends within ${withinDays} days.` }], sources: [], cypher: [c] };
     },
   }),
@@ -246,24 +251,24 @@ export const TOOLS = {
   }),
   deals_at_risk: def({
     description: "Open deals in a decision's ripple: amount, stage, and the verbatim PROMISED quote (what Sales told the customer). Restricted to Sales: other viewers get a count.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
     templates: ["deals-at-risk"],
-    run: async ({ g }, { decisionId }) => {
+    run: async ({ g }, { decisionId, limit = DEFAULT_LIMIT }) => {
       if (!(await decisions(g)).data.some((d) => d.id === decisionId)) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
       const c = load("deals-at-risk");
-      const rows = await roQuery<Row & { src: string | null; quote: string | null }>(g, c.text, { id: decisionId });
+      const rows = await roQuery<Row & { src: string | null; quote: string | null }>(g, c.text, { id: decisionId, limit });
       return { rows: rows.length ? rows : [{ found: false, note: `No open deal promised a system decision ${decisionId} touches.` }], sources: dedupe(rows.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : []))), cypher: [c] };
     },
   }),
   customer_usage: def({
     description: "Customers that use the systems a decision touches, ranked by usage (calls in the last 30 days, last seen) then ARR. ARR is only shown to Sales.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
     templates: ["customer-usage", "artifact-text"],
-    run: async ({ g, now }, { decisionId }) => {
+    run: async ({ g, now }, { decisionId, limit = DEFAULT_LIMIT }) => {
       const known = (await decisions(g)).data;
       if (!known.some((d) => d.id === decisionId)) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
       const c = load("customer-usage");
-      const rows = await roQuery<Row & { src: string | null }>(g, c.text, { id: decisionId });
+      const rows = await roQuery<Row & { src: string | null }>(g, c.text, { id: decisionId, limit });
       if (!rows.length) return { rows: [{ found: false, note: `No customer is recorded as using a system decision ${decisionId} touches.` }], sources: [], cypher: [c] };
       const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
       return { rows: rows.map(({ src: _s, ...r }) => (void _s, { ...r, stale: typeof r.lastSeen !== "number" || r.lastSeen < now - STALE_DAYS * 86400 })), sources: s.sources, cypher: [c, s.cypher] };
@@ -271,14 +276,14 @@ export const TOOLS = {
   }),
   access_gap: def({
     description: "For a change: the people in the affected teams who lack software or an access group its systems REQUIRE. status missing = fresh identity data and not held; unknown = identity data older than 90 days or none, so do not request on it. Also returns the change's date and sentence for the justification.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
     templates: ["ripple", "access-gap", "access-change", "artifact-text"],
-    run: async ({ g, now }, { decisionId }) => {
+    run: async ({ g, now }, { decisionId, limit = DEFAULT_LIMIT }) => {
       const a = await accessGap(g, now, decisionId);
       if (!a) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
       const s = await sourcesFor(g, a.change?.src ? [a.change.src] : []);
       if (!a.checked) return { rows: [{ found: false, note: `No system decision ${decisionId} touches REQUIRES software or an access group, or no one in the affected teams was found.` }], sources: s.sources, cypher: [...a.cypher, s.cypher] };
-      const rows: Row[] = [{ change: a.change, checked: a.checked, missing: a.gaps.filter((x) => x.status === "missing").length, unknown: a.gaps.filter((x) => x.status === "unknown").length }, ...a.gaps];
+      const rows: Row[] = [{ change: a.change, checked: a.checked, missing: a.gaps.filter((x) => x.status === "missing").length, unknown: a.gaps.filter((x) => x.status === "unknown").length }, ...a.gaps.slice(0, limit)]; // counts above are totals; rows are capped
       return { rows, sources: dedupe([...(a.change?.src && a.change.quote ? [{ artifactId: a.change.src, quote: a.change.quote }] : []), ...s.sources]), cypher: [...a.cypher, s.cypher] };
     },
   }),
@@ -330,11 +335,11 @@ export const TOOLS = {
   // ---- team specialists (#189): Docs, Security, Support, Decision Advisor ----
   docs_pages: def({
     description: "Docs pages that describe the sunset system (path, 30-day views, thumbs-down) for a decision, most viewed first, with the source of the sunset. Coarse: the graph has no page-to-system edge, so these are the pages flagged as v1 docs.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
     templates: ["docs-pages", "artifact-text"],
-    run: async ({ g }, { decisionId }) => {
+    run: async ({ g }, { decisionId, limit = DEFAULT_LIMIT }) => {
       const c = load("docs-pages");
-      const rows = await roQuery<{ src: string | null }>(g, c.text, { id: decisionId });
+      const rows = await roQuery<{ src: string | null }>(g, c.text, { id: decisionId, limit });
       if (!rows.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [c] };
       const s = await sourcesFor(g, rows.flatMap((r) => (r.src ? [r.src] : [])));
       return { rows: rows as Row[], sources: s.sources, cypher: [c, s.cypher] };
@@ -342,24 +347,24 @@ export const TOOLS = {
   }),
   affected_controls: def({
     description: "Security controls (SOC 2 / ISO 27001) and open findings tied to a decision: control status and audit-blocking flag, finding severity, status and SLA. Restricted to Security: other viewers get counts only. Coarse for controls (no control-to-system edge): the v1-related controls.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
     templates: ["controls-affected", "findings-affected", "artifact-text"],
-    run: async ({ g }, { decisionId }) => {
+    run: async ({ g }, { decisionId, limit = DEFAULT_LIMIT }) => {
       const cc = load("controls-affected");
       const fc = load("findings-affected");
       const [controls, findings] = await Promise.all([roQuery<Row>(g, cc.text, { id: decisionId }), roQuery<{ src: string | null }>(g, fc.text, { id: decisionId })]);
       if (!controls.length && !findings.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [cc, fc] };
       const s = await sourcesFor(g, findings.flatMap((r) => (r.src ? [r.src] : [])));
-      return { rows: [...controls, ...findings] as Row[], sources: s.sources, cypher: [cc, fc, s.cypher] };
+      return { rows: [...controls.slice(0, limit), ...findings.slice(0, limit)] as Row[], sources: s.sources, cypher: [cc, fc, s.cypher] };
     },
   }),
   affected_tickets: def({
     description: "Open tickets about the system a decision sunsets (or systems that depend on it), with the customer who raised each. Quotes come from the ticket text. Customer ARR is never included.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
     templates: ["support-tickets", "artifact-text"],
-    run: async ({ g }, { decisionId }) => {
+    run: async ({ g }, { decisionId, limit = DEFAULT_LIMIT }) => {
       const c = load("support-tickets");
-      const rows = await roQuery<{ id: string }>(g, c.text, { id: decisionId });
+      const rows = await roQuery<{ id: string }>(g, c.text, { id: decisionId, limit });
       if (!rows.length) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [c] };
       const s = await sourcesFor(g, rows.map((r) => r.id));
       return { rows: rows as Row[], sources: s.sources, cypher: [c, s.cypher] };
@@ -420,6 +425,42 @@ export const TOOLS = {
       }
       const out = await Promise.all(rows.map(async ({ teamId, payload }) => ({ teamId, ...(await propose("create_task", payload, claimsFor(r, teamId))) })));
       return { rows: out as Row[], sources: [], cypher: [] };
+    },
+  }),
+  // ---- graph algorithms (#212): FalkorDB 6.0.2 built-ins as tools. Docs: https://docs.falkordb.com/algorithms/ ----
+  critical_systems: def({
+    description: "Systems ranked by how much depends on them (PageRank over DEPENDS_ON), with live link counts: which systems would hurt most if changed. Use it for 'what is most critical' or to pick where to look first.",
+    input: z.object({ limit: Limit }),
+    templates: ["critical-systems"],
+    run: async ({ g }, { limit = DEFAULT_LIMIT }) => {
+      const c = load("critical-systems");
+      const rows = await roQuery<{ score: number }>(g, c.text, { limit });
+      return { rows: rows.length ? rows.map((r) => ({ ...r, score: Math.round(r.score * 1e4) / 1e4 })) : notInGraph("any system dependency"), sources: [], cypher: [c] };
+    },
+  }),
+  team_clusters: def({
+    description: "Groups of teams that share systems, contracts or deals (connected components): which teams change together, so a notice or channel should cover them as one group. Returns each group's teams and shared systems, with contract and deal counts.",
+    input: z.object({ limit: Limit }),
+    templates: ["team-clusters"],
+    run: async ({ g }, { limit = DEFAULT_LIMIT }) => {
+      const c = load("team-clusters");
+      const rows = await roQuery<Row>(g, c.text, { limit });
+      return { rows: rows.length ? rows : notInGraph("any team sharing a system"), sources: [], cypher: [c] };
+    },
+  }),
+  weighted_path: def({
+    description: "The cheapest path of evidence from a decision to one team, using edge weight (default 1, so it equals why_affected until weights differ). Returns the total weight, hops and the source quote on each hop.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), teamId: z.string().describe("Team id, e.g. legal") }),
+    templates: ["weighted-path", "artifact-text"],
+    run: async ({ g }, { decisionId, teamId }) => {
+      const w = await weightedPath(g, decisionId, teamId);
+      if (!w.data) {
+        if (!(await decisions(g)).data.some((d) => d.id === decisionId)) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: w.cypher };
+        return { rows: [{ found: false, note: `No weighted path from decision ${decisionId} to team ${teamId} in the graph.` }], sources: [], cypher: w.cypher };
+      }
+      const { weight, nodes, rels } = w.data;
+      const sources = dedupe(rels.flatMap((r) => (r.src && r.quote ? [{ artifactId: r.src, quote: r.quote }] : [])));
+      return { rows: [{ found: true, weight, hops: rels.length, nodes, rels }], sources, cypher: w.cypher };
     },
   }),
   list_decisions: def({

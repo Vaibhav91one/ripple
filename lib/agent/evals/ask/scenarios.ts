@@ -23,6 +23,12 @@ export const askScenarios: Scenario[] = [
     "The Northwind MSA mentions it [[art-msa-northwind]].", ["art-msa-northwind"]),
   ask("bottleneck needs no citation", "Which team blocks the most open requests?", [{ tool: "bottleneck", input: {} }],
     "Legal blocks the most open requests.", []),
+  ask("critical systems (PageRank)", "Which systems would hurt most if changed?", [{ tool: "critical_systems", input: { limit: 5 } }],
+    "API v1 is the most critical system: the most others depend on it. auth-service and api-gateway follow.", []),
+  ask("team clusters (WCC)", "Which teams always change together?", [{ tool: "team_clusters", input: {} }],
+    "Legal and Sales sit in one cluster with Eng and DevRel: their contracts and deals all hang on API v1.", []),
+  ask("weighted path", "What is the cheapest path from d-1 to Legal?", [{ tool: "weighted_path", input: { decisionId: "d-1", teamId: "legal" } }],
+    "d-1 reaches Legal in three hops: the decision sunsets API v1, which a Legal-managed contract guarantees [[art-rfc14]].", ["art-rfc14"]),
   ask("unknown system answers honestly", "Who is affected if we sunset the fax-gateway service?", [{ tool: "who_knows", input: { systemId: "fax-gateway" } }],
     "The graph has nothing on fax-gateway; the dependency may not be modelled.", []),
   {

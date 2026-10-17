@@ -305,6 +305,9 @@ const ARGS: Record<string, Record<string, unknown>> = {
   trace_decision: { decisionId: "d-1" },
   bottleneck: {},
   why_affected: { decisionId: "d-1", teamId: "legal" },
+  critical_systems: { limit: 20 }, // topology only: system ids, names, scores
+  team_clusters: {}, // team and system ids plus contract and deal COUNTS, never their ids
+  weighted_path: { decisionId: "d-1", teamId: "legal" }, // same path as why_affected: its quotes go through the same redaction
   create_tasks: { decisionId: "d-1" },
   edge_freshness: { decisionId: "d-1", depth: 4 },
   contract_conflicts: { decisionId: "d-1" },
@@ -442,6 +445,9 @@ const MCP_ARGS: Record<string, Record<string, unknown>> = {
   trace_decision: { decisionId: "d-1" },
   bottleneck: {},
   why_affected: { decisionId: "d-1", teamId: "legal" },
+  critical_systems: {},
+  team_clusters: {},
+  weighted_path: { decisionId: "d-1", teamId: "legal" },
   who_wasnt_told: { decisionId: "d-1" },
   check_contract_conflict: { decisionId: "d-1" },
   deals_at_risk: { decisionId: "d-1" },

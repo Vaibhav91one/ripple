@@ -107,7 +107,9 @@ const Depth = z.number().int().min(1).max(4);
 
 /** `depth` = systems hops from the sunset system (1 = the system itself, 3 = default, 4 = max). */
 export async function ripple(g: Graph, decisionId: string, now: number, depth = 3): Promise<RippleResult> {
-  const hops = Depth.parse(depth) - 1; // Cypher can't parametrize var-length bounds; validated int, then substituted
+  // FalkorDB 6.0.2 rejects a parameter in a variable-length bound (`*0..$n`), so the hop count is the one value interpolated
+  // into the Cypher text. It is only ever the output of Depth.parse (an int in 1..4), never caller text.
+  const hops = Depth.parse(depth) - 1;
   const text = load("ripple").text.replaceAll("DEPENDS_ON*0..2", `DEPENDS_ON*0..${hops}`);
   const dec = await run(g, "decision", { id: decisionId }, DecisionRow);
   if (!dec.rows[0]) throw new NotFound(`unknown decision ${decisionId}`);
@@ -185,8 +187,8 @@ const WhoRow = z.object({
 export type WhoKnows = WhoKnowsRow & { evidence: string[]; score: number };
 const WEIGHT = { authored: 3, reviewed: 2, handled: 1 } as const;
 
-/** Top 5 active people by authored (3) + reviewed (2) + handled (1) evidence about the system. */
-export async function whoKnows(g: Graph, systemId: string): Promise<Result<WhoKnows[]>> {
+/** Top `limit` (default 5) active people by authored (3) + reviewed (2) + handled (1) evidence about the system. */
+export async function whoKnows(g: Graph, systemId: string, limit = 5): Promise<Result<WhoKnows[]>> {
   const { rows, c } = await run(g, "who-knows", { id: systemId }, WhoRow);
   const by = new Map<string, WhoKnows>();
   for (const r of rows) {
@@ -197,7 +199,7 @@ export async function whoKnows(g: Graph, systemId: string): Promise<Result<WhoKn
     w.evidence.push(r.id);
     by.set(r.personId, w);
   }
-  const data = [...by.values()].sort((x, y) => y.score - x.score || x.personId.localeCompare(y.personId)).slice(0, 5);
+  const data = [...by.values()].sort((x, y) => y.score - x.score || x.personId.localeCompare(y.personId)).slice(0, limit);
   return { data, cypher: [c] };
 }
 
@@ -241,8 +243,8 @@ export async function bottleneck(g: Graph, now: number): Promise<Result<Bottlene
 // ---------- search ----------
 const Hit = z.object({ id: z.string(), kind: z.string(), title: z.string(), score: n });
 
-export async function search(g: Graph, text: string): Promise<Result<z.infer<typeof Hit>[]>> {
-  const { rows, c } = await run(g, "search", { text }, Hit);
+export async function search(g: Graph, text: string, limit = 10): Promise<Result<z.infer<typeof Hit>[]>> {
+  const { rows, c } = await run(g, "search", { text, limit }, Hit);
   return { data: rows, cypher: [c] };
 }
 
@@ -269,6 +271,13 @@ export async function whyAffected(g: Graph, decisionId: string, teamId: string):
     if (path) return { data: path, cypher };
   }
   return { data: null, cypher };
+}
+
+/** Cheapest decision -> team path by edge `weight` (algo.SPpaths); null when unreachable. Equals whyAffected's path while every weight is 1. */
+export async function weightedPath(g: Graph, decisionId: string, teamId: string): Promise<Result<(WhyPath & { weight: number }) | null>> {
+  const c = load("weighted-path");
+  const [path] = z.array(PathRows.element.extend({ weight: n })).parse(await roQuery(g, c.text, { id: decisionId, team: teamId }));
+  return { data: path ?? null, cypher: [c] };
 }
 
 // ---------- live change ----------

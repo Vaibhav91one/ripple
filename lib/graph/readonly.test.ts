@@ -80,7 +80,7 @@ describe("read paths never write", () => {
     const { tools } = await client.listTools();
     const args: Record<string, Record<string, unknown>> = {
       list_decisions: {}, search: { text: "api v1" }, who_knows: { systemId: "api-v1" }, bottleneck: {},
-      why_affected: { decisionId: "d-1", teamId: "legal" }, list_agents: {}, run_agent: { name: "impact", input: { decisionId: "d-1" } }, // no model: ran:false, still a read
+      why_affected: { decisionId: "d-1", teamId: "legal" }, weighted_path: { decisionId: "d-1", teamId: "legal" }, list_agents: {}, run_agent: { name: "impact", input: { decisionId: "d-1" } }, // no model: ran:false, still a read
     };
     const reads = tools.filter((x) => x.annotations?.readOnlyHint);
     expect(reads.length).toBeGreaterThanOrEqual(11);

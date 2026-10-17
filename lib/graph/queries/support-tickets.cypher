@@ -7,3 +7,4 @@ MATCH (a:Ticket {status: 'open'})-[r:ABOUT]->(x) WHERE r.valid_to IS NULL
 OPTIONAL MATCH (a)-[:RAISED_BY]->(c:Customer)
 RETURN DISTINCT a.id AS id, a.title AS title, a.priority AS priority, x.id AS systemId, c.id AS customerId, c.name AS customer
 ORDER BY id
+LIMIT $limit
