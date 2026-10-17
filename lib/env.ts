@@ -25,6 +25,8 @@ const shape = {
   GITHUB_APP_ID: str,
   GITHUB_APP_INSTALLATION_ID: str,
   GITHUB_APP_PRIVATE_KEY: str,
+  GITHUB_APP_WEBHOOK_SECRET: str, // verifies X-Hub-Signature-256 on /api/connectors/github/webhook
+  GITHUB_APP_SLUG: str, // the app's URL name: github.com/apps/<slug>
   GITHUB_REPO: str,
   APP_URL: str, // public base URL used in message links (https://ripple.example); worker + email
   RIPPLE_GRAPH: str, // test-only graph override
