@@ -9,6 +9,7 @@ import { env as readEnv, type Env as AppEnv } from "./env";
 import { buildBrief, claimsBody } from "./briefs";
 import { query, roQuery, type Graph } from "./graph/client";
 import { detectConflicts, load, ripple } from "./graph/queries";
+import { queue } from "./queue";
 import type { Ack } from "./schemas";
 
 type Env = Partial<Pick<AppEnv, "RESEND_API_KEY" | "RESEND_FROM" | "GITHUB_APP_ID" | "GITHUB_APP_INSTALLATION_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_REPO">>;
@@ -113,6 +114,20 @@ export async function notifyGaps(
   return results;
 }
 
+/** A team ack ends the 48h/96h reminders of every member. Best effort: no queue (no DATABASE_URL) or a failure never blocks the ack. */
+async function cancelPendingReminders(g: Graph, teamId: string, changeId: string) {
+  try {
+    const q = queue();
+    if (!q) return;
+    const boss = await q; // before the graph read: a rejected start must not sit unhandled meanwhile
+    const members = await roQuery<{ id: string }>(g, "MATCH (p:Person)-[:MEMBER_OF]->(:Team {id: $teamId}) RETURN p.id AS id", { teamId });
+    const { cancelReminders } = await import("./notify/reminders");
+    await cancelReminders(boss, changeId, members.map((m) => m.id));
+  } catch (e) {
+    console.error("[notify] cancel reminders failed:", String(e));
+  }
+}
+
 /** Write ACKED {kind, by, at} from team to decision; returns the new gap. Idempotent per team+decision. */
 export async function recordAck(
   g: Graph, a: { teamId: string; decisionId: string; kind: Ack["kind"]; by?: string; onBehalfOf?: string }, now = Math.floor(Date.now() / 1000),
@@ -121,5 +136,6 @@ export async function recordAck(
   await query(g, `MATCH (t:Team {id: $teamId}), (d:Decision {id: $decisionId})
     MERGE (t)-[r:ACKED]->(d)
     SET r.kind = $kind, r.by = $by, r.onBehalfOf = $onBehalfOf, r.at = $now, r.valid_from = $now, r.valid_to = null`, { teamId: a.teamId, decisionId: a.decisionId, kind: a.kind, by, onBehalfOf: a.onBehalfOf ?? null, now });
+  await cancelPendingReminders(g, a.teamId, a.decisionId);
   return { gap: (await ripple(g, a.decisionId, now)).gap, by };
 }

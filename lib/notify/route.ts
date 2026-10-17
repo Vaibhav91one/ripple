@@ -31,9 +31,9 @@ function recipients(e: RippleEvent, g: GraphReader): Hit[] {
     case "ack.missing_48h":
       return hits([e.payload.userId], "ack_reminder:48h", "normal");
     case "ack.missing_96h": {
-      // Escalate to the lead; if the person has none (or is the lead), fall back to the change owner.
+      // Escalate to the lead, CC the change owner (inbox only); if the person has none (or is the lead), fall back to the change owner.
       const lead = g.teamLead(e.payload.userId) ?? g.changeOwner(e.payload.changeId);
-      return [...hits([lead], "escalation:96h", "high"), ...hits([e.payload.userId], "ack_reminder:96h", "high")];
+      return [...hits([lead], "escalation:96h", "high"), ...hits([e.payload.userId], "ack_reminder:96h", "high"), ...hits([g.changeOwner(e.payload.changeId)], "escalation_cc:96h", "low")];
     }
     case "task.assigned":
       return hits([e.payload.userId], "assignee", "normal");
