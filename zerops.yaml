@@ -12,11 +12,29 @@ zerops:
         - docker image pull falkordb/falkordb:6.0.2
       # --network=host is required by the docker page; ports are declared below, not with -p.
       # REDIS_ARGS is read by the falkordb image entrypoint (UNCONFIRMED against the Zerops docs; it is a FalkorDB image feature).
-      # UNCONFIRMED: persistence. Mount a volume at /var/lib/falkordb/data if Zerops offers one; without it, the web service reseeds on boot.
+      # Persistence (#91, UNCONFIRMED on Zerops until the orchestrator redeploys with a marker node): host dir
+      # /var/lib/falkordb-data is mounted at /data (a symlink to the image's data dir) and AOF is on. mkdir -p
+      # makes the first start work before the dir exists. Fallback if the VM disk does not survive a redeploy:
+      # FalkorDB Cloud (docs/deploy.md). --name lets scripts/backup-falkordb.sh use `docker exec falkordb redis-cli`.
       start: >-
-        docker run --rm --network=host
-        -e REDIS_ARGS="--requirepass $FALKORDB_PASSWORD"
+        mkdir -p /var/lib/falkordb-data &&
+        docker run --rm --name falkordb --network=host
+        -v /var/lib/falkordb-data:/data
+        -e REDIS_ARGS="--requirepass $FALKORDB_PASSWORD --appendonly yes --appendfsync everysec"
         falkordb/falkordb:6.0.2
+      # Nightly backup (#91). UNCONFIRMED (needs an object-storage service `storage` and the script on the VM,
+      # i.e. deploy this service with scripts/backup-falkordb.sh; enable after the orchestrator checks both):
+      # envVariables:
+      #   BACKUP_S3_ENDPOINT: ${storage_apiUrl}
+      #   BACKUP_S3_BUCKET: ${storage_bucketName}
+      #   BACKUP_S3_ACCESS_KEY: ${storage_accessKeyId}
+      #   BACKUP_S3_SECRET_KEY: ${storage_secretAccessKey}
+      #   BACKUP_REDIS_CLI: docker exec falkordb redis-cli
+      # crontab:
+      #   - command: "sh scripts/backup-falkordb.sh"
+      #     timing: "0 3 * * *"
+      #     allContainers: false
+      #     workingDir: /var/www
       ports:
         - port: 6379
           protocol: tcp

@@ -12,7 +12,7 @@ export function client(): Promise<FalkorDB> {
   const e = env();
   db ??= FalkorDB.connect({
     password: e.FALKORDB_PASSWORD,
-    socket: { host: e.FALKORDB_HOST, port: e.FALKORDB_PORT },
+    socket: { host: e.FALKORDB_HOST, port: e.FALKORDB_PORT, ...(e.FALKORDB_TLS ? { tls: true as const } : {}) },
   }).catch((e) => {
     db = undefined; // don't cache a failed connect: the next request retries
     throw e;
