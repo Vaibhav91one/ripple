@@ -12,14 +12,14 @@ zerops:
         - docker image pull falkordb/falkordb:6.0.2
       # --network=host is required by the docker page; ports are declared below, not with -p.
       # REDIS_ARGS is read by the falkordb image entrypoint (UNCONFIRMED against the Zerops docs; it is a FalkorDB image feature).
-      # Persistence (#91, UNCONFIRMED on Zerops until the orchestrator redeploys with a marker node): host dir
-      # /var/lib/falkordb-data is mounted at /data (a symlink to the image's data dir) and AOF is on. mkdir -p
-      # makes the first start work before the dir exists. Fallback if the VM disk does not survive a redeploy:
+      # Persistence (#91): a docker-managed named volume `falkordb-data` at /data, AOF on. The start command
+      # runs as a non-root user, so a host dir under /var/lib can't be created (mkdir: Permission denied on
+      # 2026-10-17); a named volume needs no mkdir. Whether it survives a redeploy is verified with a marker node.
+      # Fallback if the VM disk does not survive a redeploy:
       # FalkorDB Cloud (docs/deploy.md). --name lets scripts/backup-falkordb.sh use `docker exec falkordb redis-cli`.
       start: >-
-        mkdir -p /var/lib/falkordb-data &&
         docker run --rm --name falkordb --network=host
-        -v /var/lib/falkordb-data:/data
+        -v falkordb-data:/data
         -e REDIS_ARGS="--requirepass $FALKORDB_PASSWORD --appendonly yes --appendfsync everysec"
         falkordb/falkordb:6.0.2
       # Nightly backup (#91). UNCONFIRMED (needs an object-storage service `storage` and the script on the VM,
