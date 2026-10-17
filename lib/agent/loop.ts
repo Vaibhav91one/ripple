@@ -3,6 +3,7 @@
 // `citation` events. Unknown ids are dropped, and a turn with text but no valid citation is flagged.
 import { isStepCount, streamText, tool, type LanguageModel } from "ai";
 import type { z } from "zod";
+import type { AuditEvent } from "../audit";
 import type { Graph } from "../graph/client";
 import type { Source, StreamEvent } from "../schemas";
 import { templateText, TOOLS, type Row, type ToolName } from "./tools";
@@ -23,6 +24,7 @@ export type LoopOpts = {
   demo?: boolean;
   maxSteps?: number;
   onUsage?: (tokens: number) => void;
+  audit?: (ev: AuditEvent) => Promise<void>;
 };
 
 export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
@@ -36,7 +38,9 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
         description: d.description,
         inputSchema: d.input as z.ZodType,
         execute: async (args: unknown) => {
+          const ev = { action: "agent.tool", resourceType: "tool", resourceId: name, read: name !== "create_tasks" };
           const out = await (d.run as (c: typeof ctx, a: unknown) => ReturnType<typeof d.run>)(ctx, args);
+          if (ev.read) void o.audit?.(ev); else await o.audit?.(ev); // tool name only, never the payload
           for (const s of out.sources) if (!returned.has(s.artifactId)) returned.set(s.artifactId, s);
           return { rows: out.rows, sourceIds: out.sources.map((s) => s.artifactId), cypher: out.cypher };
         },

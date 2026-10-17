@@ -6,6 +6,7 @@ import { TOOLS, type Ctx, type Row, type ToolOut } from "../agent/tools";
 import { roQuery } from "../graph/client";
 import { decisions, load, ripple } from "../graph/queries";
 import { recordAck } from "../notify";
+import type { Context } from "../server/context";
 import type { Source } from "../schemas";
 
 const decisionId = z.string().describe("Decision id, e.g. d-1 (call list_decisions to discover ids)");
@@ -14,7 +15,7 @@ const dedupe = (xs: Source[]) => [...new Map(xs.map((s) => [`${s.artifactId}|${s
 type Tool = { description: string; input: z.ZodObject; write?: boolean; run: (args: never) => Promise<ToolOut> };
 type Id = { decisionId: string };
 
-export function createRippleServer(ctx: Ctx): McpServer {
+export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServer {
   const server = new McpServer({ name: "ripple", version: "0.1.0" });
   const { g, now } = ctx;
 
@@ -97,6 +98,8 @@ export function createRippleServer(ctx: Ctx): McpServer {
         const t0 = Date.now();
         try {
           const out = await t.run(args as never);
+          const ev = { action: "mcp.tool", resourceType: "tool", resourceId: name, read: !t.write };
+          if (t.write) await audit?.(ev); else void audit?.(ev); // tool name only, never the payload
           const body = { ...out, trace: { tool: name, args, ms: Date.now() - t0, rows: out.rows.length } };
           return { content: [{ type: "text", text: JSON.stringify(body) }], structuredContent: body };
         } catch (e) {

@@ -16,7 +16,8 @@
     "eval": "tsx lib/eval/run.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "audit:purge": "node scripts/audit-purge.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.81",
