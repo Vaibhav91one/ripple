@@ -69,7 +69,7 @@ export async function computeHome(ctx: Context): Promise<HomeT> {
     encodeAckToken({ teamId, decisionId, exp: now + TTL, o: ctx.org.id, p: personId, r });
   const briefs = inb.data.forMe.flatMap((i) =>
     i.kind === "brief"
-      ? [{ id: i.id, decisionId: i.decisionId, title: i.title, at: i.at, tokens: { seen: tok(i.decisionId, "seen"), concern: tok(i.decisionId, "concern"), not_relevant: tok(i.decisionId, "not_relevant") } }]
+      ? [{ id: i.id, decisionId: i.decisionId, title: i.title, at: i.at, tokens: viewer.kind === "user" ? { seen: tok(i.decisionId, "seen"), concern: tok(i.decisionId, "concern"), not_relevant: tok(i.decisionId, "not_relevant") } : null }]
       : [],
   );
 

@@ -28,15 +28,18 @@ const btn = "rounded-control border border-hairline px-2.5 py-1 text-2xs font-me
 function BriefActions({ b, lens }: { b: HomeBrief; lens: string }) {
   const qc = useQueryClient();
   const ack = useMutation({
-    mutationFn: (kind: keyof HomeBrief["tokens"]) => ackBrief(b.tokens[kind], kind),
+    mutationFn: (kind: "seen" | "concern" | "not_relevant") => ackBrief(b.tokens![kind], kind),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["home", lens] }),
   });
+  const off = !b.tokens || ack.isPending;
+  const hint = b.tokens ? undefined : "Demo is read-only. Sign in to acknowledge.";
   return (
     <>
-      <button type="button" className={btn} disabled={ack.isPending} onClick={() => ack.mutate("seen")}>Acknowledge</button>
-      <button type="button" className={btn} disabled={ack.isPending} onClick={() => ack.mutate("concern")}>Raise a concern</button>
-      <button type="button" className={btn} disabled={ack.isPending} onClick={() => ack.mutate("not_relevant")}>Not relevant</button>
+      <button type="button" className={btn} disabled={off} title={hint} onClick={() => ack.mutate("seen")}>Acknowledge</button>
+      <button type="button" className={btn} disabled={off} title={hint} onClick={() => ack.mutate("concern")}>Raise a concern</button>
+      <button type="button" className={btn} disabled={off} title={hint} onClick={() => ack.mutate("not_relevant")}>Not relevant</button>
       <Link href={`/decisions/${encodeURIComponent(b.decisionId)}`} className={btn}>Open</Link>
+      {hint && <span className="self-center text-2xs text-faint">{hint}</span>}
       {ack.isError && <span role="alert" className="self-center text-2xs text-faint">{ack.error.message}</span>}
     </>
   );

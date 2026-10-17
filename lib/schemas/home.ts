@@ -21,7 +21,8 @@ export const HomeBrief = z.object({
   decisionId: id,
   title: z.string(),
   at: ts,
-  tokens: z.object({ seen: z.string(), concern: z.string(), not_relevant: z.string() }),
+  /** null for anonymous demo viewers: the shared demo is read-only, so no ack tokens are minted. */
+  tokens: z.object({ seen: z.string(), concern: z.string(), not_relevant: z.string() }).nullable(),
 });
 export const HomeApproval = z.object({ id: z.string(), kind: z.string(), requestedAt: z.string() });
 export const HomeTask = z.object({

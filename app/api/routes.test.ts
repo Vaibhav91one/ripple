@@ -99,7 +99,8 @@ describe("route handlers (in order: /api/change mutates the graph)", () => {
     const h = await ok(s.Home, await get("home", "/api/home")); // RIPPLE_VIEW_AS starts with legal
     expect(h.teamId).toBe("legal");
     expect(h.briefs).toHaveLength(1);
-    expect(h.briefs[0].tokens.seen).toMatch(/\./);
+    expect(h.briefs[0].tokens).toBeNull(); // anonymous viewer: no ack tokens
+    expect(JSON.stringify(h)).not.toMatch(/"seen":/);
     expect(h.hits.map((x) => [x.decisionId, x.status])).toEqual([["d-1", "conflict"]]);
     expect(h.conflicts).toBe(1);
     expect(h.tasks.map((x) => x.id)).toEqual(["task-7"]);
