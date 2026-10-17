@@ -5,7 +5,7 @@ import path from "node:path";
 import { z } from "zod";
 import { query, roQuery, type Graph } from "./client";
 import {
-  Artifact, BottleneckRow, Change, Conflict, Decision, Person, WhoKnowsRow,
+  Artifact, BottleneckRow, Change, Conflict, Decision, Person, Team, WhoKnowsRow,
   type EdgeType, type Inbox, type InboxItem, type RippleResult, type SentItem, type Source,
 } from "../schemas";
 
@@ -285,6 +285,11 @@ export async function decisions(g: Graph): Promise<Result<Decision[]>> {
 
 export async function people(g: Graph): Promise<Result<Person[]>> {
   const { rows, c } = await run(g, "people", {}, Person);
+  return { data: rows, cypher: [c] };
+}
+
+export async function teams(g: Graph): Promise<Result<Team[]>> {
+  const { rows, c } = await run(g, "teams", {}, Team);
   return { data: rows, cypher: [c] };
 }
 
