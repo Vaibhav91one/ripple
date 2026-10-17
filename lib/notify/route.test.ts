@@ -191,6 +191,7 @@ const table: Row[] = [
       ["p-vera", "low", ["email", "inbox"], "weekly_digest"],
     ],
   ],
+  ["slack.inbound: plumbing, nobody", ev("slack.inbound", { kind: "event", teamId: "T1", body: {} }, { kind: "slack", id: "Ev1" }), []],
 ];
 
 describe("route(): recipients, urgency, channels per catalog event", () => {

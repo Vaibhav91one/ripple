@@ -53,6 +53,8 @@ function recipients(e: RippleEvent, g: GraphReader): Hit[] {
       return hits(g.prOwners(e.payload.url), "pr_owner", "low");
     case "digest.weekly":
       return hits(g.digestRecipients(e.orgId), "weekly_digest", "low", true); // the digest is the one low item that is emailed
+    case "slack.inbound":
+      return []; // plumbing: the slack-inbound queue handles it, nobody is notified
   }
 }
 

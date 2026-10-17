@@ -29,5 +29,6 @@ export const RippleEvent = z.discriminatedUnion("type", [
   ev("pr.opened", { url: z.url() }),
   ev("pr.updated", { url: z.url() }),
   ev("digest.weekly", { weekStart: id }),
+  ev("slack.inbound", { kind: z.enum(["event", "interactive", "command"]), teamId: id, body: z.unknown() }),
 ]);
 export type RippleEvent = z.infer<typeof RippleEvent>;
