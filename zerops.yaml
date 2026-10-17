@@ -79,7 +79,7 @@ zerops:
       # Postgres (service `db`, see docs/deploy.md). initCommands run on every container start; execOnce
       # makes the migration run once per deploy version. The script skips itself when DATABASE_URL is unset.
       initCommands:
-        - zsc execOnce ${ZEROPS_appVersionId} -- node scripts/migrate.mjs
+        - zsc execOnce ${ZEROPS_appVersionId} -- sh -c "cd .next/standalone && node scripts/migrate.mjs" # init runs in /var/www
       # server.js does process.chdir(__dirname), so the .cypher files resolve from the standalone folder.
       start: HOSTNAME=0.0.0.0 node .next/standalone/server.js # HOSTNAME is a reserved Zerops env key, so set it inline
       healthCheck:
