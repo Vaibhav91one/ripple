@@ -10,7 +10,7 @@ import { ThinkingLive } from "@/components/kit/beautifului/thinking";
 import ToolChips, { type ToolRowData } from "@/components/kit/beautifului/tool-chips";
 import { askStream, getSource } from "@/lib/api";
 import { duration, ease, sec } from "@/lib/motion";
-import { parseStream } from "./parseStream";
+import { addText, parseStream } from "./parseStream";
 
 export const SUGGESTIONS = [
   "Who knows the v1 auth flow?",
@@ -19,7 +19,8 @@ export const SUGGESTIONS = [
 ];
 
 type Tool = { tool: string; cypher: string; rows?: number };
-type Turn = { question: string; tools: Tool[]; tokens: Token[]; sources: SourceRef[]; done: boolean };
+// glue: the last token is a word still being streamed, so a delta that starts mid-word joins it.
+type Turn = { question: string; tools: Tool[]; tokens: Token[]; sources: SourceRef[]; done: boolean; glue?: boolean };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -73,9 +74,9 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
           else if (e.type === "tool_result")
             next = { ...t, tools: t.tools.map((x) => (x.tool === e.tool && x.rows === undefined ? { ...x, rows: e.rows.length } : x)) };
           else if (e.type === "text_delta")
-            next = { ...t, tokens: [...t.tokens, ...e.text.split(" ").filter(Boolean).map((text) => ({ text }))] };
+            next = addText(t, e.text);
           else if (e.type === "citation") {
-            next = { ...t, tokens: [...t.tokens, ...refs.map((cite) => ({ text: "", cite }))], sources: [...t.sources, ...refs] };
+            next = { ...t, tokens: [...t.tokens, ...refs.map((cite) => ({ text: "", cite }))], sources: [...t.sources, ...refs], glue: false };
           } else if (e.type === "done") next = { ...t, done: true };
           return [...ts.slice(0, -1), next];
         });
