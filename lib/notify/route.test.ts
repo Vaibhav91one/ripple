@@ -124,6 +124,7 @@ const table: Row[] = [
     [
       ["p-ana", "high", HIGH, "escalation:96h"],
       ["p-tomas", "high", HIGH, "ack_reminder:96h"],
+      ["p-priya", "low", INBOX, "escalation_cc:96h"],
     ],
   ],
   [
