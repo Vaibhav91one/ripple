@@ -46,3 +46,6 @@ next-env.d.ts
 
 # third-party reference screenshots for /styleguide/refs: local only, never commit
 /public/refs/
+
+# screenshots from pnpm shots
+/.shots/
