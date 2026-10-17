@@ -34,7 +34,7 @@ const firstMember = async (g: Graph, teamId: string) =>
     { teamId },
   ))[0];
 
-async function sendEmail(env: Env, to: string | null, subject: string, html: string): Promise<NotifyResult["email"]> {
+export async function sendEmail(env: Env, to: string | null, subject: string, html: string): Promise<NotifyResult["email"]> {
   if (!env.RESEND_API_KEY || !env.RESEND_FROM || !to) return { status: "preview", to };
   try {
     const { data, error } = await new Resend(env.RESEND_API_KEY).emails.send({ from: env.RESEND_FROM, to, subject, html });
