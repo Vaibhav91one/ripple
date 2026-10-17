@@ -18,7 +18,7 @@ export function SideNav({ brand, items, active, groupTitle, group, recentsTitle,
   return (
     <nav aria-label={brand} className="flex w-[270px] shrink-0 flex-col bg-page text-body">
       <div className="flex h-[60px] items-center gap-2.5 px-6">
-        <span aria-hidden className="grid size-7 place-items-center rounded-lg bg-strong text-[15px] leading-none font-bold text-page">S</span>
+        <span aria-hidden className="grid size-7 place-items-center rounded-lg bg-strong text-[15px] leading-none font-bold text-page">{brand[0]}</span>
         <span className="text-[15px] leading-5 font-semibold text-strong">{brand}</span>
       </div>
       <ul className="flex flex-col gap-1 px-3">
