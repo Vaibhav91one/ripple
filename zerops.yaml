@@ -50,7 +50,7 @@ zerops:
         # FALKORDB_PASSWORD, RESET_TOKEN, LLM_API_KEY come from project-level secrets (UNCONFIRMED: that
         # project env vars are visible by bare name in every service; otherwise add them here).
         LLM_PROVIDER: openai
-        MODEL_AGENT: gpt-5.4-mini
+        MODEL_AGENT: gpt-5.4
         MODEL_EXTRACT: gpt-5.4-nano
       # server.js does process.chdir(__dirname), so the .cypher files resolve from the standalone folder.
       start: HOSTNAME=0.0.0.0 node .next/standalone/server.js # HOSTNAME is a reserved Zerops env key, so set it inline

@@ -981,7 +981,7 @@ Ripple was built with Claude Code: Claude Opus as the lead agent, Claude Sonnet 
 - **Single demo graph** (`demo`): `graphFor(tenant)` exists, but multigraph per tenant is not wired.
 - **Some team KPIs are estimated**: eng coding and deploy times, support CSAT, devrel v2 adoption. Legal shows "awaiting approval" instead of cycle time.
 - **`affected_controls` is coarse**: a `v1Related` flag, there is no Control to System edge.
-- **The live Ask agent runs on OpenAI `gpt-5.4-mini`** (any AI SDK provider works via `LLM_PROVIDER`; without a key it falls back to cached answers). The extraction cache is seeded from mocks; with a key, `pnpm extract` fills it and every edge still passes the quote check.
+- **The live Ask agent runs on OpenAI `gpt-5.4`** (any AI SDK provider works via `LLM_PROVIDER`; without a key it falls back to cached answers). The extraction cache is seeded from mocks; with a key, `pnpm extract` fills it and every edge still passes the quote check.
 
 ## Prior art
 
