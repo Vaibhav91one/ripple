@@ -1,13 +1,11 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { allow } from "@/lib/agent/limits";
 import { graphFor } from "@/lib/graph/client";
 import { createRippleServer } from "@/lib/mcp/server";
 import { graphName, nowSecs } from "@/lib/server/route";
 
+// No LLM runs here (fixed Cypher tools only), so no Ask-style rate limit: an MCP client spends several requests per session.
 // Stateless Streamable HTTP: a fresh server + transport per request, JSON responses (no SSE, no sessions).
 export async function POST(req: Request): Promise<Response> {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "local";
-  if (!allow(ip)) return Response.json({ error: "Rate limit: 20 requests per hour." }, { status: 429 });
   let g;
   try {
     g = await graphFor(graphName());
