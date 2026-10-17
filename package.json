@@ -50,6 +50,7 @@
     "nuqs": "^2.10.2",
     "ollama-ai-provider-v2": "^4.0.1",
     "onnxruntime-node": "1.30.0",
+    "papaparse": "^5.7.0",
     "pg-boss": "^12.38.0",
     "postgres": "^3.4.9",
     "radix-ui": "^1.8.1",
@@ -66,6 +67,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.11",
