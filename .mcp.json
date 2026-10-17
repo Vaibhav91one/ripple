@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ripple": {
+      "command": "pnpm",
+      "args": ["--silent", "mcp"],
+      "env": { "FALKORDB_HOST": "localhost", "FALKORDB_PORT": "6379" }
+    }
+  }
+}

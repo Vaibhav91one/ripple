@@ -859,6 +859,31 @@ RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
 
 See [docs/deploy.md](docs/deploy.md) (Zerops: `web` Next.js standalone plus a `falkordb` docker service; a Caddy/Docker fallback is in `deploy/fallback`).
 
+## Use Ripple from Claude Code / Cursor
+
+Ripple ships an MCP server (stateless Streamable HTTP at `/api/mcp`, or stdio against a local FalkorDB).
+
+```bash
+# hosted demo
+claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
+# local: FalkorDB on :6379 with the seed loaded; this repo's .mcp.json already wires it for Claude Code
+claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
+```
+
+Tools (all read-only except `ack_brief`; each returns JSON `{ rows, sources, cypher, trace }`):
+
+- `list_decisions`: every decision id, title and status.
+- `search`: full-text search over documents, tickets, messages and PRs.
+- `ripple_impact`: teams, customers, ARR and conflicts a decision touches (optional `depth`).
+- `who_knows`: top people for a system, with evidence.
+- `trace_decision`: a decision and the artifacts that support it.
+- `bottleneck`: teams blocking the most open requests.
+- `who_wasnt_told`: affected teams that never saw the decision, and why.
+- `check_contract_conflict`: contract conflicts with severity and verbatim clause quotes.
+- `deals_at_risk`: open deals in the ripple with amount, stage and the PROMISED quote.
+- `affected_controls`: security controls tied to the decision (coarse: v1-related controls, there is no Control-to-System edge).
+- `ack_brief`: record a team's acknowledgement (writes to the demo graph).
+
 ## Honest limits
 
 - The data is **synthetic** (Ledgerly), not a real company.
