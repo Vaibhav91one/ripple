@@ -44,9 +44,12 @@ export default function Home() {
       <section className="grid items-center gap-12 py-12 md:grid-cols-[1.1fr_1fr] md:py-20">
         <div className="space-y-6">
           <p className={label}>The change-impact graph for your company</p>
-          <h1 className="text-balance text-xl font-semibold text-strong sm:text-2xl lg:text-3xl">
-            Before you ship a change, Ripple tells you which teams you forgot to tell and which contract you&apos;re about to break, with the quote to prove it.
+          <h1 className="text-balance text-2xl font-semibold text-strong sm:text-3xl lg:text-4xl">
+            Know who a change hits, and who wasn&apos;t told.
           </h1>
+          <p className="max-w-xl text-md text-body">
+            Before you ship a change, Ripple tells you which teams you forgot to tell and which contract you&apos;re about to break, with the quote to prove it.
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button size="lg" asChild><Link href="/overview">Try the live demo<ArrowRight aria-hidden /></Link></Button>
             <Button size="lg" variant="outline" asChild><a href={DOCS} target="_blank" rel="noreferrer">Read the docs</a></Button>

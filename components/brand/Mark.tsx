@@ -1,25 +1,25 @@
-// Blast Radius mark: a dot with three quarter-arcs radiating from it. The outer arc is broken and amber (the team that wasn't told).
-// Geometry is shared with the landing illustration (RippleHero) and mirrored in app/icon.svg. Colours come from tokens.
+// Blast Radius mark: a centre dot and two full rings. The outer ring has one short break, drawn in amber (the team that wasn't told).
+// Geometry (viewBox 32) is shared with the landing illustration (RippleHero) and mirrored in app/icon.svg. Colours come from tokens.
 export const MARK = {
-  dot: { x: 6, y: 26, r: 3 },
-  arcs: [
-    ["M13 26 A7 7 0 0 0 6 19"],
-    ["M19 26 A13 13 0 0 0 6 13"],
-    ["M25 26 A19 19 0 0 0 21.56 15.1", "M16.9 10.44 A19 19 0 0 0 6 7"],
-  ],
+  c: 16,
+  dotR: 3,
+  rings: [{ r: 7, opacity: 0.75 }],
+  outerR: 13,
+  // Teal outer ring minus a 50 degree gap (with 5 degree margins); the amber piece fills the gap.
+  outerTeal: "M19.36 3.44 A13 13 0 1 0 28.56 12.64",
+  outerAmber: "M28.22 11.55 A13 13 0 0 0 20.45 3.78",
 } as const;
 
 export function Mark({ size = 18, className }: { size?: number; className?: string }) {
+  const { c, dotR, rings } = MARK;
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" strokeWidth="2.6" strokeLinecap="round" className={className} aria-hidden>
       <g className="text-ripple" stroke="currentColor">
-        <circle cx={MARK.dot.x} cy={MARK.dot.y} r={MARK.dot.r} fill="currentColor" stroke="none" />
-        <path d={MARK.arcs[0][0]} opacity=".9" />
-        <path d={MARK.arcs[1][0]} opacity=".65" />
+        <circle cx={c} cy={c} r={dotR} fill="currentColor" stroke="none" />
+        {rings.map((r) => <circle key={r.r} cx={c} cy={c} r={r.r} opacity={r.opacity} />)}
+        <path d={MARK.outerTeal} opacity=".5" />
       </g>
-      <g stroke="var(--gap)">
-        {MARK.arcs[2].map((d) => <path key={d} d={d} />)}
-      </g>
+      <path d={MARK.outerAmber} stroke="var(--gap)" />
     </svg>
   );
 }

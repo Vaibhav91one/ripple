@@ -14,14 +14,11 @@ export default function Image() {
       <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", gap: 72, padding: 96, background: "#0b0b0b", color: "#f5f5f5" }}>
         <svg width="320" height="320" viewBox="0 0 32 32" fill="none" strokeWidth="2.6" strokeLinecap="round">
           <g stroke={TEAL}>
-            <circle cx="6" cy="26" r="3" fill={TEAL} stroke="none" />
-            <path d="M13 26 A7 7 0 0 0 6 19" opacity=".9" />
-            <path d="M19 26 A13 13 0 0 0 6 13" opacity=".65" />
+            <circle cx="16" cy="16" r="3" fill={TEAL} stroke="none" />
+            <circle cx="16" cy="16" r="7" opacity=".75" />
+            <path d="M19.36 3.44 A13 13 0 1 0 28.56 12.64" opacity=".5" />
           </g>
-          <g stroke={AMBER}>
-            <path d="M25 26 A19 19 0 0 0 21.56 15.1" />
-            <path d="M16.9 10.44 A19 19 0 0 0 6 7" />
-          </g>
+          <path d="M28.22 11.55 A13 13 0 0 0 20.45 3.78" stroke={AMBER} />
         </svg>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div style={{ fontSize: 104, fontWeight: 600, letterSpacing: -3 }}>Ripple</div>
