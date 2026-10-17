@@ -21,6 +21,14 @@ Needs the `ripple` MCP server (see the README: "Use Ripple from your agent"). Ri
    - Open questions, including anything only found at depth 4.
 6. **Briefs.** Draft one short brief per not-told team: what changes, when, why that team is hit, what you need from them, with the same cited quotes. Show them to the user.
 
+## Definitions (this company's meaning of the words)
+
+- **Affected team:** owns, cares about, handles tickets for, or manages contracts on a system the decision reaches through `DEPENDS_ON` (default depth 3, check 4).
+- **Told:** the team has an `INVOLVED_IN` or `ACKED` edge to the decision. Anything else, including a Slack mention you can't cite, is **not told**.
+- **Stale acknowledgement:** an `ACKED` edge older than 90 days, or recorded before the decision last changed (for example the sunset date moved). Treat the team as not told and re-brief. Ripple does not flag this automatically yet, so say when you are applying it.
+- **Conflict:** a contract clause that guarantees the system past the decision's date. It needs Legal, not just a brief.
+- **At risk:** an open deal that `PROMISED` the system, or a customer seen using it in the last 120 days.
+
 ## Rules
 
 - If a tool returns `found: false` (or empty rows), say "nothing in the graph connects to X". Do not fill the gap from memory.
