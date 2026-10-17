@@ -113,7 +113,7 @@ export function LegalDashboard() {
                     <button
                       type="button"
                       onClick={() => panel.open(c.src.artifactId, c.src.quote)}
-                      className="rounded-md border-l-2 border-hairline bg-page px-3 py-2 text-left text-xs italic text-body hover:bg-raised"
+                      className="rounded-md border-l-2 border-hairline bg-page px-3 py-2 text-left text-xs italic text-body hover:bg-raised transition-colors"
                     >
                       &ldquo;{c.src.quote}&rdquo;
                     </button>

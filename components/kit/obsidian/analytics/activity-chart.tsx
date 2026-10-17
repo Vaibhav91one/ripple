@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI (obsidianui.dev) Analytics Dashboard, MIT, see ../LICENSE. Restyled to Ripple tokens; bars grow with m.div scaleY.
 import type { CSSProperties } from "react";
 import { m, useReducedMotion } from "motion/react";
@@ -68,7 +69,7 @@ export function ActivityChart({
                   className="oa-bar"
                   initial={reduce ? false : { scaleY: 0 }}
                   animate={{ scaleY: 1 }}
-                  transition={{ duration: 0.65, ease: [0.23, 1, 0.32, 1], delay: 0.2 + i * 0.06 }}
+                  transition={{ duration: mo.sec(mo.duration.long), ease: mo.ease.enter, delay: mo.sec(mo.duration.enter + i * mo.stagger.item) }}
                 >
                   {b.segments ? (
                     b.segments.map((s) => (s.value ? <span key={s.key} className="oa-bar-seg" data-tone={tone(s.key)} style={{ flexGrow: s.value }} /> : null))

@@ -1,5 +1,6 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 "use client"
+import * as mo from "@/lib/motion";
 
 import React, {
   useCallback,
@@ -156,8 +157,7 @@ const Dash = ({
   )
 
   const scaleX = useSpring(targetScaleX, {
-    stiffness: 320,
-    damping: 34,
+    ...mo.spring.soft,
     mass: 0.7,
   })
 

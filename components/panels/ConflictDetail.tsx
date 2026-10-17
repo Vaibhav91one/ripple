@@ -27,7 +27,7 @@ function Clause({ source, title }: { source: Source; title?: string }) {
         <button
           type="button"
           onClick={() => panel.open(source.artifactId, source.quote)}
-          className="inline-flex max-w-[60%] items-center gap-1.5 rounded-sm bg-raised px-2 py-1 text-xs text-body hover:bg-overlay hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple"
+          className="inline-flex max-w-[60%] items-center gap-1.5 rounded-sm bg-raised px-2 py-1 text-xs text-body hover:bg-overlay hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors"
         >
           <FileText className="size-3 shrink-0" />
           <span className="truncate">{title ?? source.artifactId}</span>

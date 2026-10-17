@@ -30,7 +30,7 @@ export function ConflictDialog() {
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(880px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 outline-none">
           <Dialog.Title className="sr-only">Conflict detail</Dialog.Title>
           <Dialog.Description className="sr-only">The RFC sentence and the contract clauses that disagree, and how to resolve it.</Dialog.Description>
-          <Dialog.Close className="absolute -top-9 right-0 rounded-md p-1.5 text-faint hover:text-strong" aria-label="Close"><X className="size-4" /></Dialog.Close>
+          <Dialog.Close className="absolute -top-9 right-0 rounded-md p-1.5 text-faint hover:text-strong transition-colors" aria-label="Close"><X className="size-4" /></Dialog.Close>
           {c && data && <ConflictDetail conflict={c} arrAtRisk={data.counts.arrAtRisk} onResolve={setDone} />}
           {done && <p role="status" className="mt-3 rounded-md bg-covered-soft px-3 py-2 text-sm text-covered">{RESULT[done]}</p>}
         </Dialog.Content>

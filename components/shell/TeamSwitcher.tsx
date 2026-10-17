@@ -41,7 +41,7 @@ export function TeamSwitcher() {
         <MagneticSelect options={OPTIONS} value={current} onChange={choose} label="Team" />
         <p className="text-xs text-faint">{label ? label : onDecision ? "Pick a team lens" : "Pick a team workspace"}</p>
         {onDecision && lens && (
-          <button type="button" onClick={() => { void setLens(null); setOpen(false); }} className="text-xs text-ripple hover:underline">
+          <button type="button" onClick={() => { void setLens(null); setOpen(false); }} className="text-xs text-ripple hover:underline transition-colors">
             Show all teams
           </button>
         )}

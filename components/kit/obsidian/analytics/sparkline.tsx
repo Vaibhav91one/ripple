@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI (obsidianui.dev) Analytics Dashboard, MIT, see ../LICENSE. Restyled to Ripple tokens; the reveal is m.svg (transform + opacity).
 import { useId } from "react";
 import { m, useReducedMotion } from "motion/react";
@@ -32,7 +33,7 @@ export function Sparkline({ points, tone = "ripple", width = 132, height = 34, c
       style={{ transformOrigin: "0 50%" }}
       initial={reduce ? false : { opacity: 0, scaleX: 0.2 }}
       animate={{ opacity: 1, scaleX: 1 }}
-      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: mo.sec(mo.duration.draw), ease: mo.ease.enter }}
     >
       <defs>
         <linearGradient id={`g${id}`} x1="0" x2="0" y1="0" y2="1">

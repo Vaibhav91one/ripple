@@ -3,7 +3,7 @@
 import { AnimatePresence, m } from "motion/react";
 import { X } from "lucide-react";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
-import { duration, sec } from "@/lib/motion";
+import { duration, ease, sec } from "@/lib/motion";
 import { STATUS_LABEL, type Inspected } from "./model";
 
 const BADGE = { conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft text-gap", covered: "bg-covered-soft text-covered", neutral: "bg-raised text-faint" } as const;
@@ -21,7 +21,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 12 }}
-          transition={{ duration: sec(duration.drawer), ease: [0.2, 0, 0, 1] }}
+          transition={{ duration: sec(duration.drawer), ease: ease.enter }}
         >
           <header className="flex items-start justify-between gap-3 border-b border-hairline p-4">
             <div className="min-w-0 space-y-1.5">
@@ -31,7 +31,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
               </div>
               <h2 className="text-md leading-snug text-strong">{info.title}</h2>
             </div>
-            <button aria-label="Close details" onClick={onClose} className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple">
+            <button aria-label="Close details" onClick={onClose} className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
               <X className="size-4" />
             </button>
           </header>
@@ -54,7 +54,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
               <ul className="space-y-1">
                 {info.neighbours.map((n) => (
                   <li key={`${n.id}-${n.type}`}>
-                    <button onClick={() => onSelect(n.id)} className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-1 text-left text-sm hover:bg-raised focus-visible:outline-2 focus-visible:outline-ripple">
+                    <button onClick={() => onSelect(n.id)} className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-1 text-left text-sm hover:bg-raised focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
                       <span className="truncate text-strong">{n.title}</span>
                       <span className="shrink-0 font-mono text-xs text-faint">{n.type}</span>
                     </button>
@@ -76,7 +76,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
                       <button
                         key={src.artifactId + src.quote}
                         onClick={() => source.open(src.artifactId, src.quote)}
-                        className="block w-full rounded-md border border-hairline bg-page p-2 text-left hover:border-ripple focus-visible:outline-2 focus-visible:outline-ripple"
+                        className="block w-full rounded-md border border-hairline bg-page p-2 text-left hover:border-ripple focus-visible:outline-2 focus-visible:outline-ripple transition-colors"
                       >
                         <span className="font-mono text-xs text-ripple">{src.artifactId}</span>
                         <span className="mt-0.5 line-clamp-2 block text-xs text-body">“{src.quote}”</span>

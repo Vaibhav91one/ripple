@@ -41,7 +41,7 @@ export function DiffChip({ label, dot = "bg-ripple", onClick, tone }: { label: s
   );
   const style = { opacity: tone === "removed" ? 0.55 : 1 };
   return onClick ? (
-    <button type="button" onClick={onClick} className={`${cls} hover:bg-raised focus-visible:outline-2 focus-visible:outline-ripple`} style={style}>{body}</button>
+    <button type="button" onClick={onClick} className={`${cls} hover:bg-raised focus-visible:outline-2 focus-visible:outline-ripple transition-colors`} style={style}>{body}</button>
   ) : (
     <span className={cls} style={style}>{body}</span>
   );

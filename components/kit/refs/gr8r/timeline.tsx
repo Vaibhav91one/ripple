@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Timeline: task column, sticky date header, bars, dependency curves, today line, milestone lane.
 // Rebuilt from a written spec (Gr8r has no licence; none of its code was read or copied).
 import { useEffect, useRef, type CSSProperties } from "react";
@@ -136,7 +137,7 @@ export function Timeline(p: TimelineProps) {
     return { i, num: d.getUTCDate(), weekend: [0, 6].includes(d.getUTCDay()) };
   });
 
-  const btn = "inline-flex h-8 items-center gap-1.5 rounded-control px-2.5 text-xs text-body hover:bg-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ripple";
+  const btn = "transition-colors inline-flex h-8 items-center gap-1.5 rounded-control px-2.5 text-xs text-body hover:bg-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ripple";
   return (
     <section className="w-full min-w-[720px] text-body">
       <header className="space-y-1 pb-4">
@@ -153,7 +154,7 @@ export function Timeline(p: TimelineProps) {
           <div role="group" className="flex h-8 items-center rounded-control bg-raised p-0.5">
             {(["weeks", "months"] as const).map((z) => (
               <button key={z} type="button" aria-pressed={p.zoom === z} onClick={() => p.onZoom?.(z)}
-                className={`h-7 rounded-chip px-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-ripple ${p.zoom === z ? "bg-overlay text-strong" : "text-faint hover:text-body"}`}>
+                className={`transition-colors h-7 rounded-chip px-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-ripple ${p.zoom === z ? "bg-overlay text-strong" : "text-faint hover:text-body"}`}>
                 {z === "weeks" ? p.weeksLabel : p.monthsLabel}
               </button>
             ))}
@@ -264,8 +265,8 @@ export function Timeline(p: TimelineProps) {
                 const inside = w > INSIDE_MIN;
                 return (
                   <div key={t.id}>
-                    <m.div initial={{ opacity: 0 }} animate={{ opacity: t.status === "done" ? 0.6 : 1 }} transition={{ duration: 0.22 }}
-                      className="absolute flex items-center gap-1.5 overflow-hidden rounded-control border border-[color-mix(in_oklab,var(--c)_45%,transparent)] bg-[color-mix(in_oklab,var(--c)_16%,var(--surface))] px-[3px] hover:border-[var(--c)]"
+                    <m.div initial={{ opacity: 0 }} animate={{ opacity: t.status === "done" ? 0.6 : 1 }} transition={{ duration: mo.sec(mo.duration.enter) }}
+                      className="transition-colors absolute flex items-center gap-1.5 overflow-hidden rounded-control border border-[color-mix(in_oklab,var(--c)_45%,transparent)] bg-[color-mix(in_oklab,var(--c)_16%,var(--surface))] px-[3px] hover:border-[var(--c)]"
                       style={{ ...tone(t.tone), left, top, width: w, height: BAR }} title={t.title}>
                       {t.progress ? <span className="absolute inset-y-0 left-0 bg-[color-mix(in_oklab,var(--c)_26%,transparent)]" style={{ width: `${t.progress * 100}%` }} /> : null}
                       {inside && <span className="relative flex min-w-0 items-center gap-1.5"><Avatar who={t.who} size={16} /><span className="truncate text-2xs text-strong">{t.title}</span></span>}

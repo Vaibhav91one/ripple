@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI (obsidianui.dev) Analytics Dashboard, MIT, see ../LICENSE. Restyled to Ripple tokens; share bars grow with m.span scaleX.
 import type { ReactNode } from "react";
 import { m, useReducedMotion } from "motion/react";
@@ -38,7 +39,7 @@ export function Leaderboard({ rows, unit = "", className }: { rows: LeaderRow[];
                 style={{ width: `${(r.value / top) * 100}%` }}
                 initial={reduce ? false : { scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1], delay: 0.3 + i * 0.08 }}
+                transition={{ duration: mo.sec(mo.duration.long), ease: mo.ease.enter, delay: mo.sec(mo.duration.medium + i * mo.stagger.item) }}
               />
             </div>
             {r.meta && <div className="oa-leader-meta">{r.meta}</div>}

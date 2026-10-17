@@ -83,7 +83,7 @@ export function GraphPage() {
         <div className="absolute bottom-3 left-1/2 z-10 origin-bottom -translate-x-1/2 scale-[0.8] rounded-xl bg-surface p-2 shadow-[var(--kit-shadow-overlay)]" data-ui>
           <p className="mb-1 flex items-center justify-between px-2 text-xs text-faint">
             <span>Replay how the ripple formed</span>
-            {day !== null && <button onClick={() => setDay(null)} className="text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple">Latest</button>}
+            {day !== null && <button onClick={() => setDay(null)} className="text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">Latest</button>}
           </p>
           <Scrub mode="days" min={range.min} max={range.max} value={day ?? range.max} onChange={(ts) => setDay(ts >= range.max ? null : ts)} />
         </div>
@@ -97,7 +97,7 @@ export function GraphPage() {
                 key={c.name}
                 onClick={() => setTab(i)}
                 aria-pressed={i === tab}
-                className={`h-6 rounded-md px-2 font-mono text-xs focus-visible:outline-2 focus-visible:outline-ripple ${i === tab ? "bg-ripple-soft text-ripple" : "bg-surface text-faint hover:text-strong"}`}
+                className={`h-6 rounded-md px-2 font-mono text-xs focus-visible:outline-2 focus-visible:outline-ripple ${i === tab ? "bg-ripple-soft text-ripple" : "bg-surface text-faint hover:text-strong"} transition-colors`}
               >
                 {c.name}
               </button>

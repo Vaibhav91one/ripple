@@ -14,7 +14,7 @@ export function SiteCredits() {
       {credits.map(([name, href], i) => (
         <span key={name}>
           {i > 0 && (i === credits.length - 1 ? " and " : ", ")}
-          <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-body">
+          <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-body transition-colors">
             {name}
           </a>
         </span>

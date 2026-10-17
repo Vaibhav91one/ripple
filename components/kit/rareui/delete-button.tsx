@@ -1,5 +1,6 @@
 // Rare UI (https://rareui.com), MIT + Commons Clause + Attribution, see ./LICENSE. Restyled to Ripple tokens.
 "use client";
+import * as mo from "@/lib/motion";
 
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
@@ -25,21 +26,20 @@ const TILE = 48;
 const PANEL = 84;
 const HOLD = { deleted: 1400, kept: 600 };
 
-const EASE = [0.32, 0.72, 0, 1] as const;
-const EASE_LID = [0.34, 1.1, 0.64, 1] as const;
+const EASE = mo.ease.enter;
+const EASE_LID = mo.ease.overshoot;
 
-const WIDTH = { duration: 0.62, ease: EASE } as const;
-const LID = { duration: 0.6, ease: EASE_LID } as const;
-const WALL = { duration: 0.56, ease: EASE } as const;
-const IN = { duration: 0.44, ease: EASE, delay: 0.14 } as const;
-const OUT = { duration: 0.3, ease: EASE } as const;
-const TAP = { duration: 0.2, ease: EASE } as const;
-const SWAP = { duration: 0.22, ease: EASE } as const;
-const SETTLE = { duration: 0.45, ease: EASE } as const;
+const WIDTH = { duration: mo.sec(mo.duration.long), ease: EASE } as const;
+const LID = { duration: mo.sec(mo.duration.long), ease: EASE_LID } as const;
+const WALL = { duration: mo.sec(mo.duration.long), ease: EASE } as const;
+const IN = { duration: mo.sec(mo.duration.slow), ease: EASE, delay: mo.sec(mo.duration.fast) } as const;
+const OUT = { duration: mo.sec(mo.duration.medium), ease: EASE } as const;
+const TAP = { duration: mo.sec(mo.duration.enter), ease: EASE } as const;
+const SWAP = { duration: mo.sec(mo.duration.enter), ease: EASE } as const;
+const SETTLE = { duration: mo.sec(mo.duration.slow), ease: EASE } as const;
 const PRESS = {
   type: "spring",
-  stiffness: 520,
-  damping: 18,
+  ...mo.spring.bouncy,
   mass: 0.5,
 } as const;
 const INSTANT = { duration: 0 } as const;

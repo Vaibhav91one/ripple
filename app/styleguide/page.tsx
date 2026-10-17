@@ -27,8 +27,8 @@ export default function Styleguide() {
         <h1 className="text-xl">Ripple styleguide</h1>
         <p className="text-faint">Dark first · Geist · 13px base · 8px grid · 6px radius · hairline borders</p>
         <p className="text-faint">
-          More: <a href="/styleguide/kit" className="text-ripple hover:underline">kit components</a> ·{" "}
-          <a href="/styleguide/refs" className="text-ripple hover:underline">reference components</a>
+          More: <a href="/styleguide/kit" className="text-ripple hover:underline transition-colors">kit components</a> ·{" "}
+          <a href="/styleguide/refs" className="text-ripple hover:underline transition-colors">reference components</a>
         </p>
       </header>
 

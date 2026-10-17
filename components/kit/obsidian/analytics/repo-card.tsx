@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Obsidian UI (obsidianui.dev) Analytics Dashboard, MIT, see ../LICENSE. Restyled to Ripple tokens; prop-driven (no star state).
 import type { CSSProperties, ReactNode } from "react";
 import { m, useReducedMotion } from "motion/react";
@@ -55,7 +56,7 @@ export function RepoCard({
               style={{ "--h": v / peak } as CSSProperties}
               initial={reduce ? false : { scaleY: 0 }}
               animate={{ scaleY: 1 }}
-              transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1], delay: 0.2 + i * 0.022 }}
+              transition={{ duration: mo.sec(mo.duration.slow), ease: mo.ease.enter, delay: mo.sec(mo.duration.enter + i * mo.stagger.tick) }}
             />
           ))}
         </div>

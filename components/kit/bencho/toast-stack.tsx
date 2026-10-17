@@ -1,4 +1,5 @@
 "use client";
+import * as mo from "@/lib/motion";
 // Bencho (bencho.dev) free block, MIT, see ./LICENSE. Restyled to Ripple tokens.
 import "./bencho.css";
 import { type CSSProperties, useRef, useState } from "react";
@@ -56,7 +57,7 @@ const W = 300;
 const H = 64;
 const SHOWN = 3;
 /* a touch under critical: it settles with a hint of give, no wobble */
-const SPRING = { type: "spring", stiffness: 380, damping: 34, mass: 1 } as const;
+const SPRING = { type: "spring", ...mo.spring.soft, mass: 1 } as const;
 
 export function ToastStack({
   peek = 14,
@@ -160,7 +161,7 @@ export function ToastStack({
             animate={out
               ? { y: p.y, scale: p.scale, opacity: 0, x: 60 }
               : { y: p.y, scale: p.scale, opacity: 1, x: 0 }}
-            transition={out ? { duration: 0.22, ease: [0.4, 0, 1, 1] } : SPRING}
+            transition={out ? { duration: mo.sec(mo.duration.enter), ease: mo.ease.exit } : SPRING}
             aria-hidden={!open && !front ? true : undefined}
           >
             <span className="tst-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span>
