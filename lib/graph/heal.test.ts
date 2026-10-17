@@ -16,15 +16,18 @@ describe("healDemo", () => {
     }
     try {
       expect(await nodeCount(name)).toBe(0);
-      healDemo(name, 1_000_000);
-      await expect.poll(() => nodeCount(name), { timeout: 30_000, interval: 250 }).toBeGreaterThan(0);
+      const first = healDemo(name, 1_000_000);
+      expect(first).toBeDefined();
+      await first; // the seed is finished, not just started
+      expect(await nodeCount(name)).toBeGreaterThan(0);
 
       await (await graphFor(name)).delete();
-      healDemo(name, 1_000_000 + 30_000); // inside the throttle window: no-op
-      await new Promise((r) => setTimeout(r, 1_500));
+      expect(healDemo(name, 1_000_000 + 30_000)).toBeUndefined(); // inside the throttle window: no-op
       expect(await nodeCount(name)).toBe(0);
-      healDemo(name, 1_000_000 + 61_000); // window over: heals again
-      await expect.poll(() => nodeCount(name), { timeout: 30_000, interval: 250 }).toBeGreaterThan(0);
+      const again = healDemo(name, 1_000_000 + 61_000); // window over: heals again
+      expect(again).toBeDefined();
+      await again;
+      expect(await nodeCount(name)).toBeGreaterThan(0);
     } finally {
       await (await graphFor(name)).delete().catch(() => {});
       await closeClient();
