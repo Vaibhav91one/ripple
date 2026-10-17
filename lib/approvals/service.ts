@@ -21,7 +21,7 @@ type Joined = { a: typeof pendingActions.$inferSelect; agent: string | null };
 function toRow({ a, agent }: Joined, v: Viewer): Omit<ApprovalRow, "groupSize"> {
   const s = summarize(a.kind, a.payload, a.evidence, agent);
   return {
-    id: a.id, kind: a.kind, status: a.status, summary: s.summary, fields: s.fields, evidence: s.evidence, proposer: s.proposer,
+    id: a.id, kind: a.kind, status: a.status, summary: s.summary, subject: s.subject, fields: s.fields, evidence: s.evidence, proposer: s.proposer,
     runId: a.runId, changeId: s.changeId, group: s.group, requestedAt: a.requestedAt.toISOString(), decidedAt: iso(a.decidedAt),
     approver: a.approver, error: a.error, canDecide: canDecideKind(v, a.kind) && (a.status === "pending" || a.status === "failed"), question: s.question,
   };
@@ -126,7 +126,7 @@ export async function getRun(orgId: string, id: string, v: Viewer): Promise<RunD
   return {
     run: { ...toRun(r), input: r.input, output: r.output },
     steps: steps.map((s) => ({ n: s.n, kind: s.kind, tool: s.tool, args: s.args, cypher: s.cypher, sources: s.sourceIds, tokens: s.tokens })),
-    proposals: props.map((p) => ({ id: p.a.id, kind: p.a.kind, status: p.a.status, summary: toRow(p, v).summary })),
+    proposals: props.map((p) => ({ id: p.a.id, kind: p.a.kind, status: p.a.status, summary: toRow(p, v).summary, subject: toRow(p, v).subject })),
   };
 }
 

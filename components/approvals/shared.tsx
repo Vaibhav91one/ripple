@@ -1,4 +1,15 @@
+import { useQuery } from "@tanstack/react-query";
 import type { Tone } from "@/components/ui/tone";
+import { getNames } from "@/lib/api";
+import { proposalTitle } from "@/lib/approvals/title";
+import type { Subject } from "@/lib/schemas";
+
+/** `name(id)` and `title(proposal)` resolved through /api/names; raw ids show only until it loads (or when an id is unknown). */
+export function useNames() {
+  const { data } = useQuery({ queryKey: ["names"], queryFn: getNames, staleTime: Infinity });
+  const name = (id: string) => data?.[id] ?? id;
+  return { name, title: (p: { summary: string; subject: Subject | null }) => proposalTitle(p, name) };
+}
 
 export const KIND_LABEL: Record<string, string> = {
   graph_merge: "Graph change", create_task: "Task", create_issue: "GitHub issue", send_slack: "Slack message",

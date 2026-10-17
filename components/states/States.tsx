@@ -74,3 +74,6 @@ export const NotFoundBlock = ({ title, children, href = "/overview", cta = "Back
     </div>
   </div>
 );
+
+/** Suspense fallback for a route: what the static shell shows before the screen's client code runs. */
+export const PageLoading = () => <div className="mx-auto w-full max-w-[960px] px-4 py-8 sm:px-8"><LoadingBlock /></div>;

@@ -8,6 +8,7 @@ import { env } from "./env";
 import { roQuery } from "./graph/client";
 import { decisions, inbox, load, ripple } from "./graph/queries";
 import { TEAM_PERSON } from "./lens";
+import { summarize } from "./approvals/format";
 import { Home, type Home as HomeT } from "./schemas";
 import type { Context } from "./server/context";
 import { latestOpenDecisionId, rippleAngle } from "./teams/run";
@@ -30,7 +31,7 @@ async function pendingFor(ctx: Context) {
     .where(and(eq(pendingActions.orgId, ctx.org.id), eq(pendingActions.status, "pending"))).orderBy(desc(pendingActions.requestedAt)).limit(50);
   return rows
     .filter((r) => v.role === "admin" || v.role === (OWNER_ROLE as Record<string, string>)[r.kind])
-    .map((r) => ({ id: r.id, kind: r.kind, requestedAt: r.requestedAt.toISOString() }));
+    .map((r) => ({ id: r.id, kind: r.kind, requestedAt: r.requestedAt.toISOString(), subject: summarize(r.kind, r.payload, [], null).subject }));
 }
 
 async function notificationsFor(ctx: Context): Promise<HomeT["notifications"]> {

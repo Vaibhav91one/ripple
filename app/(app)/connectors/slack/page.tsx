@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { env } from "@/lib/env";
@@ -60,7 +61,7 @@ export default function SlackConnectorPage({ searchParams }: { searchParams: Sea
         <h1 className="text-lg font-medium text-strong">Slack</h1>
         <p className="text-sm text-faint">Delivers changes to channels and records who was told. Admins only.</p>
       </div>
-      <Suspense><Status searchParams={searchParams} /></Suspense>
+      <Suspense fallback={<PageLoading />}><Status searchParams={searchParams} /></Suspense>
     </div>
   );
 }

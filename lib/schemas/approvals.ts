@@ -4,12 +4,23 @@ import { z } from "zod";
 export const ApprovalStatus = z.enum(["pending", "approved", "rejected", "executed", "failed", "expired"]);
 const Evidence = z.object({ src: z.string().optional(), quote: z.string().nullish(), confidence: z.number().optional(), structured: z.boolean().optional() });
 
+/** What a graph proposal is about, structured, so screens can write it as a sentence with resolved names. */
+export const Subject = z.object({
+  op: z.enum(["merge_edge", "end_edge", "merge_node", "suggest_merge"]),
+  type: z.string().optional(),
+  from: z.object({ label: z.string(), id: z.string() }).optional(),
+  to: z.object({ label: z.string(), id: z.string() }).optional(),
+  label: z.string().optional(), id: z.string().optional(), mention: z.string().optional(),
+});
+export type Subject = z.infer<typeof Subject>;
+
 export const ApprovalRow = z.object({
   id: z.string(),
   kind: z.string(),
   status: ApprovalStatus,
   /** One line: what approving does. */
   summary: z.string(),
+  subject: Subject.nullable(),
   /** The payload as label/value pairs. */
   fields: z.array(z.object({ label: z.string(), value: z.string() })),
   evidence: z.array(Evidence),
@@ -76,7 +87,7 @@ export const RunDetail = z.object({
     n: z.number(), kind: z.enum(["tool", "text"]), tool: z.string().nullable(), args: z.unknown(),
     cypher: z.array(z.string()), sources: z.array(z.string()), tokens: z.number(),
   })),
-  proposals: z.array(z.object({ id: z.string(), kind: z.string(), status: z.string(), summary: z.string() })),
+  proposals: z.array(z.object({ id: z.string(), kind: z.string(), status: z.string(), summary: z.string(), subject: Subject.nullable() })),
 });
 export type RunDetail = z.infer<typeof RunDetail>;
 

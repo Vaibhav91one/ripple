@@ -51,7 +51,7 @@ export const SAMPLE_RUN: RunDetail = {
     { n: 3, kind: "text", tool: null, args: null, cypher: [], sources: [], tokens: 2940 },
   ],
   proposals: [
-    { id: SAMPLE_APPROVALS.approvals[3].id, kind: "create_task", status: "pending", summary: SAMPLE_APPROVALS.approvals[3].summary },
-    { id: SAMPLE_APPROVALS.approvals[4].id, kind: "create_issue", status: "failed", summary: SAMPLE_APPROVALS.approvals[4].summary },
+    { id: SAMPLE_APPROVALS.approvals[3].id, kind: "create_task", status: "pending", summary: SAMPLE_APPROVALS.approvals[3].summary, subject: null },
+    { id: SAMPLE_APPROVALS.approvals[4].id, kind: "create_issue", status: "failed", summary: SAMPLE_APPROVALS.approvals[4].summary, subject: null },
   ],
 };

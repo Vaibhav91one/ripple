@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { TEAMS, isTeamId } from "@/components/shell/nav";
@@ -34,7 +35,7 @@ async function Team({ params }: Pick<PageProps<"/teams/[team]">, "params">) {
 // params is read inside Suspense so the shell can prerender instantly (Cache Components).
 export default function TeamPage({ params }: PageProps<"/teams/[team]">) {
   return (
-    <Suspense>
+    <Suspense fallback={<PageLoading />}>
       <Team params={params} />
     </Suspense>
   );

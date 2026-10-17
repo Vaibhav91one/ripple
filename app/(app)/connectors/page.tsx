@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { ConnectorsPanel } from "@/components/connectors/ConnectorsPanel";
@@ -33,7 +34,7 @@ export default function ConnectorsPage() {
         <h1 className="text-lg font-medium text-strong">Connectors</h1>
         <p className="text-sm text-faint">Every source plugs in the same way: authenticate, sync, receive webhooks, propose graph changes.</p>
       </div>
-      <Suspense><Connectors /></Suspense>
+      <Suspense fallback={<PageLoading />}><Connectors /></Suspense>
     </div>
   );
 }

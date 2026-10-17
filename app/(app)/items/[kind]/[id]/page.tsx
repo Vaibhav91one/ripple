@@ -1,3 +1,4 @@
+import { PageLoading } from "@/components/states/States";
 import { Suspense } from "react";
 import { ItemPage } from "@/components/items/ItemPage";
 
@@ -9,7 +10,7 @@ async function Item({ params }: Pick<PageProps<"/items/[kind]/[id]">, "params">)
 
 export default function ItemRoute({ params }: PageProps<"/items/[kind]/[id]">) {
   return (
-    <Suspense>
+    <Suspense fallback={<PageLoading />}>
       <Item params={params} />
     </Suspense>
   );

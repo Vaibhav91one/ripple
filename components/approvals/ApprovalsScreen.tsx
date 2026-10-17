@@ -12,7 +12,7 @@ import { Pill } from "@/components/ui/tone";
 import { decideApproval, getApprovals, isGraphDown } from "@/lib/api";
 import type { ApprovalRow } from "@/lib/schemas";
 import { ApprovalDrawer, type Decision } from "./ApprovalDrawer";
-import { ago, btn, kindLabel, STATUS_TONE } from "./shared";
+import { ago, btn, kindLabel, STATUS_TONE, useNames } from "./shared";
 
 type Toast = { title: string; body: string };
 type Section = { key: string; kind: string; group: string | null; rows: ApprovalRow[] };
@@ -39,6 +39,7 @@ const decidable = (r: ApprovalRow) => r.canDecide && r.status === "pending";
 /** `changeId` scopes the list to one change and drops the page header (the Approvals tab of /changes/[id]). */
 export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
   const qc = useQueryClient();
+  const { name, title } = useNames();
   const [tab, setTab] = useState<"open" | "decided">("open");
   const [sel, setSel] = useQueryState("a", parseAsString);
   const [now] = useState(() => Date.now());
@@ -111,13 +112,13 @@ export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
               <ul className="divide-y divide-hairline overflow-hidden rounded-card border border-hairline bg-surface">
                 {s.rows.map((r) => (
                   <li key={r.id}>
-                    <button type="button" onClick={() => setSel(r.id)} aria-label={`Open: ${r.summary}`}
+                    <button type="button" onClick={() => setSel(r.id)} aria-label={`Open: ${title(r)}`}
                       className="group flex w-full items-center gap-3 px-4 py-3 text-left outline-none hover:bg-raised focus-visible:bg-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ripple">
                       <span className="hidden w-28 shrink-0 font-mono text-2xs text-faint sm:block">{kindLabel(r.kind)}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-strong">{r.summary}</span>
+                        <span className="block truncate text-sm font-medium text-strong">{title(r)}</span>
                         <span className="mt-0.5 block truncate text-xs text-faint">
-                          <span className="sm:hidden">{kindLabel(r.kind)} · </span>{r.proposer}{r.changeId ? ` · change ${r.changeId}` : r.group ? ` · ${r.group}` : ""}
+                          <span className="sm:hidden">{kindLabel(r.kind)} · </span>{r.proposer}{r.changeId ? ` · ${name(r.changeId)}` : r.group ? ` · ${r.group}` : ""}
                         </span>
                       </span>
                       {r.status !== "pending" && <Pill tone={STATUS_TONE[r.status] ?? "gap"} dot>{r.status}</Pill>}
