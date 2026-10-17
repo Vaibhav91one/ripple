@@ -29,6 +29,13 @@
       "when": 1792249681202,
       "tag": "0003_quiet_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792250145727,
+      "tag": "0004_notify_prefs",
+      "breakpoints": true
     }
   ]
 }

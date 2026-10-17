@@ -57,6 +57,8 @@ function recipients(e: RippleEvent, g: GraphReader): Hit[] {
 }
 
 function channels(urgency: Urgency, prefs: Prefs | undefined, email?: boolean): Channel[] {
+  const chosen = prefs?.channels?.[urgency];
+  if (chosen) return chosen;
   if (urgency === "high") return ["slack_dm", "email", "inbox"];
   if (urgency === "low") return email ? ["email", "inbox"] : ["inbox"];
   return [prefs?.preferTeamChannel ? "slack_channel" : "slack_dm", "inbox"];
@@ -91,7 +93,7 @@ function wallToInstant(y: number, mo: number, d: number, mins: number, tz: strin
 }
 
 /** `now` pushed to the end of the quiet window if inside it. Bad tz/time = no quiet hours. */
-function afterQuiet(now: number, q: NonNullable<Prefs["quietHours"]>): number {
+export function afterQuiet(now: number, q: NonNullable<Prefs["quietHours"]>): number {
   try {
     const start = minutes(q.start);
     const end = minutes(q.end);
@@ -118,7 +120,8 @@ export function route(event: RippleEvent, graph: GraphReader, prefs: PrefsReader
     else if (RANK[h.urgency] > RANK[prev.urgency]) byPerson.set(h.personId, { ...prev, urgency: h.urgency });
   }
   const revision = graph.revision(event.subject);
-  return [...byPerson.values()].map((h) => {
+  const wanted = [...byPerson.values()].filter((h) => !(event.type === "digest.weekly" && prefs.get(h.personId)?.digest === false));
+  return wanted.map((h) => {
     const pf = prefs.get(h.personId);
     const sendAt = h.urgency === "high" || !pf?.quietHours ? now : afterQuiet(now, pf.quietHours);
     const dedupeKey = `${event.type}:${event.subject.id}:${h.personId}:${revision}`;

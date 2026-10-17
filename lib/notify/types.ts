@@ -43,6 +43,10 @@ export type Prefs = {
   preferTeamChannel?: boolean;
   /** Local wall-clock window `HH:MM`, may wrap midnight. tz is an IANA zone. */
   quietHours?: { start: string; end: string; tz: string };
+  /** Explicit per-urgency channel choice; absent urgencies use route's defaults. */
+  channels?: Partial<Record<Urgency, Channel[]>>;
+  /** false = never send this person the weekly digest. */
+  digest?: boolean;
 };
 
 export interface PrefsReader {
