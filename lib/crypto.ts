@@ -23,7 +23,7 @@ function keys() {
 export function encrypt(plaintext: string): string {
   const { cur } = keys();
   const nonce = randomBytes(12);
-  const c = createCipheriv("aes-256-gcm", cur, nonce);
+  const c = createCipheriv("aes-256-gcm", cur, nonce, { authTagLength: 16 });
   const ct = Buffer.concat([c.update(plaintext, "utf8"), c.final()]);
   return ["v1", kidOf(cur), nonce.toString("base64url"), ct.toString("base64url"), c.getAuthTag().toString("base64url")].join(":");
 }
@@ -33,7 +33,9 @@ export function decrypt(s: string): string {
   if (v !== "v1" || !tag || extra.length) throw new Error("unsupported ciphertext format");
   const key = keys().byKid.get(kid);
   if (!key) throw new Error(`no secret key for kid ${kid}; set RIPPLE_SECRET_KEY_OLD to the key that encrypted this value`);
-  const d = createDecipheriv("aes-256-gcm", key, Buffer.from(nonce, "base64url"));
-  d.setAuthTag(Buffer.from(tag, "base64url"));
+  const t = Buffer.from(tag, "base64url");
+  if (t.length !== 16) throw new Error("invalid auth tag"); // never accept truncated GCM tags
+  const d = createDecipheriv("aes-256-gcm", key, Buffer.from(nonce, "base64url"), { authTagLength: 16 });
+  d.setAuthTag(t);
   return Buffer.concat([d.update(Buffer.from(ct, "base64url")), d.final()]).toString("utf8"); // final() throws on tamper
 }

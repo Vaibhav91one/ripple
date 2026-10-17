@@ -36,4 +36,11 @@ describe("crypto", () => {
     process.env.RIPPLE_SECRET_KEY = "short";
     expect(() => encrypt("x")).toThrow(/32 bytes/);
   });
+
+  it("rejects a truncated auth tag", () => {
+    process.env.RIPPLE_SECRET_KEY = k();
+    const parts = encrypt("secret").split(":");
+    parts[4] = Buffer.from(parts[4], "base64url").subarray(0, 8).toString("base64url");
+    expect(() => decrypt(parts.join(":"))).toThrow();
+  });
 });
