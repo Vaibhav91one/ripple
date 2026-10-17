@@ -7,7 +7,7 @@ export const agentSettings = pgTable(
   (t) => [primaryKey({ columns: [t.orgId, t.agent] })],
 );
 
-export const RUN_STATUSES = ["queued", "running", "done", "failed", "budget"] as const;
+export const RUN_STATUSES = ["queued", "running", "done", "failed", "budget", "rejected"] as const;
 export type RunStatus = (typeof RUN_STATUSES)[number];
 
 // no FK to orgs: the run log outlives a deleted org (like audit_log and event)

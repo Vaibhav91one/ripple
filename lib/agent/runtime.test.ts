@@ -12,6 +12,7 @@ vi.mock("./registry", async () => {
   const base = { group: "understand", team: "eng", model: "reasoning", writes: [] as never[], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }), system: () => "test" } as const;
   const list = [
     defineAgent({ ...base, name: "t-who", tools: ["who_knows"], budget: { maxSteps: 4, maxTokens: 10_000 } }),
+    defineAgent({ ...base, name: "t-ids", tools: ["who_knows"], output: z.object({ answer: z.string(), teamId: z.string() }), budget: { maxSteps: 4, maxTokens: 10_000 } }),
     defineAgent({ ...base, name: "t-tiny", tools: ["who_knows"], budget: { maxSteps: 4, maxTokens: 5 } }),
   ];
   return { agents: () => list, agent: (n: string) => list.find((a) => a.name === n) };
@@ -134,6 +135,18 @@ describe.skipIf(!dbUrl)("runBackground (Postgres + FalkorDB)", () => {
     expect(spy).not.toHaveBeenCalled();
     expect((await stepsOf(r.runId)).every((s) => !s.cypher.length)).toBe(true);
     spy.mockRestore();
+  }, 30_000);
+
+  it("an output naming a teamId no tool returned ends as rejected, with the reason and no output", async (c) => {
+    if (!graphUp) c.skip();
+    const { runBackground } = await import("./runtime");
+    const model = new MockLanguageModelV4({
+      doGenerate: [gen([call("c1", "who_knows", { systemId: "api-v1" })], "tool-calls", 10), gen([text(JSON.stringify({ answer: "x", teamId: "finance" }))], "stop", 10)],
+    });
+    const r = await runBackground("t-ids", {}, { ...ctx(), model });
+    expect(r).toMatchObject({ status: "rejected", error: expect.stringContaining("teamId=finance") });
+    expect(r.output).toBeUndefined();
+    expect((await stepsOf(r.runId)).some((s) => s.kind === "validation")).toBe(true);
   }, 30_000);
 
   it("unknown agent throws before logging anything", async () => {

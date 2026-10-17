@@ -127,7 +127,7 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
     }
   }
   const names = await entityNames(o.g).catch(() => new Map()); // validation degrades to the empty-traversal rule if the names query fails
-  const v = validateAnswer(full, calls, names);
+  const v = validateAnswer(full, calls, names, { question: o.question, viewerTeamIds: o.viewer?.teamIds });
   if (!v.ok) await o.audit?.({ action: "agent.answer_rejected", resourceType: "agent", resourceId: "ask", outcome: "deny", meta: { reasons: v.reasons, outcome: v.outcome.outcome, rowCount: v.outcome.rowCount } });
   buf = full.trim() ? v.answer : "";
   yield* drain(true);

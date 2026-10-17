@@ -5,7 +5,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { env } from "../env";
 import { db } from "../db";
-import { agentRuns, agentSettings, runSteps, type RunStatus } from "../db/schema";
+import { agentRuns, agentSettings, pendingActions, runSteps, type RunStatus } from "../db/schema";
 import type { Graph } from "../graph/client";
 import type { Cypher } from "../graph/queries";
 import { pickModel, roleFor } from "../llm";
@@ -15,7 +15,7 @@ import { agent as findAgent } from "./registry";
 import { audit } from "../audit";
 import type { Outcome } from "../schemas";
 import { TOOLS, wrapData, type Ctx, type ToolName, type ToolOut, type Viewer } from "./tools";
-import { countRows, entityNames, validateAnswer, type Call } from "./validate";
+import { countRows, entityNames, invalidIds, validateAnswer, type Call } from "./validate";
 
 export { runAgent as runInteractive } from "./loop";
 
@@ -32,7 +32,7 @@ export type BackgroundCtx = {
   /** Reuse an already-inserted queued run instead of inserting a new one. */
   runId?: string;
 };
-/** `outcome` (#211): how the run's output relates to the graph. Structured output cannot be rewritten, so a rejected output is logged (run_step + audit), not replaced. */
+/** `outcome` (#211): how the run's output relates to the graph. An output that names entity ids no tool returned ends the run as `rejected` (reason in `error`, no output stored, its pending proposals rejected). */
 export type RunResult = { runId: string; status: RunStatus; output?: unknown; tokens: number; error?: string; outcome?: Outcome };
 
 /** The permission layer (#99): every tool output passes through this before the model sees it. */
@@ -118,13 +118,17 @@ export async function runBackground(agentName: string, input: unknown, ctx: Back
     });
 
     if (tokens > def.budget.maxTokens) return await finish("budget", { error: `over ${def.budget.maxTokens} tokens` });
-    const strings = (v: unknown): string[] => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : []);
-    const v = validateAnswer(strings(result.output).join("\n"), calls, await entityNames(ctx.g).catch(() => new Map()));
-    if (!v.ok) {
-      await d.insert(runSteps).values({ runId, n: ++n, kind: "validation", args: { rejected: v.reasons, outcome: v.outcome.outcome, rowCount: v.outcome.rowCount }, tokens: 0 });
-      await audit({ org: ctx.org, viewer: ctx.viewer as { kind: string; id?: string } }, { action: "agent.answer_rejected", resourceType: "agent_run", resourceId: runId, outcome: "deny", meta: { agent: def.name, reasons: v.reasons, outcome: v.outcome.outcome } });
+    const outcome = validateAnswer("", calls, new Map()).outcome;
+    const bad = invalidIds(result.output, calls, parsed.data);
+    if (bad.length) {
+      // An output that names entities no tool returned is not trusted: nothing downstream (impact.ready, notifications) may act on it.
+      const reason = `rejected: output names ids no tool returned (${bad.join(", ")})`;
+      await d.insert(runSteps).values({ runId, n: ++n, kind: "validation", args: { rejected: bad, outcome: outcome.outcome, rowCount: outcome.rowCount }, tokens: 0 });
+      await d.update(pendingActions).set({ status: "rejected", decidedAt: new Date() }).where(and(eq(pendingActions.runId, runId), eq(pendingActions.status, "pending")));
+      await audit({ org: ctx.org, viewer: ctx.viewer as { kind: string; id?: string } }, { action: "agent.answer_rejected", resourceType: "agent_run", resourceId: runId, outcome: "deny", meta: { agent: def.name, ids: bad, outcome: outcome.outcome } });
+      return { ...(await finish("rejected", { error: reason })), outcome };
     }
-    return { ...(await finish("done", { output: result.output })), outcome: v.outcome };
+    return { ...(await finish("done", { output: result.output })), outcome };
   } catch (e) {
     return finish(tokens > def.budget.maxTokens ? "budget" : "failed", { error: e instanceof Error ? e.message : String(e) });
   }

@@ -52,6 +52,19 @@ export const askScenarios: Scenario[] = [
     trace: { calls: [[{ tool: "ripple", input: { decisionId: "d-1" } }]], output: { answer: "Leadership is affected by the v1 sunset [[art-msa-northwind]]." } },
   },
   {
+    name: "rejected: Finance is affected, but Finance is not in the rows",
+    input: { question: "Who is affected by the v1 sunset?" },
+    graphFixture: { statements: ["CREATE (:Team {id: 'finance', name: 'Finance', fixture: true})"] },
+    expect: { mustCite: [], mustPropose: [], mustNotPropose: [], maxSteps: 3, rejected: { outcome: "path" } },
+    trace: { calls: [[{ tool: "ripple", input: { decisionId: "d-1" } }]], output: { answer: "Finance is affected by the v1 sunset [[art-msa-northwind]]." } },
+  },
+  {
+    name: "not rejected: 'support tickets' is an ordinary phrase, not the Support team",
+    input: { question: "Who is affected by the v1 sunset?" },
+    expect: { mustCite: ["art-msa-northwind"], mustPropose: [], mustNotPropose: [], maxSteps: 3 },
+    trace: { calls: [[{ tool: "ripple", input: { decisionId: "d-1" } }]], output: { answer: "The support tickets show Legal is hit [[art-msa-northwind]]." } },
+  },
+  {
     name: "rejected: an empty traversal answered with no impact",
     input: { question: "What is the impact of the fax gateway retirement?" },
     graphFixture: { statements: ["CREATE (:Decision {id: 'd-empty', title: 'Retire the fax gateway', status: 'decided', decidedAt: 1760000000, fixture: true})"] },

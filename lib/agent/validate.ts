@@ -16,6 +16,23 @@ const CLAIM = /\b(affects?|affected|hits?|breaks?|breaking|impacts?|impacted|una
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** Word boundaries that also treat '-' and '_' as part of a word, so "api" does not match inside "api-v1". */
 const mentions = (text: string, name: string) => new RegExp(`(?<![\\w-])${esc(name)}(?![\\w-])`, "i").test(text);
+const CUE = /^\s*(?:(?:team|system|service|is|are|was|were|has|have|owns|owned|depends|will|would|may|might|and|or)\b|,|'s|\u2019s)/i;
+const NOUN = /^\s+(?:team|system|service)\b/i;
+/** A mention of an entity in an answer. Multi-word names match case-insensitively. A single word ("Support", "Data", "Legal") is
+ *  also an ordinary word, so it counts only when written as a name: capitalised mid-sentence; capitalised at the start of a
+ *  sentence and followed by a verb or list cue; or any case right before "team", "system" or "service". */
+function namedIn(text: string, name: string): boolean {
+  if (/\s/.test(name)) return mentions(text, name);
+  for (const m of text.matchAll(new RegExp(`(?<![\\w-])${esc(name)}(?![\\w-])`, "gi"))) {
+    const after = text.slice(m.index + m[0].length);
+    if (NOUN.test(after)) return true;
+    if (m[0] !== name) continue;
+    const start = /(?:^|[.!?:]\s+|\n\s*(?:[-*]|\d+[.)])?\s*)$/.test(text.slice(0, m.index));
+    if (!start || CUE.test(after)) return true;
+  }
+  return false;
+}
+export type Context = { /** The person's question: a single word they used themselves is not an entity claim. */ question?: string; /** Ids of the viewer's own teams: never counted. */ viewerTeamIds?: readonly string[] };
 
 /** Rows that carry information. found:false and error rows count 0; a ripple row counts its teams and conflicts. */
 export function countRows(rows: Row[]): number {
@@ -84,14 +101,15 @@ function build(calls: Call[], names: Names, oc: Outcome["outcome"]): { text: str
   return { text: `Ripple found ${list.length} ${list.length === 1 ? "result" : "results"}: ${list.slice(0, 8).join(", ")}${list.length > 8 ? ", …" : ""}.`, paths: list.slice(0, 10) };
 }
 
-export function validateAnswer(answer: string, calls: Call[], names: Names): Verdict {
+export function validateAnswer(answer: string, calls: Call[], names: Names, cx: Context = {}): Verdict {
   const rowCount = calls.reduce((n, c) => n + countRows(c.rows), 0);
   const outcome: Outcome["outcome"] = rowCount ? "path" : calls.some(unresolved) ? "unknown_entity" : "not_in_graph";
   const reasons: string[] = [];
   const text = answer.replace(/\[\[[^\]]*\]\]/g, "");
 
   const seen = evidence(calls);
-  const mentioned = [...names].filter(([, e]) => e.name.length >= 3 && mentions(text, e.name));
+  const own = new Set(cx.viewerTeamIds);
+  const mentioned = [...names].filter(([id, e]) => e.name.length >= 3 && !own.has(id) && namedIn(text, e.name) && !(cx.question && !/\s/.test(e.name) && mentions(cx.question.toLowerCase(), e.name.toLowerCase()) && !new RegExp(`\\b${esc(e.name)}\\b`).test(cx.question)));
   for (const [id, e] of mentioned) if (!mentions(seen, id) && !mentions(seen, e.name)) reasons.push(`names ${e.kind.toLowerCase()} "${e.name}" which no tool result contains`);
 
   const traversals = calls.filter((c) => TRAVERSALS.has(c.tool));
@@ -102,4 +120,18 @@ export function validateAnswer(answer: string, calls: Call[], names: Names): Ver
   const fb = ok ? undefined : build(calls, names, outcome);
   const paths = fb?.paths ?? build(calls, names, outcome).paths;
   return { ok, reasons, answer: fb ? fb.text : answer, outcome: { outcome, entities: mentioned.map(([, e]) => e.name), paths, rowCount } };
+}
+
+const ID_KEY = /^(?:team|system|customer|person|contract)Ids?$/;
+/** Background runs: entity ids (teamId, systemIds, customerId, ...) a structured output names that no tool returned and the run's input did not give. */
+export function invalidIds(output: unknown, calls: Call[], input: unknown = {}): string[] {
+  const seen = `${evidence(calls)}\n${JSON.stringify(input ?? {})}`;
+  const bad = new Set<string>();
+  const walk = (v: unknown, key = ""): void => {
+    if (typeof v === "string") { if (ID_KEY.test(key) && !mentions(seen, v)) bad.add(`${key}=${v}`); }
+    else if (Array.isArray(v)) v.forEach((x) => walk(x, key));
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) walk(x, k);
+  };
+  walk(output);
+  return [...bad];
 }

@@ -166,13 +166,13 @@ function AskDrawerInner({ autoAsk }: { autoAsk?: string }) {
                   {t.tools.length > 0 && (
                     <ToolChips live rows={t.tools.map(toolRow)} diffs={[]} summary={`${t.tools.length} ${t.tools.length === 1 ? "query" : "queries"}`} />
                   )}
-                  {streaming && t.tokens.length === 0 && t.tools.length === 0 && <ThinkingLive />}
+                  {streaming && t.tokens.length === 0 && !t.done && <ThinkingLive label={t.tools.length ? "Checking the answer against the graph…" : "Thinking"} />}
                   {t.tokens.length > 0 && (
                     <StreamingText tokens={t.tokens} sources={t.sources} followUps={[]} streaming={streaming && !t.done} />
                   )}
                   {t.done && (t.rejected || (t.outcome && OUTCOME_NOTE[t.outcome])) && (
                     <p className="text-[11.5px] leading-normal text-faint">
-                      {t.rejected && "The model's answer named things the data did not contain, so Ripple answered from the rows. "}
+                      {t.rejected && "Rewritten from the graph rows: the draft named something the graph didn't return. "}
                       {t.outcome && OUTCOME_NOTE[t.outcome]}
                     </p>
                   )}
