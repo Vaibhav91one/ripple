@@ -1,8 +1,9 @@
 // Registry. A connector issue adds its file here; the catalog is what /connectors offers.
+import { csv } from "./csv";
 import type { Connector } from "./define";
 import { github } from "./github";
 
-export const CONNECTORS: Record<string, Connector> = {};
+export const CONNECTORS: Record<string, Connector> = { csv };
 export const register = (c: Connector) => (CONNECTORS[c.kind] = c);
 register(github);
 
@@ -13,5 +14,5 @@ export const CATALOG: CatalogEntry[] = [
   { kind: "linear", name: "Linear", blurb: "Issues, projects and their owners.", auth: "oauth" },
   { kind: "hubspot", name: "HubSpot", blurb: "Deals and customer accounts.", auth: "oauth" },
   { kind: "zendesk", name: "Zendesk", blurb: "Support tickets and escalations.", auth: "apikey" },
-  { kind: "csv", name: "CSV and file upload", blurb: "People, teams and systems from a spreadsheet.", auth: "upload" },
+  { kind: "csv", name: "CSV and file upload", blurb: "Customers, deals, usage and access from a spreadsheet.", auth: "upload" },
 ];

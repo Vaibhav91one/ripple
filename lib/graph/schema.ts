@@ -5,6 +5,7 @@ export const LABELS = [
   "Team", "Person", "System", "Customer", "Deal", "Contract", "Decision", "Change",
   "Incident", "Task", "Artifact", "Doc", "Ticket", "Message", "PR",
   "Clause", "Control", "Framework", "Vendor", "Finding", "Risk", "Page", "DocsStats", "Goal",
+  "Software", "AccessGroup",
 ] as const;
 
 const STATEMENTS = [

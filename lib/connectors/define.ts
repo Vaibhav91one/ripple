@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { RippleEvent } from "../events/types";
 
 // Labels and edge types are interpolated into Cypher, so they come from these checks only.
-export const NODE_LABELS = ["Task", "Person", "Team", "System", "Customer", "PR", "Artifact"] as const;
+export const NODE_LABELS = ["Task", "Person", "Team", "System", "Customer", "PR", "Artifact", "Deal", "Software", "AccessGroup"] as const;
 const Label = z.enum(NODE_LABELS);
 const Ref = z.object({ label: Label, id: z.string().min(1) });
 const Props = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).refine((p) => !("id" in p), "props.id is not allowed").default({});

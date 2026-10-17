@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plug, RefreshCw } from "lucide-react";
 import type { CatalogEntry } from "@/lib/connectors";
@@ -75,6 +76,7 @@ export function ConnectorsPanel({ accounts, catalog, ready, canSync, note }: Pro
               <p className="text-sm text-body">{c.blurb}</p>
               <p className="text-xs text-faint">{AUTH[c.auth]}</p>
               {ready.includes(c.kind) && c.auth === "app" && <a href={`/connectors/${c.kind}`} className="text-sm text-ripple underline-offset-2 hover:underline">Set up {c.name}</a>}
+              {c.kind === "csv" && <Link href="/connectors/csv" className="text-sm text-ripple underline-offset-4 hover:underline">Import a CSV</Link>}
             </li>
           ))}
         </ul>
