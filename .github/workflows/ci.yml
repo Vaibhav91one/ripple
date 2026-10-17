@@ -11,10 +11,17 @@ jobs:
       falkordb:
         image: falkordb/falkordb:6.0.2
         ports: ["6379:6379"]
-      # postgres: (added by #90)
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: pg
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       FALKORDB_HOST: localhost
       FALKORDB_PORT: "6379"
+      DATABASE_URL: postgres://postgres:pg@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version from packageManager
@@ -25,6 +32,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm db:migrate
+      - run: pnpm db:migrate # idempotent
       - run: pnpm test
       - run: pnpm build
         env:
