@@ -27,7 +27,7 @@ export async function runSync(accountId: string, seam: { graph?: Graph; connecto
         for (const raw of c.map(record, { acct })) {
           const p = GraphProposal.parse(raw);
           if (p.structured) {
-            const r = await applyProposal(g, p, Math.floor(Date.now() / 1000));
+            const r = await applyProposal(g, p, Math.floor(Date.now() / 1000), row.orgId);
             if (!r.applied) { out.skipped++; continue; } // endpoint not there yet: counted and logged once below
             await audit(ctx, { action: "connector.graph_write", resourceType: "connector_account", resourceId: row.id, meta: { op: p.op, src: p.src, kind: row.kind } });
             out.applied++;

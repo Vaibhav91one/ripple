@@ -50,27 +50,55 @@ describe("detectConflicts reports what is new", () => {
 });
 
 describe("conflict.found (Postgres)", () => {
-  it.skipIf(!dbUrl)("a new conflict emits conflict.found once and dispatches the Decision Advisor", async (c) => {
-    if (!up) c.skip();
+  const rows = async () => {
     const { db } = await import("../db");
-    const { events, orgs } = await import("../db/schema");
+    const { events } = await import("../db/schema");
     const { eq } = await import("drizzle-orm");
-    const { emitConflictsFound } = await import("./conflicts");
+    return db().select().from(events).where(eq(events.orgId, org.id));
+  };
+  const setup = async () => {
+    const { db } = await import("../db");
+    const { orgs } = await import("../db/schema");
     await db().insert(orgs).values({ id: org.id, slug: org.id, graphName: gname }).onConflictDoNothing();
-    await changeSunset(g, "d-1", AFTER_GUARANTEE, NOW + 200);
-    const created = await changeSunset(g, "d-1", BEFORE_GUARANTEE, NOW + 300);
-    await emitConflictsFound(org.id, created);
-    const rows = () => db().select().from(events).where(eq(events.orgId, org.id));
-    const [ev] = await rows();
-    expect(ev).toMatchObject({ type: "conflict.found", dedupeKey: `conflict:${org.id}:conf-d-1-api-v1`, payload: { changeId: "d-1", conflictsWith: "ctr-1" } });
+  };
 
-    const again = await detectConflicts(g, NOW + 400, "d-1"); // nothing new: nothing to emit
-    await emitConflictsFound(org.id, again);
-    await emitConflictsFound(org.id, created); // even a repeated call dedupes on the key
+  it.skipIf(!dbUrl)("open, resolve, reopen: exactly two conflict.found events, re-detection none; each dispatches the Decision Advisor", async (c) => {
+    if (!up) c.skip();
+    const { emitConflictsFound } = await import("./conflicts");
+    await setup();
+    await changeSunset(g, "d-1", AFTER_GUARANTEE, NOW + 200); // resolved
+    await emitConflictsFound(org.id, await changeSunset(g, "d-1", BEFORE_GUARANTEE, NOW + 300)); // open (episode 1)
+    const [ev] = await rows();
+    expect(ev).toMatchObject({ type: "conflict.found", dedupeKey: `conflict:${org.id}:conf-d-1-api-v1:${NOW + 300}`, payload: { changeId: "d-1", conflictsWith: "ctr-1" } });
+
+    await emitConflictsFound(org.id, await detectConflicts(g, NOW + 400, "d-1")); // already open: nothing new
     expect(await rows()).toHaveLength(1);
+
+    await changeSunset(g, "d-1", AFTER_GUARANTEE, NOW + 500); // resolved again
+    await emitConflictsFound(org.id, await changeSunset(g, "d-1", BEFORE_GUARANTEE, NOW + 600)); // reopened (episode 2)
+    expect((await rows()).map((r) => r.dedupeKey).sort()).toEqual([`conflict:${org.id}:conf-d-1-api-v1:${NOW + 300}`, `conflict:${org.id}:conf-d-1-api-v1:${NOW + 600}`]);
 
     const enqueue = vi.fn(async (_n: "agent", _d: object) => "job");
     expect(await dispatchAgents({ type: "conflict.found", orgId: org.id, payload: ev.payload as { changeId: string } }, enqueue)).toEqual(["advisor"]);
     expect(enqueue.mock.calls[0][1]).toMatchObject({ agent: "advisor", input: { decisionId: "d-1" } });
+  }, 30_000);
+
+  it.skipIf(!dbUrl)("approving a GUARANTEES edge that conflicts with d-1's sunset emits conflict.found once", async (c) => {
+    if (!up) c.skip();
+    const { db } = await import("../db");
+    const { events } = await import("../db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { applyProposal } = await import("../connectors/apply");
+    await setup();
+    await db().delete(events).where(eq(events.orgId, org.id));
+    await changeSunset(g, "d-1", AFTER_GUARANTEE, NOW + 700); // past both MSAs: no conflict
+    expect((await detectConflicts(g, NOW + 710, "d-1")).data.filter((x) => x.status === "open")).toHaveLength(0);
+    const guarantee = { op: "merge_edge", type: "GUARANTEES", from: { label: "Contract", id: "ctr-3" }, to: { label: "System", id: "api-v1" }, props: { until: Math.floor(Date.parse("2028-01-01T00:00:00Z") / 1000) }, src: "art-msa-northwind", confidence: 1, structured: true };
+    expect(await applyProposal(g, guarantee, NOW + 800, org.id)).toEqual({ applied: true });
+    const evs = await rows();
+    expect(evs).toHaveLength(1);
+    expect(evs[0]).toMatchObject({ type: "conflict.found", payload: { changeId: "d-1", conflictsWith: "ctr-3" } });
+    await applyProposal(g, guarantee, NOW + 900, org.id); // the same edge again: still open, nothing new
+    expect(await rows()).toHaveLength(1);
   }, 30_000);
 });

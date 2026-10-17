@@ -108,7 +108,7 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
   graph_merge: async (payload, { org, writer, now }) => {
     if (payload && typeof payload === "object" && "op" in payload) {
       if (payload.op !== "suggest_merge") {
-        const r = await applyProposal(writer(), payload, now); // a connector or ingest proposal
+        const r = await applyProposal(writer(), payload, now, org.id); // a connector or ingest proposal
         if (r.applied) return r;
         // Fail loudly (the action is marked failed and can be approved again); point at the node proposal from the same source if there is one.
         const { db } = await import("../db");

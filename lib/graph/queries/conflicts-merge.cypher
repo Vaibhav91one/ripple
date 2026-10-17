@@ -1,6 +1,9 @@
 // Idempotent: one Conflict per (decision, system), open, BETWEEN the decision and each contract.
+// detectedAt starts the open episode: set on create and again when a resolved conflict reopens (it keys the conflict.found event).
 MERGE (k:Conflict {id: $cid})
 ON CREATE SET k.detectedAt = $now
+WITH k, k.status AS was
+SET k.detectedAt = CASE WHEN was = 'resolved' THEN $now ELSE k.detectedAt END
 SET k.kind = 'sunset_vs_guarantee', k.severity = 'high', k.status = 'open',
     k.decisionId = $id, k.contractIds = $contractIds, k.sources = $sources
 WITH k

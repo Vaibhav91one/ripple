@@ -1,4 +1,4 @@
-// conflict.found: one event per conflict that is new this run (detectConflicts().created). Re-running detection creates none, so nothing re-emits.
+// conflict.found: one event per conflict that is new or reopened this run (detectConflicts().created). Re-running detection creates none, so nothing re-emits.
 import type { Conflict } from "../schemas";
 
 export async function emitConflictsFound(orgId: string, r: { data: Conflict[]; created: string[] }): Promise<void> {
@@ -9,7 +9,7 @@ export async function emitConflictsFound(orgId: string, r: { data: Conflict[]; c
     if (!c) continue;
     await emit(db(), {
       type: "conflict.found", orgId, subject: { kind: "conflict", id },
-      payload: { changeId: c.decisionId, conflictsWith: c.contractIds[0] ?? c.decisionId }, dedupeKey: `conflict:${orgId}:${id}`,
+      payload: { changeId: c.decisionId, conflictsWith: c.contractIds[0] ?? c.decisionId }, dedupeKey: `conflict:${orgId}:${id}:${c.detectedAt}`, // one per open episode: a reopen emits again
     });
   }
 }
