@@ -14,14 +14,16 @@ const mk = (i: number, kind: string, payload: unknown, evidence: unknown, agent:
   };
 };
 
-const edge = (to: string, q: string, c: number) => ({ op: "merge_edge", type: "PROMISED", from: { label: "Customer", id: "cust-acme" }, to: { label: "System", id: to }, props: {}, src: "upload:msa-acme.pdf", quote: q, confidence: c, structured: false });
+const SRC = "upload:art-msa-northwind";
+const edge = (type: string, from: [string, string], to: [string, string], q: string, c: number) => ({ op: "merge_edge", type, from: { label: from[0], id: from[1] }, to: { label: to[0], id: to[1] }, props: {}, src: SRC, quote: q, confidence: c, structured: false });
+const ev = (q: string, c: number) => [{ src: SRC, quote: q, confidence: c }];
 const rows = [
-  mk(1, "graph_merge", edge("api-v1", "Acme may rely on API v1 until 31 March 2027.", 0.91), [{ src: "upload:msa-acme.pdf", quote: "Acme may rely on API v1 until 31 March 2027.", confidence: 0.91 }], null, 14),
-  mk(2, "graph_merge", edge("billing", "Invoices continue through the legacy billing service.", 0.84), [{ src: "upload:msa-acme.pdf", quote: "Invoices continue through the legacy billing service.", confidence: 0.84 }], null, 14),
-  mk(3, "graph_merge", edge("sso", "SSO is covered by the same service level.", 0.77), [{ src: "upload:msa-acme.pdf", quote: "SSO is covered by the same service level.", confidence: 0.77 }], null, 14),
-  mk(4, "create_task", { id: "t-9001", teamId: "support", decisionId: "d-1", title: "Tell Acme about the API v1 sunset", body: "Support has not acknowledged the sunset; Acme has an open escalation." }, [{ src: "slack:C01/1760", quote: "Acme asked again about v1 last week." }], "brief-writer", 42),
-  mk(5, "create_issue", { title: "Migrate Acme webhooks to API v2", body: "Acme still posts to /v1/hooks." }, [], "brief-writer", 95, { status: "failed", error: "GitHub App is not installed" }),
-  mk(6, "graph_merge", { op: "suggest_merge", kind: "Customer", aliasNorm: "acme inc", nodeId: "cust-acme", mention: "Acme Inc.", score: 0.93, newId: "cust-acme-inc", src: "upload:msa-acme.pdf" }, [{ src: "upload:msa-acme.pdf", quote: "Acme Inc. (the Customer)" }], null, 130),
+  mk(1, "graph_merge", edge("PROMISED", ["Customer", "cust-1"], ["System", "api-v1"], "Northwind may rely on API v1 until 30 June 2027.", 0.91), ev("Northwind may rely on API v1 until 30 June 2027.", 0.91), null, 14),
+  mk(2, "graph_merge", edge("PROMISED", ["Customer", "cust-1"], ["System", "api-v2"], "Northwind will be offered API v2 migration support.", 0.84), ev("Northwind will be offered API v2 migration support.", 0.84), null, 14),
+  mk(3, "graph_merge", edge("GUARANTEES", ["Contract", "ctr-1"], ["System", "api-v1"], "Ledgerly guarantees availability of API v1 until 2027-06-30.", 0.77), ev("Ledgerly guarantees availability of API v1 until 2027-06-30.", 0.77), null, 14),
+  mk(4, "create_task", { id: "t-9001", teamId: "support", decisionId: "d-1", title: "Tell Northwind Capital about the API v1 sunset", body: "Support has not acknowledged the sunset; Northwind has an open escalation." }, [{ src: "slack:C01/1760", quote: "Northwind asked again about v1 last week." }], "brief-writer", 42),
+  mk(5, "create_issue", { title: "Migrate Northwind webhooks to API v2", body: "Northwind still posts to /v1/hooks." }, [], "brief-writer", 95, { status: "failed", error: "GitHub returned 403: Resource not accessible by integration (the Ripple app has no write access to ledgerly/api)" }),
+  mk(6, "graph_merge", { op: "suggest_merge", kind: "Customer", aliasNorm: "northwind capital inc", nodeId: "cust-1", mention: "Northwind Capital Inc.", score: 0.93, newId: "cust-northwind-inc", src: SRC }, [{ src: SRC, quote: "Northwind Capital Inc. (the Customer)" }], null, 130),
 ];
 const size = new Map<string, number>();
 for (const r of rows) if (r.group) size.set(`${r.kind}${r.group}`, (size.get(`${r.kind}${r.group}`) ?? 0) + 1);
