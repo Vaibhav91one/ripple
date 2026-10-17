@@ -1,11 +1,8 @@
 // Worker process: `pnpm worker`. Owns pg-boss start (migrations, maintenance) and runs the handlers.
 import { PgBoss, type Job } from "pg-boss";
 import { POLICY, QUEUES, bossOptions } from "../lib/queue";
-<<<<<<< HEAD
 import { safeMessage } from "../lib/log";
-=======
 import agent from "./handlers/agent";
->>>>>>> 8672ae5 (feat: background agent runtime with run log and budgets (#131))
 import noop from "./handlers/noop";
 import routeEvent from "./handlers/route-event";
 
