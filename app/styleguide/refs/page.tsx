@@ -8,7 +8,6 @@ import FivecornerSection from "@/components/kit/refs/fivecorner/section";
 import ClearbillSection from "@/components/kit/refs/clearbill/section";
 import Gr8rSection from "@/components/kit/refs/gr8r/section";
 import ProtonSection from "@/components/kit/refs/proton/section";
-import IsoSection from "@/components/kit/refs/iso/section";
 import PushSection from "@/components/kit/refs/push/section";
 
 const groups: { id: string; label: string; note: string; body: ReactNode }[] = [
@@ -18,8 +17,7 @@ const groups: { id: string; label: string; note: string; body: ReactNode }[] = [
   { id: "clearbill", label: "Clearbill", note: "One exception, end to end: status, evidence diff, explanation, resolve, severity, toast. Design by @nizamdesign.", body: <ClearbillSection /> },
   { id: "gr8r", label: "Gr8r", note: "Timeline with dependencies and a today line. Rebuilt from a written spec; Gr8r's code has no licence and none is copied.", body: <Gr8rSection /> },
   { id: "proton", label: "Proton", note: "Agent at work and big plain numbers. Recreated from the image.", body: <ProtonSection /> },
-  { id: "iso", label: "Isometric", note: "Systems as tiles on an isometric grid. Simulithic (image) and ISO-GLOW (MIT) style.", body: <IsoSection /> },
-  { id: "push", label: "Push + search", note: "Heat map, pill call to action, mixed search. Push and CollectUI, recreated from the images.", body: <PushSection /> },
+  { id: "push", label: "Search", note: "Mixed ⌘K search. CollectUI, recreated from the image.", body: <PushSection /> },
 ];
 
 export default function RefsStyleguide() {

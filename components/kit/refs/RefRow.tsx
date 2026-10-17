@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { ReactNode } from "react";
 import "./skins.css";
 
-export type Skin = "nizam" | "sakani" | "gr8r" | "proton" | "iso" | "push";
+export type Skin = "nizam" | "sakani" | "gr8r" | "proton" | "push";
 export type License = "MIT port" | "spec rebuild" | "image recreation";
 
 const hasRef = (img: string) => existsSync(join(process.cwd(), "public", "refs", img));

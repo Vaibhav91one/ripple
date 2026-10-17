@@ -33,4 +33,4 @@ Stat card, sidebar, tabs and the summary line are ported from https://github.com
 
 The other components on `/styleguide/refs` are recreated by us from public images or a written spec. No source code was copied:
 Nizam (@nizamdesign: fivecorner, margin, Clearbill), Gr8r (its repo has no licence, so only its behaviour was described and rebuilt),
-Proton, Simulithic, ISO-GLOW (MIT, style only), Push and CollectUI (Jordan Amblin). Reference screenshots stay local and are never committed.
+Proton and CollectUI. Reference screenshots stay local and are never committed.

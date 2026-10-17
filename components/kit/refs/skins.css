@@ -45,6 +45,21 @@
   --glow-ink: #FFFFFF;
 }
 
+/* margin's Pattern card gradient, fitted to colours sampled on a 6x8 grid of the reference (mean error about 8 per channel).
+   The Ripple pane uses the same one. */
+.skin-nizam,
+.skin-ripple {
+  --pattern-bg:
+    radial-gradient(40% 34% at 100% 100%, #F58F4A 0%, #F2A066 35%, rgb(242 160 102 / 0) 100%),
+    radial-gradient(45% 50% at 100% 72%, #EED1A1 0%, #E6CDAE 40%, rgb(230 205 174 / 0) 100%),
+    radial-gradient(42% 32% at 62% 100%, #EBD6BC 0%, #E6D5BE 40%, rgb(230 213 190 / 0) 100%),
+    radial-gradient(45% 32% at 55% 68%, #C4CDC6 0%, #BAC6CA 30%, rgb(186 198 202 / 0) 100%),
+    radial-gradient(50% 42% at 92% 28%, #93B3D3 0%, #6E9ACA 40%, rgb(73 129 189 / 0) 100%),
+    radial-gradient(35% 20% at 95% 0%, #5F92C8 0%, rgb(95 146 200 / 0) 100%),
+    radial-gradient(40% 22% at 50% 44%, #3E6CA5 0%, rgb(62 108 165 / 0) 100%),
+    linear-gradient(180deg, #151E48 0%, #172249 25%, #1C2A5A 40%, #305D95 55%, #3D7CBF 70%, #5A92C8 85%, #6FA2CA 100%);
+}
+
 /* SakaniUI CRM: near-black, white text, orange active underline, green/red delta pills. */
 .skin-sakani {
   color-scheme: dark;
@@ -135,36 +150,7 @@
   background-size: 14px 14px;
 }
 
-/* Isometric (Simulithic, ISO-GLOW): white, hairline greys, one blue tile. */
-.skin-iso {
-  color-scheme: light;
-  --page: #FFFFFF;
-  --surface: #F7F8FA;
-  --raised: #EEF0F4;
-  --overlay: #111317;
-  --hairline: #DADDE3;
-  --strong: #111317;
-  --body: #4A4F57;
-  --faint: #9AA0A9;
-  --ripple: #1E88E5;
-  --ripple-soft: rgb(30 136 229 / 12%);
-  --conflict: #E5484D;
-  --conflict-soft: rgb(229 72 77 / 12%);
-  --gap: #E08A00;
-  --gap-soft: rgb(224 138 0 / 12%);
-  --covered: #16A34A;
-  --covered-soft: rgb(22 163 74 / 12%);
-  --hatch: #C9CDD4;
-  --chart: #1E88E5;
-  --chart-2: #111317;
-  --accent-ink: #FFFFFF;
-  --ref-radius: 10px;
-  --glow-a: #111317;
-  --glow-b: var(--chart);
-  --glow-ink: #FFFFFF;
-}
-
-/* Push: pure black, white pill, muscle-map greens and yellows. CollectUI search shares it. */
+/* CollectUI search: pure black, grey rows, red and green icon tones. */
 .skin-push {
   color-scheme: dark;
   --page: #000000;
