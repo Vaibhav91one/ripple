@@ -103,7 +103,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "inbox": [{ url: "/api/inbox?p=p-ana" }],
   "who-knows": [{ url: "/api/who-knows?system=api-v1" }],
   "health": [{ url: "/api/health" }],
-  "items/[kind]/[id]": [{ url: "/api/items/x/y" }],
+  "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
   "search": [{ url: "/api/search?q=SENTINEL_SRC" }],
   "mcp": [{ url: "/api/mcp" }],
   "org/keys": [{ url: "/api/org/keys" }], // admin only: 403 for the demo viewers
@@ -126,6 +126,19 @@ const get = async (route: string, url: string, params?: Record<string, string>) 
   return { status: res.status, text: await res.text() };
 };
 
+const ITEM_LABEL: Record<string, string> = {
+  PR: "pr", Ticket: "ticket", Doc: "doc", Message: "message", Contract: "contract", Clause: "clause", Customer: "customer", Deal: "deal",
+  System: "system", Person: "person", Team: "team", Control: "control", Finding: "finding", Task: "task", Change: "change",
+};
+/** every node an item page can show: all of them, so a leak through any kind or any neighbour list fails */
+async function itemCases() {
+  const rows = await query<{ id: string; labels: string[] }>(g, "MATCH (n) WHERE n.id IS NOT NULL RETURN n.id AS id, labels(n) AS labels");
+  return rows.flatMap((r) => {
+    const kind = r.labels.map((l) => ITEM_LABEL[l]).find(Boolean);
+    return kind ? [{ url: `/api/items/${kind}/${r.id}`, params: { kind, id: r.id } }] : [];
+  });
+}
+
 describe("every GET route is covered", () => {
   it("lists a URL for each app/api GET route", () => {
     const files = routeFiles("app/api").sort();
@@ -137,6 +150,7 @@ describe("sentinel leak: GET routes", () => {
   t("no route leaks a sentinel to a non-owner", async () => {
     const arts = await query<{ id: string }>(g, "MATCH (a:Artifact) RETURN a.id AS id");
     ROUTES["source/[id]"] = arts.map((a) => ({ url: `/api/source/${a.id}`, params: { id: a.id } }));
+    ROUTES["items/[kind]/[id]"] = await itemCases();
     let checked = 0;
     for (const v of VIEWERS) {
       as(v);
@@ -160,6 +174,24 @@ describe("sentinel leak: GET routes", () => {
     expect((await get("teams/[team]", "/api/teams/security", { team: "security" })).text).toContain("SENTINEL_FINDING");
     as("legal");
     expect((await get("graph", "/api/graph?d=d-1")).text).toContain("SENTINEL_SRC"); // legal's quotes
+  });
+
+  t("item pages hide a restricted node's title but keep its place in the graph", async () => {
+    const item = async (v: V, kind: string, id: string) => JSON.parse((await get("items/[kind]/[id]", `/api/items/${kind}/${id}`, { kind, id })).text);
+    as("sales");
+    const c = await item("sales", "contract", "ctr-1");
+    expect(c.title).toBe("Restricted");
+    expect(c.neighbours.length).toBeGreaterThan(0);
+    expect(c.restricted).toContainEqual(expect.objectContaining({ kind: "contract", owner: "legal" }));
+    const sys = await item("sales", "system", "api-v1"); // its neighbours include the contracts: present, unnamed
+    expect(sys.neighbours.filter((n: { label: string }) => n.label === "contract").every((n: { title: string }) => n.title === "Restricted")).toBe(true);
+    as("legal");
+    expect((await item("legal", "contract", "ctr-1")).title).toContain("SENTINEL_CONTRACT");
+    as("sales");
+    const [{ id: srcId, labels }] = await query<{ id: string; labels: string[] }>(g, "MATCH ()-[r:GUARANTEES]->() WITH r.src AS src LIMIT 1 MATCH (a:Artifact {id: src}) RETURN a.id AS id, labels(a) AS labels");
+    const art = await item("sales", ITEM_LABEL[labels.find((l) => ITEM_LABEL[l]) ?? ""], srcId); // an artifact behind a restricted quote
+    expect(art.sourceUrl).toBe("");
+    expect(art.title).toBe("Restricted source");
   });
 
   t("topology is identical for every viewer; only payload differs", async () => {
