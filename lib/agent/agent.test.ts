@@ -114,7 +114,8 @@ describe("tools on a seeded temp graph", () => {
   t("tools answer honestly when the graph has nothing", async () => {
     const nf = (o: { rows: Record<string, unknown>[] }) => o.rows[0];
     expect(nf(await TOOLS.who_knows.run(ctx(), { systemId: "fax-gateway" }))).toMatchObject({ found: false, note: expect.stringContaining("fax-gateway") });
-    expect(nf(await TOOLS.ripple.run(ctx(), { decisionId: "d-nope" }))).toMatchObject({ found: false });
+    expect(nf(await TOOLS.ripple.run(ctx(), { decisionId: "d-nope" }))).toMatchObject({ found: false, knownDecisions: expect.arrayContaining([expect.objectContaining({ id: "d-1" })]) });
+    expect(nf(await TOOLS.why_affected.run(ctx(), { decisionId: "v1-sunset", teamId: "data" }))).toMatchObject({ found: false, knownDecisions: expect.arrayContaining([expect.objectContaining({ id: "d-1" })]) });
     expect(nf(await TOOLS.trace_decision.run(ctx(), { decisionId: "d-nope" }))).toMatchObject({ found: false });
     expect(nf(await TOOLS.search.run(ctx(), { text: "zzqxnonexistentword" }))).toMatchObject({ found: false });
   });
