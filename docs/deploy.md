@@ -1,6 +1,6 @@
 # Deploying Ripple on Zerops
 
-Two services: `web` (Next.js standalone) and `falkordb` (docker). Live: https://web-2fa0-3000.prg1.zerops.app (the custom domain `ripple.vaibhav.quest` is pending). `zerops.yaml` is the pipeline; this page is the runbook that worked (PR #69).
+Four services: `web` (Next.js standalone), `worker` (pg-boss handlers), `falkordb` (docker) and `db` (Postgres). Live: https://web-2fa0-3000.prg1.zerops.app (the custom domain `ripple.vaibhav.quest` is pending). `zerops.yaml` is the pipeline; this page is the runbook that worked (PR #69).
 
 ## 1. Create the project
 
@@ -31,13 +31,26 @@ services:
 
 Orgs, memberships, API keys and the audit log live in Postgres (FalkorDB stays the graph). The app still boots and serves the demo with `DATABASE_URL` unset.
 
-Add to the import yaml (the orchestrator creates it after owner approval; it is not in the yaml above yet):
+Add to the import yaml (the orchestrator creates the services after owner approval; they are not in the yaml above yet). `db` exists already (postgresql@17, NON_HA); `worker` is created before its first push:
 
 ```yaml
   - hostname: db
-    type: postgresql:single@17
+    type: postgresql@17
+    mode: NON_HA
     priority: 10
+  - hostname: worker
+    type: nodejs@22
+    zeropsSetup: worker     # picks `setup: worker` in zerops.yaml
+    verticalAutoscaling: { minRam: 0.5, maxRam: 1 }
 ```
+
+`worker` has no public port or subdomain. Push it like `web`: `zcli push --no-git --projectId <id> --serviceId <worker id> --setup worker`.
+
+**Env wiring** (all in `zerops.yaml`): `web` and `worker` both get `DATABASE_URL: ${db_connectionString}`, `FALKORDB_HOST: falkordb`, `FALKORDB_PORT`, `LLM_PROVIDER`, `MODEL_AGENT`, `MODEL_EXTRACT`. Project secrets (`FALKORDB_PASSWORD`, `RESET_TOKEN`, `ACK_TOKEN_SECRET`, `LLM_API_KEY`) are visible by bare name in every service. `worker` runs `pnpm worker` (tsx, `--conditions=react-server`) and deploys `lib`, `worker`, `node_modules`, `package.json`, `tsconfig.json`; `lib/graph/queries/*.cypher` ride along inside `lib`. It does not migrate: `web` does.
+
+**Connector secrets key**: `lib/crypto.ts` encrypts connector tokens with `RIPPLE_SECRET_KEY` when set. When unset it derives the 32-byte key with HKDF-SHA256 (ikm = `ACK_TOKEN_SECRET`, empty salt, info `ripple/connector-secrets/v1`), so a deploy needs no extra secret. The kid is the sha256 of the derived key, as with an explicit key. An explicit `RIPPLE_SECRET_KEY` always wins (use it to rotate; put the previous key in `RIPPLE_SECRET_KEY_OLD`). Rotating `ACK_TOKEN_SECRET` while relying on the derived key makes existing ciphertext undecryptable: first set `RIPPLE_SECRET_KEY_OLD` to the base64 of the old derived key, or set an explicit key first.
+
+**Rollback** (go DB-less again): comment out `DATABASE_URL` in `web` (and `worker`) and the `initCommands` migration line in `zerops.yaml`, then redeploy `web`. The app serves the demo without Postgres. Stop `worker` (it needs the database).
 
 Zerops exposes `${db_connectionString}`, `${db_hostname}`, `${db_port}` (5432), `${db_user}`, `${db_password}`, `${db_dbName}` (user and database are both `db`). `zerops.yaml` wires `DATABASE_URL: ${db_connectionString}` into `web`. Use the direct 5432 connection (pgBouncer on 6432 needs TLS and would break pg-boss later).
 

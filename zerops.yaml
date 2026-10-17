@@ -69,8 +69,8 @@ zerops:
         PORT: "3000"
         FALKORDB_HOST: falkordb # services reach each other by hostname (docs: "app:3000")
         FALKORDB_PORT: "6379"
-        # Enable once the `db` service exists (orchestrator does it when creating the service):
-        # DATABASE_URL: ${db_connectionString} # direct 5432 string from the `db` service
+        DATABASE_URL: ${db_connectionString} # direct 5432 string from the `db` service (pg-boss needs the direct port)
+        # To go DB-less again, comment out DATABASE_URL and the initCommands below (docs/deploy.md, rollback).
         # FALKORDB_PASSWORD, RESET_TOKEN, LLM_API_KEY come from project-level secrets (UNCONFIRMED: that
         # project env vars are visible by bare name in every service; otherwise add them here).
         LLM_PROVIDER: openai
@@ -78,8 +78,8 @@ zerops:
         MODEL_EXTRACT: gpt-5.4-nano
       # Postgres (service `db`, see docs/deploy.md). initCommands run on every container start; execOnce
       # makes the migration run once per deploy version. The script skips itself when DATABASE_URL is unset.
-      # initCommands:
-      #   - zsc execOnce ${ZEROPS_appVersionId} -- node scripts/migrate.mjs
+      initCommands:
+        - zsc execOnce ${ZEROPS_appVersionId} -- node scripts/migrate.mjs
       # server.js does process.chdir(__dirname), so the .cypher files resolve from the standalone folder.
       start: HOSTNAME=0.0.0.0 node .next/standalone/server.js # HOSTNAME is a reserved Zerops env key, so set it inline
       healthCheck:
@@ -91,3 +91,34 @@ zerops:
         httpGet:
           port: 3000
           path: / # not /api/health: a FalkorDB blip must not fail the deploy or restart the web container
+
+  # Background worker (pg-boss handlers, `pnpm worker`). No HTTP port. Migrations are run by `web`, not here.
+  # Deploys the source + node_modules because tsx runs worker/ and lib/ directly; lib/ carries the .cypher
+  # files (read from process.cwd()/lib/graph/queries) and lib/ingest/cache. tsx is a devDependency, so the
+  # install must keep dev deps (default; do not set NODE_ENV=production at build).
+  - setup: worker
+    build:
+      base: nodejs@22
+      os: ubuntu # same glibc reason as web (onnxruntime-node)
+      buildCommands:
+        - pnpm install --frozen-lockfile
+      deployFiles:
+        - lib
+        - worker
+        - node_modules
+        - package.json
+        - tsconfig.json
+      cache: node_modules
+    run:
+      base: nodejs@22
+      os: ubuntu
+      envVariables:
+        NODE_ENV: production
+        DATABASE_URL: ${db_connectionString}
+        FALKORDB_HOST: falkordb
+        FALKORDB_PORT: "6379"
+        LLM_PROVIDER: openai
+        MODEL_AGENT: gpt-5.4
+        MODEL_EXTRACT: gpt-5.4-nano
+        # FALKORDB_PASSWORD, LLM_API_KEY, ACK_TOKEN_SECRET, RESET_TOKEN: project secrets, visible by bare name.
+      start: pnpm worker

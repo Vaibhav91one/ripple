@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { randomBytes } from "node:crypto";
+import { createHash, hkdfSync, randomBytes } from "node:crypto";
 import { decrypt, encrypt } from "./crypto";
 
 const k = () => randomBytes(32).toString("base64");
-afterEach(() => { delete process.env.RIPPLE_SECRET_KEY; delete process.env.RIPPLE_SECRET_KEY_OLD; });
+afterEach(() => { delete process.env.ACK_TOKEN_SECRET; delete process.env.RIPPLE_SECRET_KEY; delete process.env.RIPPLE_SECRET_KEY_OLD; });
 
 describe("crypto", () => {
   it("round-trips and uses a fresh nonce", () => {
@@ -42,5 +42,16 @@ describe("crypto", () => {
     const parts = encrypt("secret").split(":");
     parts[4] = Buffer.from(parts[4], "base64url").subarray(0, 8).toString("base64url");
     expect(() => decrypt(parts.join(":"))).toThrow();
+  });
+
+  it("derives the key from ACK_TOKEN_SECRET when RIPPLE_SECRET_KEY is unset; an explicit key wins", () => {
+    process.env.ACK_TOKEN_SECRET = "ack-secret-for-test";
+    const ct = encrypt("derived");
+    expect(decrypt(ct)).toBe("derived");
+    const key = Buffer.from(hkdfSync("sha256", "ack-secret-for-test", "", "ripple/connector-secrets/v1", 32));
+    expect(ct.split(":")[1]).toBe(createHash("sha256").update(key).digest("hex").slice(0, 8));
+    process.env.RIPPLE_SECRET_KEY = k();
+    expect(() => decrypt(ct)).toThrow(/kid/); // explicit key overrides; derived ciphertext needs it as _OLD
+    expect(decrypt(encrypt("explicit"))).toBe("explicit");
   });
 });
