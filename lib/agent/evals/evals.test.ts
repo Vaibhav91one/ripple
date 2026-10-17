@@ -10,12 +10,14 @@ import { docs } from "../agents/docs";
 import { security } from "../agents/security";
 import { support } from "../agents/support";
 import { contract } from "../agents/contract";
+import { digest } from "../agents/digest";
+import { TOOLS } from "../tools";
 import { exposure } from "../agents/exposure";
 import { impact } from "../agents/impact";
 import { detectConflicts } from "../../graph/queries";
 import { defineAgent } from "../define";
 import { EVAL_SETS } from "./index";
-import { replayModel, runEval, type Scenario } from "./run";
+import { EVAL_VIEWER, replayModel, runEval, type Scenario } from "./run";
 
 const name = `test_e_${randomUUID().replaceAll("-", "")}`;
 const NOW = Math.floor(Date.parse("2026-10-17T09:00:00Z") / 1000);
@@ -256,6 +258,71 @@ describe("team specialists and the Decision Advisor, offline", () => {
   t("a specialist cannot use another's write tool", async () => {
     const r = await run(docs, withTrace(EVAL_SETS.docs[0], { calls: [[{ tool: "propose_task", input: { teamId: "devrel", decisionId: "d-1", title: "t", body: "b" } }]] }));
     expect(r.failures).toContain("tool outside allowlist: propose_task");
+  });
+});
+
+describe("Digest eval set, offline", () => {
+  for (const s of EVAL_SETS.digest)
+    t(s.name, async () => {
+      const r = await run(digest, s);
+      expect(r.failures).toEqual([]);
+      expect(r.metrics).toMatchObject({ citeRecall: 1, citePrecision: 1, quoteRate: 1 });
+    });
+  it("covers the three injection documents", () => expect(EVAL_SETS.digest.filter((s) => s.name.startsWith("injection:"))).toHaveLength(3));
+
+  t("Priya's digest lists d-1, the three gaps and the conflict", async () => {
+    const r = await run(digest, EVAL_SETS.digest[0]);
+    const out = r.output as { changed: { decisionId: string }[]; atRisk: { kind: string; note: string }[] };
+    expect(out.changed.map((c) => c.decisionId)).toEqual(["d-1"]);
+    expect(out.atRisk.filter((a) => a.kind === "gap")).toHaveLength(3);
+    expect(out.atRisk.filter((a) => a.kind === "conflict")).toHaveLength(1);
+  });
+
+  it("is read-only and on an hourly cron", () => {
+    expect(digest.writes).toEqual([]);
+    expect(digest.tools.filter((x) => TOOLS[x].proposes)).toEqual([]);
+    expect(digest.trigger.cron).toBe("0 * * * *");
+  });
+});
+
+describe("Ask hand-off, offline", () => {
+  const handoff = () => EVAL_SETS.ask.find((s) => s.name.startsWith("hand-off"))!;
+
+  it("Ask stays read-only by construction: no write kind, no tool that proposes", () => {
+    expect(ask.writes).toEqual([]);
+    expect(ask.tools.filter((x) => TOOLS[x].proposes)).toEqual([]);
+    expect(ask.tools).toEqual(expect.arrayContaining(["run_agent", "list_agents"]));
+  });
+
+  t("'what would Contract Sentinel say about d-1?' runs it and cites clause 7.2; its drafts are previews, Ask proposes nothing", async () => {
+    const s = handoff();
+    const model = replayModel(s.trace!);
+    const r = await runEval(ask, s, { model, g, now: NOW });
+    expect(r.failures).toEqual([]);
+    expect(r.metrics).toMatchObject({ citeRecall: 1, citePrecision: 1, quoteRate: 1 });
+    const run1 = JSON.stringify(model.doGenerateCalls[2].prompt); // the step after run_agent: what the model read
+    expect(run1).toContain("Ledgerly guarantees availability of API v1 until 2027-06-30"); // clause 7.2, as the Legal-seeing viewer
+    expect(run1).toContain('\\"previews\\"');
+    expect(run1).toContain("Previews only");
+    expect(JSON.stringify(r.output)).toContain("7.2");
+  });
+
+  t("an unknown agent, a bad input and Ask itself are refused with the list of agents", async () => {
+    const { runInline } = await import("../handoff");
+    const ctx = { g, now: NOW, demo: false, viewer: EVAL_VIEWER, model: replayModel({ calls: [], output: {} }) };
+    for (const [name, input] of [["nope", {}], ["ask", { question: "x" }]] as const) {
+      const out = await runInline(ctx, name, input);
+      expect(out.rows[0]).toMatchObject({ ran: false, agents: expect.arrayContaining(["contract", "digest"]) });
+      expect((out.rows[0].agents as string[]).includes("ask")).toBe(false);
+    }
+    expect((await runInline(ctx, "contract", { wrong: 1 })).rows[0]).toMatchObject({ ran: false, reason: "invalid_input" });
+  });
+
+  t("list_agents names every agent but Ask, with whether it would write", async () => {
+    const out = await TOOLS.list_agents.run({ g, now: NOW, demo: false }, {});
+    expect(out.rows.map((r) => r.name).sort()).toEqual(["access", "advisor", "contract", "digest", "docs", "exposure", "impact", "security", "support"]);
+    expect(out.rows.find((r) => r.name === "contract")).toMatchObject({ previewOnly: true, writes: ["draft_doc", "create_task"] });
+    expect(out.rows.find((r) => r.name === "impact")).toMatchObject({ previewOnly: false });
   });
 });
 

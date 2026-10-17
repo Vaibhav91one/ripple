@@ -58,7 +58,7 @@ function recipients(e: RippleEvent, g: GraphReader, slack: boolean): Hit[] {
     case "pr.updated":
       return hits(g.prOwners(e.payload.url), "pr_owner", "low");
     case "digest.weekly":
-      return hits(g.digestRecipients(e.orgId), "weekly_digest", "low", true); // the digest is the one low item that is emailed
+      return hits(e.payload.personId ? [e.payload.personId] : g.digestRecipients(e.orgId), "weekly_digest", "low", true); // the digest is the one low item that is emailed
     case "evidence.recorded":
       return []; // shown as "discussed" in the ledger; never notifies and never counts as an ack
     case "slack.inbound":

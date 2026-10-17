@@ -2,7 +2,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { createRippleServer } from "@/lib/mcp/server";
 import { ApiKeyError, getContext, type Context } from "@/lib/server/context";
 
-// No LLM runs here (fixed Cypher tools only), so no Ask-style rate limit: an MCP client spends several requests per session.
+// Fixed Cypher tools, except run_agent, which runs one read-only agent inline (daily token budget in handoff). No Ask-style rate limit: an MCP client spends several requests per session.
 // Stateless Streamable HTTP: a fresh server + transport per request, JSON responses (no SSE, no sessions).
 export async function POST(req: Request): Promise<Response> {
   let ctx: Context;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fanOut } from "./handlers/agent-cron";
+import { digestFanOut, fanOut } from "./handlers/agent-cron";
 import { dispatchAgents } from "./handlers/route-event";
 
 vi.mock("server-only", () => ({}));
@@ -44,6 +44,37 @@ describe("agent-cron fan-out", () => {
   });
   it("RIPPLE_DEMO_AGENTS=1 includes the demo", async () => {
     expect(await fanOut("contract", { orgs, enqueue: vi.fn(async () => 0), demoAgents: true })).toEqual(["acme", "demo", "globex"]);
+  });
+});
+
+describe("digest tick: hourly, only people whose local time is their digest hour", () => {
+  const at = (iso: string) => Math.floor(Date.parse(iso) / 1000);
+  const base = (now: number, rows: { personId: string; tz?: string; digest?: boolean }[]) => ({
+    orgs: async () => [{ id: "acme", isDemo: false, graphName: "g" }, { id: "demo", isDemo: true, graphName: "d" }],
+    people: async () => [{ id: "p-priya", teamId: "eng" }, { id: "p-ana", teamId: "support" }, { id: "p-vera", teamId: "leadership" }],
+    prefs: async () => ({ rows, org: null }),
+    enqueue: vi.fn(async (_n: string, _d: object) => "job"), demoAgents: false, now,
+  });
+  it("Monday 08:30 in Kolkata: Priya (Kolkata) gets one digest job, Ana (New York, Sunday night) and Vera (UTC, 03:00) do not", async () => {
+    const d = base(at("2026-10-12T03:00:00Z"), [{ personId: "p-priya", tz: "Asia/Calcutta" }, { personId: "p-ana", tz: "America/New_York" }]);
+    expect(await digestFanOut(d)).toEqual(["acme:p-priya"]);
+    expect(d.enqueue.mock.calls.map((c) => c[1])).toEqual([{ orgId: "acme", agent: "digest", trigger: "cron", input: { personId: "p-priya", teamId: "eng", weekStart: "2026-10-12" } }]);
+  });
+  it("a person with the digest off gets nothing, even in their hour", async () => {
+    const d = base(at("2026-10-12T03:00:00Z"), [{ personId: "p-priya", tz: "Asia/Calcutta", digest: false }]);
+    expect(await digestFanOut(d)).toEqual([]);
+    expect(d.enqueue).not.toHaveBeenCalled();
+  });
+  it("any other hour or day queues nothing; the demo org is skipped", async () => {
+    expect(await digestFanOut(base(at("2026-10-12T04:00:00Z"), [{ personId: "p-priya", tz: "Asia/Calcutta" }]))).toEqual([]);
+    expect(await digestFanOut(base(at("2026-10-13T08:10:00Z"), []))).toEqual([]);
+    const d = base(at("2026-10-12T08:10:00Z"), []); // 08:10 UTC Monday: everyone without a zone
+    expect(await digestFanOut(d)).toEqual(["acme:p-priya", "acme:p-ana", "acme:p-vera"]);
+    expect(await digestFanOut({ ...d, demoAgents: true })).toHaveLength(6);
+  });
+  it("the digest agent has an hourly cron and no event trigger", async () => {
+    const { agent } = await import("../lib/agent/registry");
+    expect(agent("digest")?.trigger).toEqual({ cron: "0 * * * *" });
   });
 });
 

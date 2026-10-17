@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { effective, merge, snapshotReader, SYSTEM_DEFAULTS, toPrefs } from "./prefs";
+import { digestDue, effective, merge, snapshotReader, SYSTEM_DEFAULTS, toPrefs } from "./prefs";
 import { afterQuiet, route } from "./route";
 import type { GraphReader } from "./types";
 
@@ -35,6 +35,29 @@ describe("merge order: person, then org, then system", () => {
     expect(toPrefs({ digest: false }, { digestDay: "mon" }).digest).toBe(false);
     expect(toPrefs(null, { digestDay: "off" }).digest).toBe(false);
   });
+});
+
+describe("digestDue: the digest day, 08:00-08:59 in the person's own time zone", () => {
+  const at = (iso: string) => Math.floor(Date.parse(iso) / 1000);
+  const MON_0300Z = at("2026-10-12T03:00:00Z"); // Monday 08:30 in Kolkata, Sunday 23:00 in New York
+  it("fires once per zone, in that zone's Monday 08:00 hour", () => {
+    expect(digestDue(MON_0300Z, { tz: "Asia/Calcutta" })).toBe("2026-10-12");
+    expect(digestDue(MON_0300Z, { tz: "America/New_York" })).toBeNull();
+    expect(digestDue(at("2026-10-12T12:30:00Z"), { tz: "America/New_York" })).toBe("2026-10-12");
+    expect(digestDue(at("2026-10-12T04:00:00Z"), { tz: "Asia/Calcutta" })).toBeNull(); // 09:30
+    expect(digestDue(at("2026-10-13T03:00:00Z"), { tz: "Asia/Calcutta" })).toBeNull(); // Tuesday
+  });
+  it("no zone set = UTC", () => expect(digestDue(at("2026-10-12T08:05:00Z"))).toBe("2026-10-12"));
+  it("digest off, by the person or the org, never fires; a person's yes beats the org's off", () => {
+    expect(digestDue(MON_0300Z, { tz: "Asia/Calcutta", digest: false })).toBeNull();
+    expect(digestDue(MON_0300Z, { tz: "Asia/Calcutta" }, { digestDay: "off" })).toBeNull();
+    expect(digestDue(MON_0300Z, { tz: "Asia/Calcutta", digest: true }, { digestDay: "off" })).toBe("2026-10-12");
+  });
+  it("the org's digest day moves it", () => {
+    expect(digestDue(at("2026-10-16T08:10:00Z"), null, { digestDay: "fri" })).toBe("2026-10-16");
+    expect(digestDue(MON_0300Z, { tz: "Asia/Calcutta" }, { digestDay: "fri" })).toBeNull();
+  });
+  it("a bad zone is skipped, not thrown", () => expect(digestDue(MON_0300Z, { tz: "Not/AZone" })).toBeNull());
 });
 
 describe("snapshotReader feeds route()", () => {

@@ -13,7 +13,10 @@ export default async function agent(jobs: Job<AgentJob>[]) {
     if (!org) { console.error("[worker] agent: unknown org", j.data.orgId); continue; }
     // An agent reads as the team it serves: Contract Sentinel as Legal (clauses are Legal-only), Impact Analyst as the change owner (summaries, no restricted text).
     const team = findAgent(j.data.agent)?.team;
-    const viewer = team === "change-owner" ? { kind: "agent", id: j.data.agent, role: "change_owner" } : { kind: "agent", id: j.data.agent, teamIds: team && team !== "everyone" ? [team] : [] };
+    // The Digest reads as the person it is for: their team's rights, nobody else's.
+    const digestIn = j.data.agent === "digest" ? (j.data.input as { personId: string; teamId: string | null; weekStart: string }) : undefined;
+    const viewer = digestIn ? { kind: "agent", id: "digest", teamIds: digestIn.teamId ? [digestIn.teamId] : [] }
+      : team === "change-owner" ? { kind: "agent", id: j.data.agent, role: "change_owner" } : { kind: "agent", id: j.data.agent, teamIds: team && team !== "everyone" ? [team] : [] };
     const r = await runBackground(j.data.agent, j.data.input ?? {}, {
       g: await graphFor(org.graphName), now: Math.floor(Date.now() / 1000), org: { id: org.id }, viewer,
       trigger: j.data.trigger ?? "queue", runId: j.data.runId,
@@ -22,6 +25,11 @@ export default async function agent(jobs: Job<AgentJob>[]) {
     if (j.data.agent === "impact" && r.status === "done" && decisionId) {
       const { emit } = await import("../../lib/events/emit");
       await emit(db(), { type: "impact.ready", orgId: org.id, subject: { kind: "change", id: decisionId }, payload: { changeId: decisionId, runId: r.runId }, dedupeKey: `impact.ready:${r.runId}` });
+    }
+    if (digestIn && r.status === "done") { // low urgency, through the notification engine; one per person per week
+      const { emit } = await import("../../lib/events/emit");
+      const summary = (r.output as { summary?: string } | undefined)?.summary;
+      await emit(db(), { type: "digest.weekly", orgId: org.id, subject: { kind: "digest", id: r.runId }, payload: { weekStart: digestIn.weekStart, personId: digestIn.personId, ...(summary && { summary }) }, dedupeKey: `digest.weekly:${digestIn.weekStart}:${digestIn.personId}` });
     }
     console.log("[worker] agent", j.data.agent, r.status, `${r.tokens} tokens`);
   }

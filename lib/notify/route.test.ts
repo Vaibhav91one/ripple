@@ -197,6 +197,11 @@ const table: Row[] = [
       ["p-vera", "low", ["email", "inbox"], "weekly_digest"],
     ],
   ],
+  [
+    "digest.weekly with a personId: that person only (their own time zone), low, emailed",
+    ev("digest.weekly", { weekStart: "2026-10-12", personId: "p-ana", summary: "One change is open." }, { kind: "digest", id: "run-1" }),
+    [["p-ana", "low", ["email", "inbox"], "weekly_digest"]],
+  ],
   ["impact.ready: change owner, low, inbox only", ev("impact.ready", { changeId: "c1", runId: "r1" }), [["p-priya", "low", INBOX, "change_owner"]]],
   ["contract.added: nobody (the agent queue reads it)", ev("contract.added", { contractId: "ctr-1" }, { kind: "contract", id: "ctr-1" }), []],
   ["evidence.recorded: nobody is notified", ev("evidence.recorded", { changeId: "c1", channelId: "C1" }), []],

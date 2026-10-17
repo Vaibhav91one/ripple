@@ -20,7 +20,9 @@ export const BATCH_SECONDS = 15 * 60; // keep equal to route()'s batch bucket
 
 const external = (channels: string[]) => channels.filter((c): c is Channel => (DELIVERY_CHANNELS as readonly string[]).includes(c));
 
-export const titleFor = (e: Pick<RippleEvent, "type" | "subject">) => {
+export const titleFor = (e: Pick<RippleEvent, "type" | "subject"> & { payload?: object }) => {
+  const summary = e.type === "digest.weekly" ? (e.payload as { summary?: string } | undefined)?.summary : undefined;
+  if (summary) return `Weekly digest: ${summary.replaceAll(/\s*\[\[[^\]]+\]\]/g, "")}`;
   const t = e.type.replaceAll(/[._]/g, " ");
   return `${t[0].toUpperCase()}${t.slice(1)}: ${e.subject.id}`;
 };

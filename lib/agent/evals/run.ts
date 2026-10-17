@@ -37,6 +37,8 @@ export type Scenario = {
   };
   /** Offline only. */
   trace?: Trace;
+  /** Offline only: the recorded run of the agent that run_agent starts inline (Ask hand-off). */
+  nested?: Trace;
 };
 export type Proposal = { kind: ActionKind; payload: unknown };
 export type EvalResult = {
@@ -98,7 +100,7 @@ export async function runEval(agent: AgentDef, s: Scenario, o: EvalOpts): Promis
   const returned = new Map<string, Source>(); // ids (and quotes) tools returned this run
   const allowed = new Set<string>(agent.tools);
   const ctx: Ctx = {
-    g: o.g, now: o.now, demo: false, viewer, org: { id: "eval" }, runId: "eval",
+    g: o.g, now: o.now, demo: false, viewer, org: { id: "eval" }, runId: "eval", model: s.nested && replayModel(s.nested),
     propose: async (kind, payload) => { // never writes: records, and the checks below validate the payload
       proposals.push({ kind, payload });
       return { id: `eval-${proposals.length}`, status: "pending", created: true };

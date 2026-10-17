@@ -58,6 +58,20 @@ export function toPrefs(person?: Layer | null, org?: Layer | null): Prefs {
   };
 }
 
+/** The person's local date (YYYY-MM-DD) when their digest is due right now (digest day, 08:00-08:59 in their time zone), else null.
+ *  Honours the digest preference: a person's own choice over the org default; 'off' never. Run hourly. Bad tz = null. */
+export function digestDue(nowSec: number, person?: Layer | null, org?: Layer | null): string | null {
+  if (toPrefs(person, org).digest === false) return null;
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: merge(person, org).tz ?? SYSTEM_DEFAULTS.tz, weekday: "short", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+      .formatToParts(nowSec * 1000).map((x) => [x.type, x.value]));
+    const day = org?.digestDay && org.digestDay !== "off" ? org.digestDay : SYSTEM_DEFAULTS.digestDay;
+    return p.weekday.toLowerCase() === day && Number(p.hour) === 8 ? `${p.year}-${p.month}-${p.day}` : null;
+  } catch {
+    return null;
+  }
+}
+
 type PersonRow = Layer & { personId: string | null };
 
 /** A synchronous snapshot, as route() needs it. Build once per batch of events. */

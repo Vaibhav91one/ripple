@@ -77,6 +77,8 @@ export function createRippleServer(ctx: Ctx, audit?: Context["audit"]): McpServe
         return { rows: await roQuery<Row>(g, c.text, { id }), sources: [], cypher: [c] };
       },
     },
+    list_agents: { ...TOOLS.list_agents, run: (args: never) => TOOLS.list_agents.run(ctx, args) },
+    run_agent: { ...TOOLS.run_agent, run: (args: never) => TOOLS.run_agent.run(ctx, args) }, // read-only; an agent that would write returns previews
     ack_brief: {
       description: "WRITES to the graph (demo, or an API key whose user is admin / change_owner): record that a team acknowledged a decision, which removes it from the gap. Use only when the user asked to acknowledge.",
       input: z.object({ decisionId, teamId: z.string().describe("Team id, e.g. legal"), kind: z.enum(["seen", "concern", "not_relevant"]).default("seen") }),
