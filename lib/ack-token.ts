@@ -5,6 +5,8 @@ import { env } from "./env";
 // Signed token: base64url(JSON payload) + "." + base64url(HMAC-SHA256). Secret: ACK_TOKEN_SECRET.
 const Payload = z.object({
   teamId: z.string().min(1),
+  o: z.string().min(1).optional(), // org id (absent on old tokens = demo)
+  p: z.string().min(1).optional(), // person the brief was sent to
   decisionId: z.string().min(1),
   exp: z.number().int(), // epoch seconds
   r: z.enum(["seen", "concern", "not_relevant"]).optional(), // suggested reply

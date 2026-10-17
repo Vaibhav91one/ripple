@@ -69,7 +69,7 @@ async function createIssue(env: Env, title: string, body: string): Promise<Notif
 
 export async function notifyGaps(
   g: Graph, decisionId: string,
-  o: { now?: number; baseUrl?: string; env?: Env; model?: LanguageModel | null } = {},
+  o: { orgId?: string; now?: number; baseUrl?: string; env?: Env; model?: LanguageModel | null } = {},
 ): Promise<NotifyResult[]> {
   const now = o.now ?? Math.floor(Date.now() / 1000);
   const env = o.env ?? readEnv();
@@ -81,10 +81,10 @@ export async function notifyGaps(
 
   for (const teamId of r.gap) {
     const brief = await buildBrief(teamId, decisionId, { g, now, rippleResult: r, model: o.model });
-    const token = encodeAckToken({ teamId, decisionId, exp: now + TTL });
+    const member = await firstMember(g, teamId);
+    const token = encodeAckToken({ teamId, decisionId, exp: now + TTL, o: o.orgId ?? "demo", p: member?.id });
     const taskId = `task-${decisionId}-${teamId}`;
     const title = `Review: ${r.decision.title}`;
-    const member = await firstMember(g, teamId);
     const refs = new Set(r.teams.find((t) => t.teamId === teamId)?.why.map((w) => w.ref));
     const conflict = r.conflicts.find((c) => c.contractIds.some((id) => refs.has(id)));
     const titles = new Map((await roQuery<{ id: string; title: string }>(
@@ -115,11 +115,11 @@ export async function notifyGaps(
 
 /** Write ACKED {kind, by, at} from team to decision; returns the new gap. Idempotent per team+decision. */
 export async function recordAck(
-  g: Graph, a: { teamId: string; decisionId: string; kind: Ack["kind"] }, now = Math.floor(Date.now() / 1000),
+  g: Graph, a: { teamId: string; decisionId: string; kind: Ack["kind"]; by?: string; onBehalfOf?: string }, now = Math.floor(Date.now() / 1000),
 ): Promise<{ gap: string[]; by: string }> {
-  const by = (await firstMember(g, a.teamId))?.id ?? "unknown";
+  const by = a.by ?? (await firstMember(g, a.teamId))?.id ?? "unknown";
   await query(g, `MATCH (t:Team {id: $teamId}), (d:Decision {id: $decisionId})
     MERGE (t)-[r:ACKED]->(d)
-    SET r.kind = $kind, r.by = $by, r.at = $now, r.valid_from = $now, r.valid_to = null`, { ...a, by, now });
+    SET r.kind = $kind, r.by = $by, r.onBehalfOf = $onBehalfOf, r.at = $now, r.valid_from = $now, r.valid_to = null`, { teamId: a.teamId, decisionId: a.decisionId, kind: a.kind, by, onBehalfOf: a.onBehalfOf ?? null, now });
   return { gap: (await ripple(g, a.decisionId, now)).gap, by };
 }

@@ -67,6 +67,18 @@ describe("notify and ack on a temp graph (in order)", () => {
     expect(Number(n[0].n)).toBe(3);
   });
 
+  t("notify tokens carry the org and the recipient; recordAck records a given acknowledger", async () => {
+    const [r] = await notifyGaps(g, "d-1", { now: NOW, model: null, env: {}, baseUrl: "http://x", orgId: "org_1" });
+    const d = decodeAckToken(r.token, NOW);
+    expect(d.state === "ok" && d.payload.o).toBe("org_1");
+    expect(d.state === "ok" && d.payload.p).toBeTruthy();
+    const edge = () => query<{ by: string; o: string | null }>(g, "MATCH (:Team {id: 'legal'})-[a:ACKED]->(:Decision {id: 'd-1'}) RETURN a.by AS by, a.onBehalfOf AS o");
+    expect((await recordAck(g, { teamId: "legal", decisionId: "d-1", kind: "seen", by: "p-real", onBehalfOf: "p-other" }, NOW)).by).toBe("p-real");
+    expect(await edge()).toEqual([{ by: "p-real", o: "p-other" }]);
+    await recordAck(g, { teamId: "legal", decisionId: "d-1", kind: "seen", by: "p-real" }, NOW); // same person or no session
+    expect(await edge()).toEqual([{ by: "p-real", o: null }]);
+  });
+
   t("ack removes the team from the gap and writes ACKED {kind, by, at}", async () => {
     const r = await recordAck(g, { teamId: "legal", decisionId: "d-1", kind: "concern" }, NOW);
     expect(r.gap.sort()).toEqual(["devrel", "security"]);
