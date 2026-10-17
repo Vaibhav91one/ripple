@@ -415,6 +415,20 @@ describe("agent memory (#210): findings written back, read first", () => {
     expect(JSON.stringify(await TOOLS.ripple.run({ g, now: NOW, demo: false }, { decisionId: "d-1", depth: 4 }))).not.toContain("fnd-");
   });
 
+  t("two runs recording about Legal leave exactly one current finding, without the model listing supersedes", async () => {
+    await query(g, "MATCH (n:AgentFinding) DETACH DELETE n");
+    const { EXECUTORS } = await import("../../actions/executors");
+    const rec = (id: string, at: number, entityIds: string[]) => EXECUTORS.record_finding!({ id, text: id, entityIds, sources: [], confidence: 0.5, supersedes: [] }, { org: { id: "t" }, now: at, writer: () => g });
+    await rec("fnd-a", T1, ["legal", "d-1"]);
+    await rec("fnd-b", T1 + 60, ["devrel"]); // other entities: untouched
+    await rec("fnd-c", T1 + 120, ["legal", "d-1"]);
+    const rows = await query<{ id: string; entity: string }>(g, "MATCH (f:AgentFinding {status: 'current'})-[:ABOUT]->(e) RETURN f.id AS id, e.id AS entity ORDER BY id");
+    expect(rows.map((r) => r.id)).toEqual(["fnd-b", "fnd-c", "fnd-c"]);
+    expect((await query<{ by: string }>(g, "MATCH (f:AgentFinding {id: 'fnd-a'}) RETURN f.supersededBy AS by"))[0].by).toBe("fnd-c");
+    await rec("fnd-d", T1 + 180, ["legal", "d-1", "devrel"]); // a superset replaces both
+    expect((await query(g, "MATCH (f:AgentFinding {status: 'current'}) RETURN f.id AS id")).map((r) => (r as { id: string }).id)).toEqual(["fnd-d"]);
+  });
+
   t("memory fixtures are removed", async () => {
     await query(g, "MATCH (n:AgentFinding) DETACH DELETE n");
     await query(g, "MATCH (n) WHERE n.fixture = true DETACH DELETE n");

@@ -117,6 +117,7 @@ async function recordFinding(payload: unknown, { writer, now, runId }: ActionCtx
   const agent = runId ? await agentOf(runId) : "unknown";
   const [row] = await query<{ n: number }>(g, load("finding-record").text, { ...p, now, agent, runId: runId ?? null, restrictedTo });
   if (!row?.n) throw new Error("none of the entities exist in the graph");
+  await query(g, load("finding-supersede").text, { id: p.id, agent, entityIds: p.entityIds, now });
   return { findingId: p.id, about: row.n, restrictedTo };
 }
 
