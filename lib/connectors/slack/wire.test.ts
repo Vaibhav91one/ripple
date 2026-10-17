@@ -48,7 +48,7 @@ async function deliver(channel: string, text: string, ts: string, channelName = 
   const slack = vi.fn(async (method: string, p?: Record<string, unknown>) => {
     if (method === "chat.getPermalink") return { permalink: `https://acme.slack.com/archives/${p?.channel}/p${String(p?.message_ts).replace(".", "")}` };
     if (method === "conversations.info") return { channel: { name: channelName } };
-    return { user: { profile: { email: "nobody@example.test" } } };
+    return { user: { profile: { email: "priya@ledgerly.test" } } };
   });
   const call = slack as unknown as Deps["slack"]["call"];
   const deps = { graph: async () => g, slack: { call }, changeForChannel: (c: string) => changeForChannel(org, c), onMessageEvent: messageHook({ graph: async () => g, slack: { call } }) } as unknown as Deps;
@@ -83,5 +83,17 @@ describe("slack message events -> evidence", () => {
     const r = (await rows()).filter((x) => x.channelId === "C-RANDOM");
     expect(r).toHaveLength(1);
     expect(r[0]).toMatchObject({ changeId: "d-1", permalink: "https://acme.slack.com/archives/C-RANDOM/p1800000002000100" });
+  });
+
+  t("users.info email maps the author to the seeded Person (Priya) and her team", async () => {
+    await deliver("C-RANDOM2", "question about d-1", "1800000004.000100");
+    const [r] = (await rows()).filter((x) => x.channelId === "C-RANDOM2");
+    expect(r).toMatchObject({ personId: "p-priya", teamId: "eng", authorSlackId: "U1" });
+  });
+
+  t("the seeded change title matches without the id", async () => {
+    await deliver("C-RANDOM3", "heads up: we Sunset API v1 on Jan 31, plan accordingly", "1800000005.000100");
+    const r = (await rows()).filter((x) => x.channelId === "C-RANDOM3");
+    expect(r.map((x) => x.changeId)).toEqual(["d-1"]);
   });
 });
