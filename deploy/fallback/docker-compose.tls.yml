@@ -1,0 +1,40 @@
+# Public HTTPS host: docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+# Fails to start unless real secrets are set in .env (the built-in defaults are public). Never runs local mode
+# (no login): an unauthenticated public Ripple would let anyone approve actions. Use Clerk keys (see SELF_HOSTING.md)
+# or accept the read-only public demo.
+x-tls-env: &tls-env
+  RIPPLE_MODE: ""
+  RESET_TOKEN: ${RESET_TOKEN:?set a real RESET_TOKEN in .env (openssl rand -hex 32) before exposing Ripple}
+  ACK_TOKEN_SECRET: ${ACK_TOKEN_SECRET:?set a real ACK_TOKEN_SECRET in .env (openssl rand -hex 32)}
+  FALKORDB_PASSWORD: ${FALKORDB_PASSWORD:?set a real FALKORDB_PASSWORD in .env}
+  APP_URL: ${APP_URL:?set APP_URL=https://your.domain in .env}
+
+services:
+  falkordb:
+    environment:
+      REDIS_ARGS: "--requirepass ${FALKORDB_PASSWORD:?set a real FALKORDB_PASSWORD in .env} --appendonly yes --appendfsync everysec"
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a real POSTGRES_PASSWORD in .env}
+  web:
+    environment:
+      <<: *tls-env
+      DATABASE_URL: postgres://ripple:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/ripple
+  worker:
+    environment:
+      <<: *tls-env
+      DATABASE_URL: postgres://ripple:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/ripple
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      RIPPLE_DOMAIN: ${RIPPLE_DOMAIN:?set RIPPLE_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [web]
+
+volumes:
+  caddy-data:

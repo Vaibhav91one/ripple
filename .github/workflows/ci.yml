@@ -38,3 +38,38 @@ jobs:
       - run: pnpm build
         env:
           SKIP_ENV_VALIDATION: "1"
+
+  compose:
+    # Fresh-clone self-host check: build the compose stack with the example env and smoke-test it.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deploy/fallback
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose up -d --build --wait --wait-timeout 600
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fsS http://localhost:3000/api/health | tee /dev/stderr | grep -q '"ok":true'
+          curl -fsS http://localhost:3000/ -o /dev/null
+          curl -fsS -X POST http://localhost:3000/api/mcp \
+            -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | tee /dev/stderr | grep -q '"tools"'
+      - name: Worker is alive
+        run: |
+          for i in $(seq 1 30); do docker compose logs worker | grep -q "\[worker\] ready" && exit 0; sleep 2; done
+          echo "worker never logged ready"; exit 1
+      - name: Write path (approve a pending action in local mode)
+        run: |
+          set -e
+          docker compose exec -T db psql -U ripple ripple -c "insert into pending_action(org_id,kind,payload,idempotency_key) values ('local','create_task','{\"id\":\"t-ci-1\",\"teamId\":\"eng\",\"decisionId\":\"d-1\",\"title\":\"CI approval check\",\"body\":\"x\"}','ci-smoke')"
+          ID=$(curl -fsS http://localhost:3000/api/approvals | python3 -c "import json,sys;print(json.load(sys.stdin)['approvals'][0]['id'])")
+          curl -fsS -X POST http://localhost:3000/api/approvals/$ID -H 'content-type: application/json' -d '{"decision":"approve"}' | tee /dev/stderr | grep -q '"status":"approved"'
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+      - if: always()
+        run: docker compose down -v

@@ -1,4 +1,4 @@
-ripple.vaibhav.quest {
+{$RIPPLE_DOMAIN:localhost} {
 	# flush_interval -1 = no buffering, so the /api/ask stream arrives token by token
 	reverse_proxy web:3000 {
 		flush_interval -1

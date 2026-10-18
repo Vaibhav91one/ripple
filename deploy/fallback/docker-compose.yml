@@ -1,34 +1,102 @@
-# Fallback host: any VPS with Docker. Usage: see docs/deploy.md ("Fallback").
-# Needs a .env next to this file: FALKORDB_PASSWORD, RESET_TOKEN, LLM_API_KEY (+ LLM_PROVIDER, MODEL_*).
+# Self-host Ripple: `cp .env.example .env && docker compose up -d --build`, then open http://localhost:3000.
+# Every variable has a default, so the stack starts with zero edits. See SELF_HOSTING.md.
+# Local mode has NO LOGIN: web is published on 127.0.0.1 only. For a public host use the HTTPS override
+# (docker-compose.tls.yml), which refuses default secrets and never runs local mode.
+x-ripple-env: &ripple-env
+  FALKORDB_HOST: falkordb
+  FALKORDB_PORT: "6379"
+  FALKORDB_PASSWORD: ${FALKORDB_PASSWORD:-ripple-local}
+  DATABASE_URL: postgres://ripple:${POSTGRES_PASSWORD:-ripple-local}@db:5432/ripple
+  RIPPLE_MODE: ${RIPPLE_MODE:-} # empty = read-only public demo; .env.example sets local
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  ACK_TOKEN_SECRET: ${ACK_TOKEN_SECRET:-ripple-local-ack-secret-change-me}
+  RESET_TOKEN: ${RESET_TOKEN:-ripple-local-reset-token}
+  RIPPLE_SECRET_KEY: ${RIPPLE_SECRET_KEY:-}
+  RIPPLE_SECRET_KEY_OLD: ${RIPPLE_SECRET_KEY_OLD:-}
+  RIPPLE_AUTH: ${RIPPLE_AUTH:-}
+  CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+  CLERK_WEBHOOK_SIGNING_SECRET: ${CLERK_WEBHOOK_SIGNING_SECRET:-}
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+  FALKORDB_TLS: ${FALKORDB_TLS:-}
+  LLM_PROVIDER: ${LLM_PROVIDER:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  MODEL_AGENT: ${MODEL_AGENT:-}
+  MODEL_EXTRACT: ${MODEL_EXTRACT:-}
+  DAILY_TOKEN_BUDGET: ${DAILY_TOKEN_BUDGET:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_FROM: ${RESEND_FROM:-}
+  GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+  GITHUB_APP_INSTALLATION_ID: ${GITHUB_APP_INSTALLATION_ID:-}
+  GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+  GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
+  GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+  GITHUB_REPO: ${GITHUB_REPO:-}
+  SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+  SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+  SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+
 services:
   falkordb:
     image: falkordb/falkordb:6.0.2
     restart: unless-stopped
     environment:
-      REDIS_ARGS: "--requirepass ${FALKORDB_PASSWORD}"
+      REDIS_ARGS: "--requirepass ${FALKORDB_PASSWORD:-ripple-local} --appendonly yes --appendfsync everysec"
     volumes:
       - falkordb-data:/var/lib/falkordb/data
     mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '${FALKORDB_PASSWORD:-ripple-local}' ping 2>/dev/null | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ripple
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ripple-local}
+      POSTGRES_DB: ripple
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ripple -d ripple"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   web:
     build:
       context: ../..
       dockerfile: deploy/fallback/Dockerfile
+      target: web
+      args: # NEXT_PUBLIC_* is inlined at build time: set it in .env before `--build` to use Clerk
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
     restart: unless-stopped
-    depends_on: [falkordb]
-    env_file: .env
-    environment:
-      FALKORDB_HOST: falkordb
+    depends_on:
+      falkordb: { condition: service_healthy }
+      db: { condition: service_healthy }
+    environment: *ripple-env
+    ports: ["127.0.0.1:${WEB_PORT:-3000}:3000"] # loopback only: local mode has no login
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
-  caddy:
-    image: caddy:2
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/fallback/Dockerfile
+      target: worker
     restart: unless-stopped
-    ports: ["80:80", "443:443"]
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-    depends_on: [web]
+    depends_on:
+      falkordb: { condition: service_healthy }
+      web: { condition: service_healthy } # web runs the migrations; the worker waits for them
+    environment: *ripple-env
 
 volumes:
   falkordb-data:
-  caddy-data:
+  postgres-data:

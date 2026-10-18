@@ -119,6 +119,8 @@ MCP: `claude mcp add --transport http ripple $URL/api/mcp` (11 tools, 20 to 50 m
 
 ## Fallback: VPS + docker compose + Caddy
 
-1. Any VPS with Docker; DNS `A ripple -> <vps ip>`.
-2. `cd deploy/fallback`, create `.env` (`FALKORDB_PASSWORD`, `RESET_TOKEN`, optional `LLM_API_KEY`).
-3. `docker compose up -d --build`. Caddy gets the certificate on first request; `flush_interval -1` keeps streams unbuffered.
+> **Warning: local mode (`RIPPLE_MODE=local`) has no login. Never expose it publicly.** For a public host use Clerk keys (or the read-only demo), real secrets, and the HTTPS override, which refuses default secrets and never runs local mode. Full guide: `SELF_HOSTING.md`.
+
+1. Any VPS with Docker Compose v2; DNS `A ripple -> <vps ip>`.
+2. `cd deploy/fallback && cp .env.example .env`, delete `RIPPLE_MODE=local`, and set `RIPPLE_DOMAIN`, `APP_URL=https://<domain>`, `FALKORDB_PASSWORD`, `POSTGRES_PASSWORD`, `ACK_TOKEN_SECRET`, `RESET_TOKEN`; optional `LLM_API_KEY` (+ `LLM_PROVIDER`, `MODEL_*`) and the Clerk keys. The stack is web, worker, FalkorDB and Postgres; web runs the migrations on start.
+3. `docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build`. Caddy gets the certificate on first request; `flush_interval -1` keeps streams unbuffered.

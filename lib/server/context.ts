@@ -5,10 +5,10 @@ import { audit, type AuditEvent } from "../audit";
 import { env } from "../env";
 import { safeMessage } from "../log";
 import { LENS_COOKIE, LENS_TEAM, parseLens } from "../lens";
-import { sessionViewer } from "../auth";
+import { authEnabled, sessionViewer } from "../auth";
 import { ensureSchema } from "../graph/schema";
 import { migrateGraph } from "../graph/migrate";
-import { healDemo } from "../graph/bootstrap";
+import { healDemo, seedIfEmpty } from "../graph/bootstrap";
 import { graphFor, readOnly, type Graph } from "../graph/client";
 
 /** The demo tenant's graph; the only default name in the codebase. */
@@ -57,6 +57,11 @@ async function lensRole(): Promise<"member" | "change_owner"> {
   }
 }
 
+/** RIPPLE_MODE=local without Clerk: one writable workspace, an admin viewer, no account. */
+export const LOCAL_ORG = "local";
+const localViewer = () => ({ kind: "user" as const, userId: "local", orgId: LOCAL_ORG, orgSlug: LOCAL_ORG, teamIds: [] as string[], role: "admin" as const });
+let localBoot: Promise<unknown> | undefined; // one first-use seed per process, concurrent requests share it
+
 const ready = new Set<string>(); // org graphs whose schema this process has already created
 const knownOrgs = new Set<string>(); // orgs already upserted into Postgres by this process
 
@@ -90,7 +95,7 @@ async function keyViewer(req?: Request) {
   return { viewer, graphName: k.graphName };
 }
 
-/** Signed in with an active Clerk org -> that org's graph; anyone else -> the demo. RIPPLE_GRAPH is a test-only graph override. */
+/** Signed in with an active Clerk org -> that org's graph; RIPPLE_MODE=local (no Clerk) -> the writable `local` org; anyone else -> the read-only demo. RIPPLE_GRAPH is a test-only graph override. */
 export async function getContext(req?: Request): Promise<Context> {
   const e = env();
   const keyed = await keyViewer(req);
@@ -105,14 +110,16 @@ export async function getContext(req?: Request): Promise<Context> {
       writer: () => raw,
     };
   }
-  const session = await sessionViewer();
-  const viewer: Viewer = (session && (await withMembership(session))) ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: (await lensTeam()).split(","), role: await lensRole() };
+  const local = !authEnabled() && e.RIPPLE_MODE === "local";
+  const session = (await sessionViewer()) ?? (local ? localViewer() : null);
+  const viewer: Viewer = (session && (local ? { ...session, teamIds: (await lensTeam()).split(",") } : await withMembership(session))) ?? { kind: "anon", orgId: DEMO_GRAPH, teamIds: (await lensTeam()).split(","), role: await lensRole() };
   const graphName = e.RIPPLE_GRAPH || (session ? graphNameFor(session.orgId) : DEMO_GRAPH);
   const raw = await graphFor(graphName);
   if (session && !e.RIPPLE_GRAPH) {
     if (!ready.has(graphName)) {
       await ensureSchema(raw); // indexes only, never seed data
       await migrateGraph(raw);
+      if (local) await (localBoot ??= seedIfEmpty(graphName).finally(() => { localBoot = undefined; })); // first use: the demo seed, so approvals and writes have data
       ready.add(graphName);
     }
     if (e.DATABASE_URL && !knownOrgs.has(session.orgId)) {
