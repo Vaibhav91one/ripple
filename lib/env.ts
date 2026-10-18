@@ -35,6 +35,7 @@ const shape = {
   DATABASE_URL: str,
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: str,
   CLERK_SECRET_KEY: str,
+  RIPPLE_MODE: z.enum(["local"]).optional(), // "local" (and no Clerk keys) = one writable workspace `local`, seeded from the demo data; unset = read-only public demo
   RIPPLE_AUTH: str, // "off" forces the public demo even when Clerk keys are set
   CLERK_WEBHOOK_SIGNING_SECRET: str,
   RIPPLE_SECRET_KEY: str, // 32-byte base64, encrypts connector tokens (lib/crypto.ts)

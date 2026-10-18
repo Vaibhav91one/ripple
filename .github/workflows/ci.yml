@@ -38,3 +38,28 @@ jobs:
       - run: pnpm build
         env:
           SKIP_ENV_VALIDATION: "1"
+
+  compose:
+    # Fresh-clone self-host check: build the compose stack with the example env and smoke-test it.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deploy/fallback
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose up -d --build --wait --wait-timeout 600
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fsS http://localhost:3000/api/health | tee /dev/stderr | grep -q '"ok":true'
+          curl -fsS http://localhost:3000/ -o /dev/null
+          curl -fsS -X POST http://localhost:3000/api/mcp \
+            -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | tee /dev/stderr | grep -q '"tools"'
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+      - if: always()
+        run: docker compose down -v
