@@ -27,8 +27,8 @@ export async function completeInstall(orgId: string, code: string, deps: Deps): 
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: SLACK_CLIENT_ID, client_secret: SLACK_CLIENT_SECRET, code, redirect_uri: redirectUri() }),
   });
-  const b = (await res.json()) as { ok: boolean; error?: string; access_token?: string; scope?: string; team?: { id: string } };
+  const b = (await res.json()) as { ok: boolean; error?: string; access_token?: string; scope?: string; team?: { id: string; name?: string } };
   if (!b.ok || !b.access_token || !b.team?.id) throw new Error(`slack oauth.v2.access: ${b.error ?? "no token"}`);
-  await deps.save({ orgId, teamId: b.team.id, tokenEnc: encrypt(b.access_token), scopes: (b.scope ?? "").split(",").filter(Boolean) });
+  await deps.save({ orgId, teamId: b.team.id, tokenEnc: encrypt(b.access_token), scopes: (b.scope ?? "").split(",").filter(Boolean), teamName: b.team.name });
   return b.team.id;
 }

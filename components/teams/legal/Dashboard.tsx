@@ -51,7 +51,7 @@ export function LegalDashboard() {
         wide
         meta={<Segmented label="Renewal window" value={win} onChange={(v) => void setWin(v)} options={WINDOWS.map((w) => ({ id: w, label: `${w} days` }))} />}
       >
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr><th className={th}>Contract</th><th className={th}>Counterparty</th><th className={th}>Value</th><th className={th}>Notice</th><th className={th}>Renews</th></tr></thead>
             <tbody className="divide-y divide-hairline">

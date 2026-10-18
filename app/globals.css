@@ -28,6 +28,7 @@
   --color-gap-soft: var(--gap-soft);
   --color-covered: var(--covered);
   --color-covered-soft: var(--covered-soft);
+  --color-covered-ink: var(--covered-ink);
   /* type scale: 12 13 15 18 24 32 */
   --text-xs: 12px;
   --text-sm: 13px;
@@ -152,6 +153,7 @@
   --gap-soft: oklch(0.72 0.16 70 / 14%);
   --covered: oklch(0.62 0.13 155);
   --covered-soft: oklch(0.62 0.13 155 / 12%);
+  --covered-ink: oklch(0.45 0.11 155); /* readable covered text on covered-soft (#270; the design-system issue generalises -ink shades) */
 }
 
 

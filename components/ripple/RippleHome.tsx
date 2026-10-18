@@ -70,7 +70,7 @@ export function RippleHome() {
     <div className="flex h-full flex-col">
       <div className="px-5 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
-          <div data-slot="team-tabs" role="group" aria-label="Filter by team" className="flex items-center gap-1 overflow-x-auto">
+          <div data-slot="team-tabs" role="group" aria-label="Filter by team" className="flex items-center gap-1 relative overflow-x-auto">
             {[{ id: null, label: "All" }, ...TEAM_TABS].map((t) => (
               <button
                 key={t.label}

@@ -66,7 +66,7 @@ export function AnalyticsPage() {
         <ExportButton href="/api/analytics" />
       </PageHeader>
 
-      <nav aria-label="Analytics views" className="-mx-1 mb-5 flex gap-1 overflow-x-auto px-1">
+      <nav aria-label="Analytics views" className="-mx-1 mb-5 flex gap-1 relative overflow-x-auto px-1">
         {TABS.map((t) => (
           <button key={t} type="button" aria-pressed={tab === t} onClick={() => void setTab(t === "overview" ? null : t)}
             className={`h-9 shrink-0 rounded-full px-4 text-sm font-medium transition-colors ${tab === t ? "bg-strong text-ink-on-strong" : "text-body hover:bg-raised"}`}>
@@ -121,7 +121,7 @@ function GraphSection({ d }: { d: string }) {
                       className={`h-7 rounded-full px-2.5 font-mono text-xs transition-colors ${c.name === q.name ? "bg-strong text-ink-on-strong" : "bg-raised text-body hover:text-strong"}`}>{c.name}</button>
                   ))}
                 </div>
-                <div className="mt-3 overflow-x-auto"><CodeBlock key={q.name} code={q.text} language="Cypher" title={`${q.name}.cypher`} stream={false} className="max-w-none" /></div>
+                <div className="mt-3 relative overflow-x-auto"><CodeBlock key={q.name} code={q.text} language="Cypher" title={`${q.name}.cypher`} stream={false} className="max-w-none" /></div>
               </>
             )}
           </aside>
@@ -243,7 +243,7 @@ function HeatmapCard({ a, team }: { a: Analytics; team: string | null }) {
   return (
     <Card>
       <CardHeader title="Where it leaks" sub="By team and gap type, for this change. ARR sits on the one cell it belongs to." />
-      <div className="mt-5 overflow-x-auto">
+      <div className="mt-5 relative overflow-x-auto">
         <table className="w-full min-w-[560px] table-fixed border-separate border-spacing-1.5 text-sm">
           <caption className="sr-only">Gaps by team and gap type</caption>
           <thead>

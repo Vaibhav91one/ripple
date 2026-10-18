@@ -14,7 +14,7 @@ const back = (_req: Request, q: string) => redirectTo(`/connections/github?${q}`
 export async function GET(req: Request) {
   const ctx = await getContext(req);
   const v = ctx.viewer;
-  if (ctx.readonly || v.kind !== "user" || v.role !== "admin") return Response.json({ error: "forbidden" }, { status: 403 });
+  if (ctx.readonly || v.kind !== "user" || v.role !== "admin") return back(req, "error=forbidden");
   const url = new URL(req.url);
   const installation = url.searchParams.get("installation_id") ?? "";
   if (!/^\d+$/.test(installation) || !checkState(url.searchParams.get("state"), v.userId, "install", ctx.org.id, true)) return back(req, "error=bad_state");

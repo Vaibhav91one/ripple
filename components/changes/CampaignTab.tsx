@@ -122,7 +122,7 @@ export function CampaignTab({ c, name }: { c: Campaign; name: (id: string) => st
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="overflow-x-auto"><div className="min-w-[600px]"><SteppedBars
+      <div className="relative overflow-x-auto"><div className="min-w-[600px]"><SteppedBars
         title="Campaign funnel" figure={`${acked}/${total}`} chip="teams acknowledged"
         text="How many affected teams reached each stage. Slack reports sent, never read, so there is no read step."
         kv={[{ label: "Effective", value: day(c.effectiveAt) ?? "Not set" }, { label: "Teams", value: String(total) }]}
@@ -132,7 +132,7 @@ export function CampaignTab({ c, name }: { c: Campaign; name: (id: string) => st
       <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {c.teams.map((t) => <TeamCard key={t.teamId} t={t} changeId={c.changeId} name={name} />)}
       </ul>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <TimelineDemo
           title="Due dates" subtitle="From the day each team was told to the day its task is due, up to the change date."
           searchPlaceholder="Search teams" sortLabel="Sort: Team" groupLabel="Group" groupOptions={["Change"]}

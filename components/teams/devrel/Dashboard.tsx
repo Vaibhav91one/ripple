@@ -26,7 +26,7 @@ export function DevrelDashboard() {
   return (
     <TeamFrame title="DevRel" subtitle="Docs traffic, search gaps, SDK adoption and the changelog" kpis={d.kpis} angle={d.angle} restricted={d.restricted} teamName="DevRel">
       <Widget title="Top pages" wide meta="last 30 days">
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr><th className={th}>Page</th><th className={th}>Views</th><th className={th}>Helpful</th><th className={th} /></tr></thead>
             <tbody className="divide-y divide-hairline">

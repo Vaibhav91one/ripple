@@ -18,7 +18,7 @@ type SortKey = "name" | "last" | "strength";
 const STRENGTH: Record<Strength, { label: string; color: string; rank: number }> = {
   strong: { label: "Covered", color: "var(--covered)", rank: 3 },
   weak: { label: "Partly told", color: "var(--gap)", rank: 2 },
-  veryweak: { label: "Not told", color: "var(--conflict)", rank: 1 },
+  veryweak: { label: "Not told", color: "var(--gap)", rank: 1 },
   none: { label: "Unknown", color: "var(--faint)", rank: 0 },
 };
 

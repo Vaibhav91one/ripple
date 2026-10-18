@@ -77,7 +77,7 @@ async function AuditLog({ ctx, f }: { ctx: Context; f: AuditFilter }) {
         <button className="h-10 rounded-control bg-raised px-3.5 text-sm font-medium text-strong hover:bg-hairline">Filter</button>
         {(f.actor || f.action) && <Link href="/settings#audit" className="inline-flex h-10 items-center px-2 text-sm text-faint hover:text-strong">Clear</Link>}
       </form>
-      <div className="overflow-x-auto rounded-inset border border-hairline">
+      <div className="relative overflow-x-auto rounded-inset border border-hairline">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-hairline text-faint">
             <tr><th className="p-3 font-medium">When (UTC)</th><th className="p-3 font-medium">Actor</th><th className="p-3 font-medium">Action</th><th className="p-3 font-medium">Resource</th><th className="p-3 font-medium">Outcome</th></tr>

@@ -3,7 +3,7 @@ export type Column<T> = { key: string; header: string; align?: "left" | "right";
 /** Quiet table: grey headers, hairline rows, right-aligned figures. Scrolls inside its card on narrow screens. */
 export function DataTable<T>({ columns, rows, rowKey, highlight, caption, footer }: { columns: Column<T>[]; rows: T[]; rowKey: (row: T) => string; highlight?: string; caption?: string; footer?: React.ReactNode }) {
   return (
-    <div className="-mx-2 overflow-x-auto">
+    <div className="-mx-2 relative overflow-x-auto">
       <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>

@@ -143,7 +143,7 @@ export function AgentsScreen() {
         </Link>
       </PageHeader>
 
-      <div role="group" aria-label="Filter by team" className="-mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1">
+      <div role="group" aria-label="Filter by team" className="-mx-1 mb-5 flex gap-1.5 relative overflow-x-auto px-1 pb-1">
         {[[null, "All"] as const, ...TEAM_FILTERS].map(([id, label]) => (
           <button key={label} type="button" aria-pressed={team === id} onClick={() => setTeam(id)}
             className={`${chip} shrink-0 ${team === id ? "bg-strong font-medium text-ink-on-strong" : "bg-raised text-body hover:bg-hairline"}`}>{label}</button>

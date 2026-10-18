@@ -80,7 +80,7 @@ export function SecurityDashboard() {
           </div>
           <Segmented label="Filter by severity" value={sev} onChange={setSev} options={[{ id: "all", label: "All" }, ...SEVERITIES.map((s) => ({ id: s, label: s[0].toUpperCase() + s.slice(1) }))]} />
         </div>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr><th className={th}>Finding</th><th className={th}>System</th><th className={th}>Severity</th><th className={th}>SLA</th><th className={th}>Owner</th></tr></thead>
             <tbody className="divide-y divide-hairline">

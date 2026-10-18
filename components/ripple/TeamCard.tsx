@@ -75,7 +75,7 @@ export function TeamCard({ name, status, team, cypher, restricted = [] }: { name
           {open && (
             <div className="mt-1.5 overflow-hidden rounded-lg bg-page">
               <div className="primitive-card-bar border-b border-hairline font-mono text-[12px] font-medium text-strong">{cypher.name}</div>
-              <pre className="overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-body">{cypher.text}</pre>
+              <pre className="relative overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-body">{cypher.text}</pre>
             </div>
           )}
         </div>

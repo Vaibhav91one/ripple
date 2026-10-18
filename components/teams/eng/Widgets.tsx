@@ -47,7 +47,7 @@ export function ReviewTable({ d }: D) {
       title="Pull requests awaiting review"
       meta={<Segmented label="Filter pull requests" options={FILTERS} value={filter} onChange={setFilter} />}
     >
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
             <tr className="border-b border-hairline text-xs uppercase tracking-wide text-faint">

@@ -47,7 +47,7 @@ export function NotificationPrefs({ title, note, initial, zones, scope, readOnly
         {note && <p className="mt-0.5 text-sm text-faint">{note}</p>}
       </header>
 
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="text-faint">
             <tr><th className="py-2 pr-3 font-medium">How urgent</th>{CHANNELS.map(([, l]) => <th key={l} className="px-3 py-2 font-medium">{l}</th>)}</tr>

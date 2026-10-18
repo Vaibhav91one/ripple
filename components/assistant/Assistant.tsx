@@ -391,7 +391,7 @@ function TurnView({ turn: t, streaming, readonly, onRetry, onPick }: { turn: Tur
   return (
     <li className="space-y-4">
       <div className="flex justify-end">
-        <p className="max-w-[85%] whitespace-pre-wrap rounded-[20px] rounded-br-[6px] bg-raised px-4 py-2.5 text-md leading-relaxed text-strong" style={{ animation: "fade-up 300ms cubic-bezier(0.23,1,0.32,1) both" }}>
+        <p dir="auto" className="min-w-0 max-w-[85%] whitespace-pre-wrap [overflow-wrap:anywhere] rounded-[20px] rounded-br-[6px] bg-raised px-4 py-2.5 text-md leading-relaxed text-strong" style={{ animation: "fade-up 300ms cubic-bezier(0.23,1,0.32,1) both" }}>
           {t.agent && <span className="mr-1.5 font-medium text-faint">@{agentName(t.agent) ?? t.agent}</span>}
           {t.question}
         </p>

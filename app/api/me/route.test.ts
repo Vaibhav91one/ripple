@@ -21,7 +21,7 @@ const get = async () => (await GET(new Request("http://t/api/me"))).json();
 describe("GET /api/me", () => {
   it("demo: the anonymous visitor, read through the default lens", async () => {
     const body = await get();
-    expect(body).toEqual({ mode: "demo", name: "Demo visitor", role: "Viewer", org: "Ledgerly", teamIds: ["eng"], lens: "change-owner" });
+    expect(body).toEqual({ mode: "demo", name: "Demo visitor", role: "Viewer", org: "Ledgerly", initials: "DV", teamIds: ["eng"], lens: "change-owner" });
   });
 
   it("local: the one admin workspace, no account", async () => {
@@ -34,7 +34,7 @@ describe("GET /api/me", () => {
     process.env.CLERK_SECRET_KEY = "sk_test_SENTINEL";
     const text = JSON.stringify(await get());
     expect(text).not.toMatch(/SENTINEL|sk_|token|secret/i);
-    expect(Object.keys(JSON.parse(text)).sort()).toEqual(["lens", "mode", "name", "org", "role", "teamIds"]);
+    expect(Object.keys(JSON.parse(text)).sort()).toEqual(["initials", "lens", "mode", "name", "org", "role", "teamIds"]);
   });
   it("is never cached across viewers", async () => {
     const res = await GET(new Request("http://t/api/me"));

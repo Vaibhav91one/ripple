@@ -48,7 +48,7 @@ export function ChangeScreen() {
             </a>
           )}
         </PageHeader>
-        <div className="mt-4 overflow-x-auto border-b border-hairline">
+        <div className="mt-4 relative overflow-x-auto border-b border-hairline">
           <UnderlineTabs items={ITEMS} value={active} onChange={(v) => { void setConflict(null); void setTab(v as (typeof TABS)[number]); }} />
         </div>
       </div>

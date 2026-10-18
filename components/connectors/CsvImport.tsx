@@ -107,7 +107,7 @@ export function CsvImport({ canImport }: { canImport: boolean }) {
 
           <section aria-labelledby={`${id}-3`} className="space-y-3">
             <h2 id={`${id}-3`} className="text-sm font-medium text-strong">3. Preview the first 20 rows</h2>
-            <div className="overflow-x-auto rounded-card border border-hairline bg-surface">
+            <div className="relative overflow-x-auto rounded-card border border-hairline bg-surface">
               <table className="w-full text-left text-sm">
                 <thead><tr className="border-b border-hairline text-xs text-faint">
                   <th className="px-3 py-2 font-medium">Row</th>

@@ -79,7 +79,7 @@ export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly
         {g[0] && <ActButton readOnly={readOnly} className={primary} onClick={() => setOpen(g[0])}><Megaphone size={15} aria-hidden />{g[0].action}</ActButton>}
       </PageHeader>
 
-      <div className="mb-4 -mt-1 overflow-x-auto">
+      <div className="mb-4 -mt-1 relative overflow-x-auto">
         <Segmented tabs="case" label="Case file sections" value={tab} onChange={(v) => void setTab(v)} options={[{ id: "overview", label: "Overview" }, { id: "timeline", label: `Timeline ${data.timeline.length}` }, { id: "artifacts", label: "Artifacts" }, { id: "runs", label: "Agent runs" }]} />
       </div>
 
@@ -137,7 +137,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
   const legal = g.find((x) => x.teamId === "legal");
   const left = r.effectiveAt ? daysLeft(r.effectiveAt, d.now) : null;
   const events = [...d.timeline].sort((a, b) => a.at - b.at);
-  const strip = events.slice(0, 5);
+  const strip = events.slice(-5); // the newest five, oldest first
   const demo = d.timeline.filter((e) => e.demo).length;
   return (
     <div className="space-y-4">
@@ -165,7 +165,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
                     </div>
                     <div className="order-last col-span-2 sm:order-none sm:col-span-1"><HatchedBar plan={100} actual={s.actual} max={100} label={`${t.name}: ${s.note(t)}`} /></div>
                     <p className="hidden text-sm text-body sm:block">{s.note(t)}</p>
-                    <p className={`text-right text-sm font-medium ${t.status === "acked" ? "text-faint" : t.status === "told" ? "text-gap" : "text-conflict"}`}>{t.status === "not_told" ? "Not told" : teamDelta(t)}</p>
+                    <p className={`text-right text-sm font-medium ${t.status === "acked" ? "text-faint" : "text-gap"}`}>{t.status === "not_told" ? "Not told" : teamDelta(t)}</p>
                   </li>
                 );
               })}
@@ -177,9 +177,9 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
           </Card>
 
           <Card>
-            <CardHeader title="What happened" action={<button type="button" onClick={onTimeline} className="inline-flex items-center gap-1 text-sm text-faint hover:text-strong">View all {d.timeline.length} events<ChevronRight size={14} aria-hidden /></button>} />
+            <CardHeader title="What happened" sub={events.length > 5 ? "The latest 5 events" : undefined} action={<button type="button" onClick={onTimeline} className="inline-flex items-center gap-1 text-sm text-faint hover:text-strong">View all {d.timeline.length} events<ChevronRight size={14} aria-hidden /></button>} />
             <div className={`mt-6 grid gap-6 ${noticed ? "xl:grid-cols-[minmax(0,1fr)_280px]" : ""}`}>
-              <div className="-mx-1 overflow-x-auto px-1 pb-1">
+              <div className="-mx-1 relative overflow-x-auto px-1 pb-1">
                 <ol className="grid min-w-[520px] grid-flow-col auto-cols-fr">
                   {strip.map((e, i) => (
                     <li key={`${e.id}-${i}`} className="relative pr-4">
@@ -187,7 +187,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
                       <span aria-hidden className={`relative block size-[11px] rounded-full ring-4 ring-surface ${DOT[eventTone(e.kind)]}`} />
                       <p className="mt-3 flex items-center gap-1.5 whitespace-nowrap text-xs text-faint">{day(e.at)}{e.demo && <DemoTag />}</p>
                       <p className="mt-1 text-sm font-medium text-strong">{KIND_LABEL[e.kind]}</p>
-                      <p className="mt-1 line-clamp-3 text-xs leading-snug text-faint">{e.text}</p>
+                      <p title={e.text} className="mt-1 line-clamp-3 text-xs leading-snug text-faint [overflow-wrap:anywhere]">{e.text}</p>
                     </li>
                   ))}
                 </ol>
@@ -250,7 +250,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
       {conflict && (
         <Card id="evidence" className="scroll-mt-6">
           <CardHeader title="Ripple noticed a conflict" sub="Two sources disagree about the same system. Both quotes, side by side." />
-          <div className="mt-5 overflow-x-auto">
+          <div className="mt-5 relative overflow-x-auto">
             <EvidenceDiff
               title={conflict.contracts[0]?.name ?? "Contract guarantee"}
               found={`Found ${day(conflict.detectedAt)} · ${conflict.severity} severity`}
@@ -271,8 +271,8 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
         <section aria-label="Gaps" className={`grid gap-4 sm:grid-cols-2 ${g.length === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
           {g.map((x) => (
             <Card key={x.teamId} className="flex flex-col">
-              <span className={`grid size-9 place-items-center rounded-full ${x.status === "told" ? "bg-gap-soft text-gap" : "bg-conflict-soft text-conflict"}`}>{x.arr ? <ShieldAlert size={16} aria-hidden /> : <UserX size={16} aria-hidden />}</span>
-              <p className={`mt-4 text-3xl font-light tracking-[-0.04em] ${x.status === "told" ? "text-gap" : "text-conflict"}`}>{x.figure}</p>
+              <span className={`grid size-9 place-items-center rounded-full ${x.arr ? "bg-conflict-soft text-conflict" : "bg-gap-soft text-gap"}`}>{x.arr ? <ShieldAlert size={16} aria-hidden /> : <UserX size={16} aria-hidden />}</span>
+              <p className={`mt-4 text-3xl font-light tracking-[-0.04em] ${x.arr ? "text-conflict" : x.status === "told" ? "text-gap" : "text-covered-ink"}`}>{x.figure}</p>
               <p className="text-xs text-faint">{x.figureNote}</p>
               <h3 className="mt-3 text-md font-medium text-strong">{x.name} {x.status === "told" ? "has not acked" : "not told"}</h3>
               <p className="mt-1 mb-4 text-sm leading-relaxed text-faint">{x.body}</p>
@@ -299,8 +299,8 @@ function EventList({ events }: { events: TimelineEvent[] }) {
           <li key={`${e.id}-${i}`} className="flex items-start gap-3 py-3">
             <span className={`grid size-9 shrink-0 place-items-center rounded-full ${e.kind === "conflict" ? "bg-conflict-soft text-conflict" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
             <div className="min-w-0 flex-1">
-              <p className="text-md text-strong">{e.text} {e.demo && <DemoTag />}</p>
-              <p className="text-sm text-faint">{dayTime(e.at)} · {KIND_LABEL[e.kind]} by {e.actor.name}</p>
+              <p className="text-md text-strong [overflow-wrap:anywhere]">{e.text} {e.demo && <DemoTag />}</p>
+              <p className="text-sm text-faint [overflow-wrap:anywhere]">{dayTime(e.at)} · {KIND_LABEL[e.kind]} by {e.actor.name}</p>
             </div>
             {safeUrl(e.url) && <a href={safeUrl(e.url)!} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-strong hover:underline">Open<ExternalLink size={13} aria-hidden /></a>}
           </li>
@@ -325,9 +325,9 @@ function Artifacts({ d }: { d: ReportDetail }) {
           <li key={key} className="flex items-start gap-3 py-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-raised text-body"><Icon size={16} aria-hidden /></span>
             <div className="min-w-0 flex-1">
-              <p className="text-md font-medium text-strong">{title} {demo && <DemoTag />}</p>
-              {quote && <p className="mt-1 rounded-control border border-hairline bg-raised px-2 py-1 font-mono text-sm text-body">“{quote}”</p>}
-              <p className="mt-1 text-sm text-faint">{meta}</p>
+              <p className="text-md font-medium text-strong [overflow-wrap:anywhere]">{title} {demo && <DemoTag />}</p>
+              {quote && <p className="mt-1 rounded-control border border-hairline bg-raised px-2 py-1 font-mono text-sm text-body [overflow-wrap:anywhere]">“{quote}”</p>}
+              <p className="mt-1 text-sm text-faint [overflow-wrap:anywhere]">{meta}</p>
             </div>
             {safeUrl(url) && <a href={safeUrl(url)!} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-strong hover:underline">Open<ExternalLink size={13} aria-hidden /></a>}
           </li>

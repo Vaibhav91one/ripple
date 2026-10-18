@@ -38,7 +38,7 @@ export function ApiKeysPanel({ keys }: { keys: KeyRow[] }) {
           <button className={btn} onClick={() => setFresh(undefined)}>Done</button>
         </div>
       )}
-      <div className="overflow-x-auto rounded-lg border border-hairline bg-surface">
+      <div className="relative overflow-x-auto rounded-lg border border-hairline bg-surface">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-hairline text-faint">
             <tr><th className="p-3 font-medium">Name</th><th className="p-3 font-medium">Key</th><th className="p-3 font-medium">Created</th><th className="p-3 font-medium">Last used</th><th className="p-3" /></tr>

@@ -76,7 +76,7 @@ export function Switch({ on, label, lock, busy, onChange }: { on: boolean; label
   return (
     <span title={lock ?? undefined} className="inline-flex">
       <button type="button" role="switch" aria-checked={on} aria-label={label} aria-busy={busy || undefined} disabled={!!lock} onClick={() => !busy && onChange(!on)}
-        className={`relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70 ${on ? "bg-strong" : "bg-hairline"}`}>
+        className={`relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70 ${on ? "bg-covered" : "bg-hairline"}`}>
         <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-surface shadow-sm transition-transform ${on ? "translate-x-4" : ""}`} />
       </button>
     </span>
