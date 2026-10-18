@@ -104,6 +104,10 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "bottleneck": [{ url: "/api/bottleneck" }],
   "people": [{ url: "/api/people" }],
   "overview": [{ url: "/api/overview" }],
+  "reports": [{ url: "/api/reports" }],
+  "reports/[id]": [{ url: "/api/reports/d-1", params: { id: "d-1" } }],
+  "activity": [{ url: "/api/activity" }],
+  "analytics": [{ url: "/api/analytics" }],
   "names": [{ url: "/api/names" }],
   "decisions": [{ url: "/api/decisions" }],
   "changes": [{ url: "/api/changes?since=0" }],
@@ -185,7 +189,7 @@ describe("sentinel leak: GET routes", () => {
         }
     }
     expect(checked).toBeGreaterThan(VIEWERS.length * 30);
-  }, 120_000);
+  }, 180_000);
 
   t("owners see their own payload (the test is not vacuous)", async () => {
     as("legal");
