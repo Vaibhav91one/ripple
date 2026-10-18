@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Ellipsis, Menu, PanelLeft, X } from "lucide-react";
+import { Ellipsis, Menu, PanelLeft, Search, X } from "lucide-react";
 import { getApprovals } from "@/lib/api";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Mark } from "@/components/brand/Mark";
 import { SiteCredits } from "@/components/SiteCredits";
+import { CommandMenu } from "./CommandMenu";
 import { NAV, NAV_FOOTER, activeHref, type NavItem } from "./nav";
 import type { ShellUser } from "./identity";
 
@@ -22,6 +23,11 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
   const [openAt, setOpenAt] = useState<string | null>(null);
   const open = openAt === pathname;
   const [collapsed, setCollapsed] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const search = () => {
+    setOpenAt(null);
+    setSearching(true);
+  };
   const opener = useRef<HTMLButtonElement>(null);
   const closer = useRef<HTMLButtonElement>(null);
   // The opener sits in the inert top bar while the drawer is open, so focus it after the re-render clears inert.
@@ -46,9 +52,14 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
       {/* phone and tablet: top bar + drawer */}
       <div inert={open} className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-page/90 px-4 backdrop-blur lg:hidden">
         <Brand />
+        <div className="flex items-center gap-2">
+        <button type="button" onClick={search} aria-label="Search" aria-keyshortcuts="Meta+K Control+K /" className="grid size-11 place-items-center rounded-control border border-hairline bg-surface text-strong">
+          <Search size={18} aria-hidden />
+        </button>
         <button ref={opener} type="button" onClick={() => setOpenAt(pathname)} aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar" className="grid size-11 place-items-center rounded-control border border-hairline bg-surface text-strong">
           <Menu size={18} aria-hidden />
         </button>
+        </div>
       </div>
       {open && <div aria-hidden onClick={close} className="fixed inset-0 z-40 bg-strong/20 lg:hidden" />}
       <aside
@@ -67,6 +78,18 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
             <X size={17} aria-hidden />
           </button>
         </div>
+        <button
+          type="button"
+          onClick={search}
+          aria-label="Search"
+          aria-keyshortcuts="Meta+K Control+K /"
+          title={collapsed ? "Search (⌘K)" : undefined}
+          className={`mt-4 flex h-10 items-center gap-3 rounded-control border border-hairline bg-surface px-3 text-sm text-faint shadow-[0_1px_2px_oklch(0_0_0/0.04)] transition-colors hover:text-strong ${collapsed ? "justify-center px-0" : ""}`}
+        >
+          <Search size={16} strokeWidth={1.7} aria-hidden className="shrink-0" />
+          {!collapsed && <span className="flex-1 text-left">Search</span>}
+          {!collapsed && <kbd className="rounded-chip border border-hairline px-1.5 font-mono text-2xs">⌘K</kbd>}
+        </button>
         <nav className="mt-4 flex flex-col" aria-label="Main">
           {NAV.map((section, i) => (
             <div key={section.title ?? i} className={i ? "mt-6" : ""}>
@@ -102,6 +125,7 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
           </div>
         </div>
       </aside>
+      <CommandMenu open={searching} onOpenChange={setSearching} />
       <main inert={open} className="min-w-0 flex-1 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-7">{children}</main>
     </div>
   );

@@ -129,7 +129,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
   "conversations": [{ url: "/api/conversations" }], // demo: {persist:false}, no graph data
   "conversations/[id]": [{ url: "/api/conversations/x", params: { id: "x" } }],
-  "search": [{ url: "/api/search?q=SENTINEL_SRC" }],
+  "search": [{ url: "/api/search?q=SENTINEL_SRC" }, { url: "/api/search?q=sentinel" }, { url: "/api/search?q=northwind" }],
   "mcp": [{ url: "/api/mcp" }],
   "connectors/github/install": [{ url: "/api/connectors/github/install" }], // admin only: 403 for the demo viewers
   "connectors/github/setup": [{ url: "/api/connectors/github/setup" }], // admin only: 403 for the demo viewers
