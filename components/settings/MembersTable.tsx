@@ -26,7 +26,7 @@ export function MembersTable({ members, teams, people }: Props) {
   return (
     <div className="space-y-3" aria-busy={pending}>
       {err && <p role="alert" className="text-sm text-body">{err}</p>}
-      <div className="overflow-x-auto rounded-lg border border-hairline bg-surface">
+      <div className="overflow-x-auto rounded-inset border border-hairline bg-surface">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-hairline text-faint">
             <tr><th className="p-3 font-medium">Member</th><th className="p-3 font-medium">Role</th><th className="p-3 font-medium">Teams</th><th className="p-3 font-medium">Person</th></tr>
