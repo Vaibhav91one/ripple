@@ -7,7 +7,6 @@ import {
 } from "@/lib/schemas";
 import { Activity, ReportDetail, ReportList } from "@/lib/schemas/reports";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
-import { ReportList } from "@/lib/schemas/reports";
 import * as mock from "@/lib/mock/api";
 import { SAMPLE_APPROVALS, SAMPLE_RUN, SAMPLE_RUNS } from "@/lib/approvals/sample";
 
@@ -138,8 +137,6 @@ export type ChatMessage = { role: "user" | "assistant"; content: string };
 export async function* chatStream(body: { messages: ChatMessage[]; agent?: string; conversationId?: string }, signal?: AbortSignal): AsyncGenerator<unknown> {
   yield* sse(await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal }));
 }
-
-export const getReports = (): Promise<ReportList> => call(ReportList, "/api/reports");
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
