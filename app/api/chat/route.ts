@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { agent as findAgent, agents } from "@/lib/agent/registry";
 import { budgetLeft, spend, tokensLeft, visitorQuota, type Quota } from "@/lib/agent/limits";
@@ -24,17 +25,36 @@ const Body = z.object({
 const VID = "ripple_vid";
 const CHAT_RULES = `\nYou are answering in a chat. Answer only from tool results. After every factual claim cite the supporting artifact as [[artifact-id]] using ONLY ids returned by tools this turn. If the tools return nothing relevant, say so. Be concise.`;
 
+const sign = (id: string) => createHmac("sha256", env().ACK_TOKEN_SECRET ?? "ripple-dev-visitor").update(id).digest("base64url");
+/** Visitor = signed cookie + trusted client IP (the right-most x-forwarded-for hop is the one our proxy appended; x-real-ip otherwise; null when neither, so unknown IPs never share one key). */
 function visitorOf(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "local";
-  const had = req.headers.get("cookie")?.match(new RegExp(`(?:^|; )${VID}=([\\w-]+)`))?.[1];
-  return { ip, cookie: had ?? crypto.randomUUID(), isNew: !had };
+  const xff = req.headers.get("x-forwarded-for")?.split(",").map((x) => x.trim()).filter(Boolean).at(-1);
+  const ip = xff || req.headers.get("x-real-ip") || null;
+  const [id, mac] = req.headers.get("cookie")?.match(new RegExp(`(?:^|; )${VID}=([\\w-]+)\\.([\\w-]+)`))?.slice(1) ?? [];
+  const ok = !!id && !!mac && mac.length === sign(id).length && timingSafeEqual(Buffer.from(mac), Buffer.from(sign(id)));
+  const cookie = ok ? id : crypto.randomUUID();
+  return { ip, cookie, isNew: !ok, value: `${cookie}.${sign(cookie)}` };
+}
+
+const HISTORY_CHARS = 12_000;
+/** Newest turns that fit the budget; never starts on an assistant turn. */
+function trimHistory<T extends { role: string; content: string }>(h: T[]): T[] {
+  let n = 0;
+  const keep: T[] = [];
+  for (const m of [...h].reverse()) {
+    n += m.content.length;
+    if (n > HISTORY_CHARS) break;
+    keep.unshift(m);
+  }
+  while (keep[0]?.role === "assistant") keep.shift();
+  return keep;
 }
 
 /** `@name rest` -> the agent and the text without the mention. Unknown names stay plain text. */
 function route(text: string, param?: string): { agent?: string; text: string } {
   const m = text.match(/^@([a-z0-9_-]+)\s+([\s\S]+)$/i);
   const named = m && findAgent(m[1].toLowerCase());
-  if (param) return { agent: param, text: named ? m[2] : text };
+  if (param) return { agent: param.toLowerCase(), text: named ? m[2] : text };
   return named ? { agent: named.name, text: m[2] } : { text };
 }
 
@@ -52,23 +72,26 @@ export async function POST(req: Request): Promise<Response> {
   const def = routed.agent ? findAgent(routed.agent) : undefined;
   if (routed.agent && !def) return Response.json({ error: `Unknown agent "${routed.agent}".`, agents: agents().map((a) => a.name) }, { status: 400 });
   const question = routed.text;
-  const history = body.data.messages.slice(0, -1);
+  const history = trimHistory(body.data.messages.slice(0, -1));
 
   const visitor = visitorOf(req);
-  const session = await sessionViewer(); // null = public demo
-  const owner = session && env().DATABASE_URL ? { orgId: session.orgId, userId: session.userId } : null;
+  const ctx = await getContext(req).catch(() => null); // null (graph down): treated as the public demo
+  const demo = !ctx || ctx.org.isDemo;
+  const owner = !demo && ctx && ctx.viewer.kind === "user" && env().DATABASE_URL ? { orgId: ctx.org.id, userId: ctx.viewer.userId, graphName: ctx.org.graphName } : null;
   const store = owner ? await import("@/lib/assistant/store") : null;
 
-  // --- decide cached / live / exhausted before streaming, so the first event can carry the budget ---
-  const demoCap = !session ? env().DEMO_PROMPTS_PER_DAY : 0;
-  const cached = cachedAnswer(question);
+  // --- decide cached / live / exhausted before streaming, so the first event can carry the budget. Quota, token cap and canned answers are the public demo's; real orgs (Clerk, local) are never limited or given canned answers. ---
+  const cached = demo ? cachedAnswer(question, def?.name) : undefined;
   const model = cached ? null : pickModel("agent");
   let quota: Quota = { ok: true, remaining: null, limit: null };
   let exhausted = false;
-  if (demoCap) quota = await visitorQuota(visitor, false);
-  if (!cached && model) {
+  if (demo) quota = await visitorQuota(visitor, false);
+  if (!cached && model && demo) {
     exhausted = !quota.ok || !(await tokensLeft()) || !budgetLeft();
-    if (!exhausted && demoCap) quota = await visitorQuota(visitor, true); // only a live answer spends a prompt
+    if (!exhausted) {
+      quota = await visitorQuota(visitor, true); // only a live answer spends a prompt, atomically
+      exhausted = !quota.ok;
+    }
   }
 
   let convId = body.data.conversationId;
@@ -87,7 +110,7 @@ export async function POST(req: Request): Promise<Response> {
       return yield { type: "done" };
     }
     try {
-      const ctx = await getContext(req);
+      if (!ctx) throw new Error("the graph is not reachable");
       yield* runAgent({
         model, question, history, g: ctx.writer(), now: ctx.now, demo: ctx.org.isDemo, readonly: ctx.readonly, viewer: ctx.viewer,
         onUsage: spend, audit: ctx.audit, propose: proposer(ctx),
@@ -103,7 +126,7 @@ export async function POST(req: Request): Promise<Response> {
   const enc = new TextEncoder();
   const seen: StreamEvent[] = [];
   const headers: Record<string, string> = { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store, no-transform" };
-  if (visitor.isNew) headers["set-cookie"] = `${VID}=${visitor.cookie}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`;
+  if (visitor.isNew) headers["set-cookie"] = `${VID}=${visitor.value}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`;
   return new Response(
     new ReadableStream({
       async pull(ctrl) {
@@ -113,7 +136,11 @@ export async function POST(req: Request): Promise<Response> {
         ctrl.enqueue(enc.encode(`data: ${JSON.stringify(n.value)}\n\n`));
         if (n.value.type === "done" && store && owner && convId) {
           const text = seen.filter((e) => e.type === "text_delta").map((e) => e.text).join("");
-          await store.addMessage(owner, convId, { role: "assistant", content: text, events: seen.filter((e) => e.type !== "meta"), agent: def?.name });
+          try {
+            await store.addMessage(owner, convId, { role: "assistant", content: text, events: seen.filter((e) => e.type !== "meta"), agent: def?.name });
+          } catch (e) {
+            console.error("chat: saving the reply failed:", e instanceof Error ? e.message : String(e)); // the answer already streamed
+          }
         }
       },
       cancel: () => void it.return(undefined),

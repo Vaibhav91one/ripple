@@ -116,7 +116,12 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
     stopWhen: isStepCount(o.maxSteps ?? 5),
   });
 
+  let spent = 0;
+  let reported = false;
+  const report = () => { if (!reported) { reported = true; o.onUsage?.(spent); } }; // also on abort (finally), so a cancelled stream still costs its tokens
+  try {
   for await (const part of result.fullStream) {
+    if (part.type === "finish-step") spent += part.usage.totalTokens ?? 0;
     if (part.type === "tool-call") {
       const t = TOOLS[part.toolName as ToolName];
       yield { type: "tool_call", tool: part.toolName, args: (part.input ?? {}) as Record<string, unknown>, cypher: t ? templateText(t.templates) : "" };
@@ -138,6 +143,9 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   buf = full.trim() ? v.answer : "";
   yield* drain(true);
   if (v.ok && spoke && cited === 0 && !notFound) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
-  o.onUsage?.((await result.totalUsage).totalTokens ?? 0);
+  report();
   yield { type: "done", outcome: v.outcome, ...(v.ok ? {} : { rejected: v.reasons }) };
+  } finally {
+    report();
+  }
 }

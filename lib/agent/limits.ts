@@ -75,15 +75,51 @@ async function bump(key: string, by: Partial<Count>, now = Date.now()): Promise<
 
 export type Quota = { ok: boolean; remaining: number | null; limit: number | null };
 
-/** Per-visitor daily live-prompt quota, counted against the cookie and the IP (whichever has used more). Unlimited when DEMO_PROMPTS_PER_DAY is 0. `take` spends one prompt. */
-export async function visitorQuota(visitor: { cookie: string; ip: string }, take: boolean, now = Date.now()): Promise<Quota> {
+const MEM_MAX = 5000;
+/** Atomic take: +1 only while under `limit`. False = the key is spent. */
+async function takeOne(key: string, limit: number, now: number): Promise<boolean> {
+  const day = dayOf(now);
+  const pg = await pgDb();
+  if (pg) {
+    try {
+      const { usageCounters: u, sql } = pg;
+      const rows = await pg.d.insert(u).values({ key, day, prompts: 1, tokens: 0 })
+        .onConflictDoUpdate({ target: [u.key, u.day], set: { prompts: sql`${u.prompts} + 1` }, setWhere: sql`${u.prompts} < ${limit}` })
+        .returning({ prompts: u.prompts });
+      void prune(pg, now);
+      return rows.length > 0;
+    } catch {}
+  }
+  const k = `${key}|${day}`;
+  const c = mem.get(k) ?? { prompts: 0, tokens: 0 };
+  if (c.prompts >= limit) return false;
+  if (mem.size >= MEM_MAX) for (const x of mem.keys()) if (!x.endsWith(`|${day}`)) mem.delete(x);
+  if (mem.size >= MEM_MAX) mem.clear(); // ponytail: one day of 5000+ distinct visitors in one process resets counters; Postgres is the real store
+  mem.set(k, { ...c, prompts: c.prompts + 1 });
+  return true;
+}
+
+let pruned = "";
+/** Drop counter rows older than 2 days, at most once per process per day. */
+async function prune(pg: NonNullable<Awaited<ReturnType<typeof pgDb>>>, now: number) {
+  const today = dayOf(now);
+  if (pruned === today) return;
+  pruned = today;
+  try { await pg.d.delete(pg.usageCounters).where(pg.sql`${pg.usageCounters.day} < ${dayOf(now - 2 * 86_400_000)}`); } catch {}
+}
+
+/** Per-visitor daily live-prompt quota on the demo, counted against the cookie and the IP (when known). Unlimited when DEMO_PROMPTS_PER_DAY is 0. `take` spends one prompt atomically. */
+export async function visitorQuota(visitor: { cookie: string; ip: string | null }, take: boolean, now = Date.now()): Promise<Quota> {
   const limit = env().DEMO_PROMPTS_PER_DAY;
   if (!limit) return { ok: true, remaining: null, limit: null };
-  const keys = [`v:${visitor.cookie}`, `ip:${visitor.ip}`];
+  const keys = [`v:${visitor.cookie}`, ...(visitor.ip ? [`ip:${visitor.ip}`] : [])];
+  if (take) {
+    for (const k of keys) if (!(await takeOne(k, limit, now))) return { ok: false, remaining: 0, limit };
+    const used = Math.max(...(await Promise.all(keys.map((k) => usageOf(k, now)))).map((c) => c.prompts));
+    return { ok: true, remaining: Math.max(0, limit - used), limit };
+  }
   const used = Math.max(...(await Promise.all(keys.map((k) => usageOf(k, now)))).map((c) => c.prompts));
-  if (used >= limit) return { ok: false, remaining: 0, limit };
-  if (take) await Promise.all(keys.map((k) => bump(k, { prompts: 1 }, now)));
-  return { ok: true, remaining: limit - used - (take ? 1 : 0), limit };
+  return { ok: used < limit, remaining: Math.max(0, limit - used), limit };
 }
 
 /** The global daily token cap (DAILY_TOKEN_BUDGET), read from the shared counter. */

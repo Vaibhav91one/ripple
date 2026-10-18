@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoopOpts } from "@/lib/agent/loop";
 import { spend } from "@/lib/agent/limits";
@@ -7,9 +8,10 @@ import { StreamEvent } from "@/lib/schemas";
 
 const seen: LoopOpts[] = [];
 let model: unknown = null;
+let isDemo = true;
 vi.mock("@/lib/llm", () => ({ pickModel: () => model }));
 vi.mock("@/lib/server/context", () => ({
-  getContext: async () => ({ writer: () => ({}), now: 1, org: { isDemo: true }, readonly: true, viewer: { kind: "anon", teamIds: [] }, audit: async () => {} }),
+  getContext: async () => ({ writer: () => ({}), now: 1, org: { isDemo, id: "local", graphName: "local" }, readonly: isDemo, viewer: { kind: "anon", teamIds: [] }, audit: async () => {} }),
 }));
 vi.mock("@/lib/agent/loop", () => ({
   runAgent: async function* (o: LoopOpts) {
@@ -20,16 +22,17 @@ vi.mock("@/lib/agent/loop", () => ({
 }));
 const { POST } = await import("./route");
 
+const mac = (id: string) => createHmac("sha256", process.env.ACK_TOKEN_SECRET ?? "ripple-dev-visitor").update(id).digest("base64url");
 let n = 0;
 /** A fresh visitor (cookie + ip) per call unless `v` is given. */
 const post = (body: unknown, v = `v${++n}`) =>
-  POST(new Request("http://x/api/chat", { method: "POST", headers: { "content-type": "application/json", cookie: `ripple_vid=${v}`, "x-forwarded-for": `10.0.0.${v}` }, body: JSON.stringify(body) }));
+  POST(new Request("http://x/api/chat", { method: "POST", headers: { "content-type": "application/json", cookie: `ripple_vid=${v}.${mac(v)}`, "x-forwarded-for": `10.0.0.${v}` }, body: JSON.stringify(body) }));
 const events = async (res: Response) => (await res.text()).split("\n\n").filter(Boolean).map((f) => StreamEvent.parse(JSON.parse(f.replace(/^data: /, ""))));
 const text = (ev: StreamEvent[]) => ev.flatMap((e) => (e.type === "text_delta" ? [e.text] : [])).join("");
 const meta = (ev: StreamEvent[]) => ev[0] as Extract<StreamEvent, { type: "meta" }>;
 const user = (content: string) => ({ role: "user", content });
 
-beforeEach(() => { seen.length = 0; model = null; delete process.env.DEMO_PROMPTS_PER_DAY; delete process.env.DAILY_TOKEN_BUDGET; });
+beforeEach(() => { seen.length = 0; model = null; isDemo = true; delete process.env.DEMO_PROMPTS_PER_DAY; delete process.env.DAILY_TOKEN_BUDGET; });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("POST /api/chat", () => {
@@ -50,7 +53,7 @@ describe("POST /api/chat", () => {
 
   it("sets the visitor cookie once", async () => {
     const fresh = await POST(new Request("http://x/api/chat", { method: "POST", body: JSON.stringify({ messages: [user(STARTER_PROMPTS[0])] }) }));
-    expect(fresh.headers.get("set-cookie")).toMatch(/^ripple_vid=[\w-]+;/);
+    expect(fresh.headers.get("set-cookie")).toMatch(/^ripple_vid=[\w-]+\.[\w-]+;/);
     expect((await post({ messages: [user(STARTER_PROMPTS[0])] })).headers.get("set-cookie")).toBeNull();
   });
 
@@ -98,7 +101,7 @@ describe("POST /api/chat", () => {
   it("counts by IP too, so a new cookie from the same IP does not reset the quota", async () => {
     model = {};
     vi.stubEnv("DEMO_PROMPTS_PER_DAY", "1");
-    const same = (cookie: string) => POST(new Request("http://x/api/chat", { method: "POST", headers: { cookie: `ripple_vid=${cookie}`, "x-forwarded-for": "9.9.9.9" }, body: JSON.stringify({ messages: [user("q")] }) })).then(events);
+    const same = (cookie: string) => POST(new Request("http://x/api/chat", { method: "POST", headers: { cookie: `ripple_vid=${cookie}.${mac(cookie)}`, "x-forwarded-for": "9.9.9.9" }, body: JSON.stringify({ messages: [user("q")] }) })).then(events);
     expect(meta(await same("a1")).exhausted).toBe(false);
     expect(meta(await same("a2")).exhausted).toBe(true);
   });
@@ -111,6 +114,44 @@ describe("POST /api/chat", () => {
     const out = await events(await post({ messages: [user("anything live")] }));
     expect(meta(out)).toMatchObject({ exhausted: true });
     expect(seen).toHaveLength(0);
+  });
+});
+
+describe("chat hardening", () => {
+  it("ignores a forged visitor cookie and issues a fresh signed one", async () => {
+    const res = await POST(new Request("http://x/api/chat", { method: "POST", headers: { cookie: "ripple_vid=forged.abc" }, body: JSON.stringify({ messages: [user(STARTER_PROMPTS[0])] }) }));
+    expect(res.headers.get("set-cookie")).toMatch(/^ripple_vid=[\w-]+\.[\w-]+;/);
+  });
+  it("without an IP header the demo cap is per cookie, not one shared key", async () => {
+    model = {};
+    vi.stubEnv("DEMO_PROMPTS_PER_DAY", "1");
+    const noip = (c: string) => POST(new Request("http://x/api/chat", { method: "POST", headers: { cookie: `ripple_vid=${c}.${mac(c)}` }, body: JSON.stringify({ messages: [user("q")] }) })).then(events);
+    expect(meta(await noip("n1")).exhausted).toBe(false);
+    expect(meta(await noip("n2")).exhausted).toBe(false);
+    expect(meta(await noip("n1")).exhausted).toBe(true);
+  });
+  it("caps history by characters and drops a leading assistant turn", async () => {
+    model = {};
+    const c = (i: number) => `${i}`.repeat(3900);
+    const m = (i: number) => ({ role: i % 2 ? "user" : "assistant", content: c(i) });
+    await events(await post({ messages: [m(1), m(2), m(3), m(4), m(5), m(6), user("now")] }));
+    expect(seen[0].history).toEqual([m(5), m(6)]); // m(4) would start on an assistant turn
+  });
+  it("an agent only gets its own canned sample; the agent param is case-insensitive", async () => {
+    const ev = await events(await post({ messages: [user("Who knows the v1 auth flow?")], agent: "Support" }));
+    expect(meta(ev)).toMatchObject({ cached: false, agent: "support" });
+    expect(text(ev)).toContain("No model key");
+  });
+  it("real orgs (local, Clerk) get no quota, no canned answers and no tour", async () => {
+    isDemo = false;
+    model = {};
+    vi.stubEnv("DEMO_PROMPTS_PER_DAY", "1");
+    vi.stubEnv("DAILY_TOKEN_BUDGET", "0");
+    const a = await events(await post({ messages: [user(STARTER_PROMPTS[0])] }, "org1"));
+    const b = await events(await post({ messages: [user("again")] }, "org1"));
+    expect(meta(a)).toMatchObject({ cached: false, exhausted: false, remaining: null });
+    expect(meta(b)).toMatchObject({ exhausted: false, remaining: null });
+    expect(seen).toHaveLength(2);
   });
 });
 

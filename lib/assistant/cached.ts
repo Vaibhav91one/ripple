@@ -71,8 +71,11 @@ const BY_TEXT: Record<string, StreamEvent[]> = {
 };
 const cache = new Map(Object.entries(BY_TEXT).map(([k, v]) => [normPrompt(k), v]));
 
-/** The cached answer for a starter prompt or agent sample, else undefined. */
-export const cachedAnswer = (text: string): StreamEvent[] | undefined => cache.get(normPrompt(text));
+/** The cached answer for a starter prompt or agent sample, else undefined. With `agent`, only that agent's own sample (no cross-agent canned answers). */
+export function cachedAnswer(text: string, agent?: string): StreamEvent[] | undefined {
+  if (agent && normPrompt(AGENT_SAMPLES[agent] ?? "") !== normPrompt(text)) return undefined;
+  return cache.get(normPrompt(text));
+}
 
 /** Budget gone: a friendly notice, then the cached tour (the sunset impact answer). */
 export function tour(): StreamEvent[] {
