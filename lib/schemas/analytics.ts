@@ -13,7 +13,8 @@ export const CoverageCard = z.object({
   deltaPts: Pts,
   teams: z.object({ told: z.number().int(), affected: z.number().int() }),
   acks: z.object({ done: z.number().int(), of: z.number().int() }),
-  customers: z.object({ notified: z.number().int(), of: z.number().int(), demo: z.boolean() }),
+  /** customer notices sent (executed email / talk-track actions) of the customers on the system */
+  notices: z.object({ sent: z.number().int(), of: z.number().int(), demo: z.boolean() }),
   /** coverage per day since the announcement; the last point is today */
   trend: z.array(z.object({ day: ts, pct: z.number().int(), today: z.boolean() })),
 });
@@ -31,7 +32,9 @@ export const WaterfallStep = z.object({
 export const Waterfall = z.object({ targetPct: z.literal(100), steps: z.array(WaterfallStep), actualPct: z.number().int(), takeaway: z.string() });
 
 export const GapType = z.enum(["not_told", "not_acked", "contract_conflict", "overdue"]);
+/** Each ARR figure is attributed to ONE cell (the contract conflict); never sum cells' arrAtRisk. `overdue` counts open tasks past due org-wide (tasks are not linked to a change). */
 export const Heatmap = z.object({
+  overdueScope: z.literal("org"),
   teams: z.array(z.object({ teamId: id, name: z.string() })),
   columns: z.array(GapType),
   cells: z.array(z.object({ teamId: id, gap: GapType, count: z.number().int(), arrAtRisk: z.number().int().nullable() })),
@@ -52,7 +55,7 @@ export const Forecast = z.object({
   currentPct: z.number().int(),
   /** at the pace so far, by the effective date */
   projectedPct: z.number().int(),
-  /** if every scenario is approved; the UI toggles scenarios and sums `pts` */
+  /** if every PENDING scenario is approved (derived ones are not real actions yet); the UI toggles scenarios and sums `pts` */
   withApprovalsPct: z.number().int(),
   scenarios: z.array(Scenario),
 });

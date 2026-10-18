@@ -14,8 +14,8 @@
       "done": 2,
       "of": 5
     },
-    "customers": {
-      "notified": 12,
+    "notices": {
+      "sent": 12,
       "of": 40,
       "demo": true
     },
@@ -184,9 +184,10 @@
         "note": "DevRel owns the docs for API v1"
       }
     ],
-    "takeaway": "Legal, Security and DevRel explain the whole 60 point gap."
+    "takeaway": "Legal and DevRel explain 67% of the 60 point gap."
   },
   "heatmap": {
+    "overdueScope": "org",
     "teams": [
       {
         "teamId": "legal",
@@ -220,7 +221,7 @@
         "teamId": "legal",
         "gap": "not_told",
         "count": 1,
-        "arrAtRisk": 180000
+        "arrAtRisk": null
       },
       {
         "teamId": "legal",
@@ -252,12 +253,12 @@
     "effectiveAt": 1801386000,
     "daysLeft": 106,
     "currentPct": 40,
-    "projectedPct": 40,
-    "withApprovalsPct": 100,
+    "projectedPct": 60,
+    "withApprovalsPct": 40,
     "scenarios": [
       {
         "id": "tell-legal",
-        "label": "Notify Legal",
+        "label": "Notify Legal (not yet proposed)",
         "teamId": "legal",
         "pts": 20,
         "source": "derived",
@@ -265,7 +266,7 @@
       },
       {
         "id": "tell-security",
-        "label": "Notify Security",
+        "label": "Notify Security (not yet proposed)",
         "teamId": "security",
         "pts": 20,
         "source": "derived",
@@ -273,7 +274,7 @@
       },
       {
         "id": "tell-devrel",
-        "label": "Notify DevRel",
+        "label": "Notify DevRel (not yet proposed)",
         "teamId": "devrel",
         "pts": 20,
         "source": "derived",

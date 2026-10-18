@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { roQuery, type Graph } from "./graph/client";
 import { decisions, load, names, NotFound, ripple } from "./graph/queries";
-import { dbEvents, loadRows, type Rows } from "./reports-db";
+import { dbEvents, isCase, loadRows, type Rows } from "./reports-db";
 import { demoEvents, DEMO_CUSTOMERS_NOTIFIED } from "./reports-demo";
 import type { RippleResult } from "./schemas";
 import type { Activity, ReportDetail, ReportRow, TimelineEvent } from "./schemas/reports";
@@ -11,7 +11,7 @@ import type { Context } from "./server/context";
 
 const n = z.coerce.number();
 const Head = z.object({
-  id: z.string(), title: z.string(), decidedAt: n, systemIds: z.array(z.string()), systemNames: z.array(z.string()),
+  id: z.string(), title: z.string(), decidedAt: n, systems: z.array(z.object({ id: z.string(), name: z.string() })),
   effectiveAt: n.nullable(), src: z.string().nullable(), quote: z.string().nullable(),
 });
 const Ack = z.object({ kind: z.enum(["Team", "Person"]), id: z.string(), teamId: z.string().nullable(), type: z.enum(["ACKED", "INVOLVED_IN"]), at: n, ackKind: z.string().nullable() });
@@ -42,7 +42,7 @@ export async function loadCase(g: Graph, id: string, now: number, nm: Map<string
   const why = gapId ? rip.teams.find((t) => t.teamId === gapId)?.why[0]?.reason : undefined;
   const row: ReportRow = {
     id, title: head.title, kind: "change", state, needsYou: state !== "done",
-    systems: head.systemIds.map((sid, i) => ({ id: sid, name: head.systemNames[i] ?? sid })),
+    systems: head.systems.filter((x) => x.id),
     announcedAt: head.decidedAt, effectiveAt: head.effectiveAt, arrAtRisk: rip.counts.arrAtRisk,
     coverage: { told, affected, pct: affected ? Math.round((100 * told) / affected) : 100 },
     mainGap: gapId ? { teamId: gapId, name: nm.get(gapId) ?? gapId, reason: `${nm.get(gapId) ?? gapId} ${why ?? "is affected"} and has not been told` } : null,
@@ -58,29 +58,33 @@ const openIds = async (g: Graph) => (await decisions(g)).data.filter((d) => d.st
 function graphEvents(c: Case, now: number): TimelineEvent[] {
   const { head, acks, rip, nm } = c;
   const out: TimelineEvent[] = [{
-    id: `ann-${head.id}`, at: head.decidedAt, kind: "announced", actor: { type: "system", id: null, name: "Ripple" }, teamId: null, text: `Announced: ${head.title}`, source: "graph", demo: false,
+    id: `ann-${head.id}`, at: head.decidedAt, kind: "announced", actor: { type: "system", id: null, name: "Ripple" }, teamId: null, text: `Announced: ${head.title}`, url: null, source: "graph", demo: false,
   }];
   for (const a of acks.filter((a) => a.type === "ACKED")) {
     const name = nm.get(a.id) ?? a.id;
     const team = a.kind === "Team" ? a.id : a.teamId;
     out.push({
-      id: `ack-${a.id}`, at: a.at, kind: "ack", actor: { type: "person", id: a.id, name }, teamId: team,
-      text: a.kind === "Team" ? `${name} acknowledged the change` : `${name} ${a.ackKind === "concern" ? "raised a concern about" : "acknowledged"} the change`, source: "graph", demo: false,
+      id: `ack-${a.id}-${a.at}`, at: a.at, kind: "ack", actor: { type: "person", id: a.id, name }, teamId: team,
+      text: a.kind === "Team" ? `${name} acknowledged the change` : `${name} ${a.ackKind === "concern" ? "raised a concern about" : "acknowledged"} the change`, url: null, source: "graph", demo: false,
     });
   }
   for (const k of rip.conflicts) {
-    out.push({ id: `conf-${k.id}`, at: Math.min(k.detectedAt, now), kind: "conflict", actor: { type: "system", id: null, name: "Ripple" }, teamId: "legal", text: `Ripple noticed the sunset conflicts with a contract guarantee (${k.severity} severity)`, source: "graph", demo: false });
+    out.push({ id: `conf-${k.id}`, at: Math.min(k.detectedAt, now), kind: "conflict", actor: { type: "system", id: null, name: "Ripple" }, teamId: "legal", text: `Ripple noticed the sunset conflicts with a contract guarantee (${k.severity} severity)`, url: null, source: "graph", demo: false });
   }
   return out;
 }
 
 /** Real events first; demo history only for the kinds the real log has none of, and only for the seeded demo change. */
-function timelineFor(c: Case, rows: Rows | null, now: number): TimelineEvent[] {
+function timelineFor(c: Case, rows: Rows | null, now: number, demo: boolean): TimelineEvent[] {
   const real = [...graphEvents(c, now), ...(rows ? dbEvents(rows, c.head.id, (id) => c.nm.get(id) ?? id) : [])];
   const have = new Set(real.map((e) => e.kind));
-  const demo = demoEvents(c.head.id, c.head.decidedAt, c.rip).filter((e) => !have.has(e.kind) || e.kind === "traversed");
-  return [...real, ...demo].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+  const seeded = demo ? demoEvents(c.head.id, c.head.decidedAt, c.rip).filter((e) => !have.has(e.kind)) : [];
+  return [...real, ...seeded].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
 }
+
+/** Executed customer email / talk-track actions for the change: one notice per customer. */
+export const noticesSent = (rows: Rows | null, id: string) =>
+  rows?.pending.filter((p) => ["email", "talk_track"].includes(p.kind) && p.status === "executed" && isCase(id, p)).length ?? 0;
 
 export async function reportList(ctx: Context) {
   const { graph: g, now } = ctx;
@@ -95,14 +99,15 @@ export async function reportDetail(ctx: Context, id: string): Promise<ReportDeta
   const { graph: g, now } = ctx;
   const nm = await nameMap(g);
   const c = await loadCase(g, id, now, nm);
-  const rows = await loadRows(ctx.org.id);
+  const rows = await loadRows(ctx.org.id, id);
+  const demo = rows === null || ctx.org.isDemo; // seeded history only without Postgres or on the demo org, never because a table is empty
   const { rip, head, row } = c;
   const author = head.src ? ((await roQuery(g, "MATCH (a:Artifact {id: $id}) RETURN a.author AS p", { id: head.src })) as { p: string | null }[])[0]?.p : null;
   const cids = [...new Set(rip.conflicts.flatMap((k) => k.contractIds))];
   const contracts = cids.length ? Contract.array().parse(await roQuery(g, load("reports-contracts").text, { ids: cids })) : [];
-  const timeline = timelineFor(c, rows, now);
-  const sent = rows?.pending.filter((p) => ["email", "talk_track"].includes(p.kind) && p.status === "executed" && JSON.stringify(p.payload).includes(id)).length ?? 0;
-  const demoCustomers = sent === 0 && id === "d-1" ? DEMO_CUSTOMERS_NOTIFIED : 0;
+  const timeline = timelineFor(c, rows, now, demo);
+  const sent = noticesSent(rows, id);
+  const demoNotices = demo && sent === 0 && id === "d-1" ? DEMO_CUSTOMERS_NOTIFIED : 0;
   return {
     now, report: row,
     announcedBy: author ? { type: "person", id: author, name: nm.get(author) ?? author } : null,
@@ -119,7 +124,7 @@ export async function reportDetail(ctx: Context, id: string): Promise<ReportDeta
     })),
     result: {
       arrAtRisk: rip.counts.arrAtRisk, teamsTold: row.coverage.told, teamsAcked: rip.teams.filter((t) => t.acked).length,
-      openGaps: rip.counts.notTold, openConflicts: rip.counts.conflicts, customersNotified: sent || demoCustomers, customersNotifiedDemo: demoCustomers > 0,
+      openGaps: rip.counts.notTold, openConflicts: rip.counts.conflicts, noticesSent: sent || demoNotices, noticesSentDemo: demoNotices > 0,
     },
   };
 }
@@ -127,10 +132,10 @@ export async function reportDetail(ctx: Context, id: string): Promise<ReportDeta
 export async function activity(ctx: Context, actor: Activity["actor"], limit: number): Promise<Activity> {
   const { graph: g, now } = ctx;
   const nm = await nameMap(g);
-  const rows = await loadRows(ctx.org.id);
   const all = (await Promise.all((await openIds(g)).map(async (id) => {
     const c = await loadCase(g, id, now, nm);
-    return timelineFor(c, rows, now).map((e) => ({ ...e, caseId: id, caseTitle: c.head.title }));
+    const rows = await loadRows(ctx.org.id, id);
+    return timelineFor(c, rows, now, rows === null || ctx.org.isDemo).map((e) => ({ ...e, caseId: id, caseTitle: c.head.title }));
   }))).flat();
   const items = all.filter((e) => actor === "all" || e.actor.type === actor).sort((a, b) => b.at - a.at || a.id.localeCompare(b.id)).slice(0, limit);
   return { now, actor, items };

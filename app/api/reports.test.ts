@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { agentStats } from "@/lib/analytics";
 import { closeClient, graphFor, query, type Graph } from "@/lib/graph/client";
 import { seed } from "@/lib/ingest/seed";
-import { pendingEvents } from "@/lib/reports-db";
+import { isCase, pendingEvents, touches } from "@/lib/reports-db";
 import { Analytics } from "@/lib/schemas/analytics";
 import { Activity, ReportDetail, ReportList } from "@/lib/schemas/reports";
 
@@ -73,7 +73,7 @@ describe("GET /api/reports/[id]", () => {
     expect(d.timeline.filter((e) => e.source !== "demo").every((e) => !e.demo)).toBe(true);
     expect(d.timeline.map((e) => e.at)).toEqual([...d.timeline.map((e) => e.at)].sort((a, b) => a - b));
     expect(d.conflicts[0].contracts.map((c) => c.name)).toContain("Northwind Capital MSA");
-    expect(d.result).toMatchObject({ teamsTold: 2, openGaps: 3, customersNotified: 12, customersNotifiedDemo: true });
+    expect(d.result).toMatchObject({ teamsTold: 2, openGaps: 3, noticesSent: 12, noticesSentDemo: true });
     expect(d.announcedBy?.name).toBeTruthy();
   });
   t("404 for an unknown change", async () => {
@@ -105,7 +105,10 @@ describe("GET /api/analytics", () => {
     expect(a.waterfall!.steps.reduce((s, x) => s + x.pts, 0)).toBe(100 - 40);
     expect(a.waterfall!.steps.find((s) => s.teamId === "legal")?.arrAtRisk).toBe(180000);
     expect(a.heatmap.cells.some((c) => c.teamId === "legal" && c.gap === "contract_conflict")).toBe(true);
-    expect(a.forecast).toMatchObject({ currentPct: 40, withApprovalsPct: 100 });
+    expect(a.heatmap.cells.filter((c) => c.arrAtRisk !== null)).toHaveLength(1); // ARR sits on one cell only
+    expect(a.coverage!.trend).toHaveLength(26);
+    expect(a.waterfall!.takeaway).toBe("Legal and DevRel explain 67% of the 60 point gap.");
+    expect(a.forecast).toMatchObject({ currentPct: 40, withApprovalsPct: 40 }); // derived scenarios are not real actions
     expect(a.forecast!.scenarios).toHaveLength(3);
     expect(a.timeToTell.rows.find((x) => x.teamId === "support")?.hours).toBe(24);
     expect(a.timeToTell.rows.find((x) => x.teamId === "legal")?.hours).toBeNull();
@@ -134,6 +137,15 @@ describe("redaction", () => {
 });
 
 describe("postgres mappers", () => {
+  it("links by exact id and turns an executed create_issue into an issue event with its url", () => {
+    expect(touches("d-1", { decisionId: "d-1" })).toBe(true);
+    expect(touches("d-1", { decisionId: "d-10" })).toBe(false);
+    const at = new Date("2026-10-02T10:00:00Z");
+    const gh = { id: "g", kind: "create_issue", status: "executed", payload: { title: "Migrate off v1 (d-1)", body: "" }, requestedAt: at, approver: "p-ana", decidedAt: at, result: { status: "created", url: "https://github.com/o/r/issues/7" } };
+    expect(isCase("d-1", gh)).toBe(true);
+    expect(isCase("d-10", { ...gh, payload: { title: "x", body: "see d-1" } })).toBe(false);
+    expect(pendingEvents([gh], "d-1", (i) => i)).toMatchObject([{ kind: "issue", url: "https://github.com/o/r/issues/7", demo: false }]);
+  });
   it("turns pending actions into propose + approve events and counts approval stats", () => {
     const req = new Date("2026-10-01T10:00:00Z");
     const rows = [
@@ -146,7 +158,10 @@ describe("postgres mappers", () => {
     expect(ev.map((e) => e.kind).sort()).toEqual(["approved", "proposed", "proposed", "proposed", "rejected"]);
     expect(ev.find((e) => e.kind === "approved")?.actor.name).toBe("Name p-ana");
     expect(ev.every((e) => !e.demo && e.source === "pending_actions")).toBe(true);
-    expect(agentStats(rows)).toMatchObject({ proposed: 4, approved: 1, rejected: 1, pending: 2, approvalRatePct: 50, medianDecisionHours: 2, demo: false });
-    expect(agentStats(undefined).demo).toBe(true);
+    const groups = [{ kind: "notice", status: "executed", n: 1 }, { kind: "email", status: "rejected", n: 1 }, { kind: "email", status: "pending", n: 2 }];
+    expect(agentStats({ groups, medianHours: 2 }, false)).toMatchObject({ proposed: 4, approved: 1, rejected: 1, pending: 2, approvalRatePct: 50, medianDecisionHours: 2, demo: false });
+    expect(agentStats(null, true).demo).toBe(true);
+    expect(agentStats({ groups: [], medianHours: null }, false)).toMatchObject({ proposed: 0, demo: false }); // empty table is not demo on a real org
+    expect(agentStats({ groups: [], medianHours: null }, true).demo).toBe(true); // demo org
   });
 });

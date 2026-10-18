@@ -9,7 +9,7 @@ const H = 3600;
 
 export function demoEvents(caseId: string, announcedAt: number, rip: RippleResult): TimelineEvent[] {
   const e = (id: string, dt: number, kind: TimelineEvent["kind"], type: "person" | "agent" | "system", name: string, teamId: string | null, text: string): TimelineEvent =>
-    ({ id: `demo-${caseId}-${id}`, at: announcedAt + dt, kind, actor: { type, id: null, name }, teamId, text, source: "demo", demo: true });
+    ({ id: `demo-${caseId}-${id}`, at: announcedAt + dt, kind, actor: { type, id: null, name }, teamId, text, url: null, source: "demo", demo: true });
   const c = rip.counts;
   if (caseId !== "d-1") return [e("trav", 60, "traversed", "system", "Ripple", null, `Ripple traced ${c.teamsAffected} teams, ${c.customers} customers and ${c.contracts} contracts behind the change`)];
   return [

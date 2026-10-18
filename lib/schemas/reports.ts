@@ -43,6 +43,8 @@ export const TimelineEvent = z.object({
   actor: Actor,
   teamId: id.nullable(),
   text: z.string(),
+  /** e.g. the GitHub issue an executed create_issue action opened */
+  url: z.string().nullable().default(null),
   source: TimelineSource,
   demo: z.boolean(),
 });
@@ -82,9 +84,10 @@ export const ReportDetail = z.object({
     teamsAcked: z.number().int(),
     openGaps: z.number().int(),
     openConflicts: z.number().int(),
-    customersNotified: z.number().int(),
-    /** customersNotified comes from deliveries; with no Postgres it is seeded demo history */
-    customersNotifiedDemo: z.boolean(),
+    /** executed customer email / talk-track actions for this change (one per customer); not delivery receipts */
+    noticesSent: z.number().int(),
+    /** seeded demo history (no Postgres, or the demo org) instead of executed actions */
+    noticesSentDemo: z.boolean(),
   }),
   ...restrictedField,
 });

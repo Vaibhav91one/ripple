@@ -189,7 +189,7 @@ describe("sentinel leak: GET routes", () => {
         }
     }
     expect(checked).toBeGreaterThan(VIEWERS.length * 30);
-  }, 900_000);
+  }, 180_000);
 
   t("owners see their own payload (the test is not vacuous)", async () => {
     as("legal");
