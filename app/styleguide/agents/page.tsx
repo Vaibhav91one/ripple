@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/shell/AppShell";
+import { shellUser } from "@/components/shell/identity";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { AGENT_ART } from "@/components/agents/art";
 import { agents } from "@/lib/agent/registry";
@@ -10,7 +11,7 @@ export const metadata = { title: "Agent art · Ripple" };
 export default function StyleguideAgents() {
   return (
     <Suspense>
-      <AppShell>
+      <AppShell user={shellUser({})}>
         <PageHeader title="Agent art" subtitle="160 by 120, token colours, one soft plate, one shadow, one accent per agent." />
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {agents().map((a) => {
