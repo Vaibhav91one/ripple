@@ -85,7 +85,7 @@ export const CreateIssue = z.object({ title: z.string().min(1), body: z.string()
 
 /** GitHub App installation client (@octokit/app caches the installation token) -> create issue in GITHUB_REPO (owner/name). */
 export async function createIssue(e: GithubEnv, title: string, body: string): Promise<{ status: "created" | "skipped" | "failed"; url?: string; error?: string }> {
-  const app = githubApp(e);
+  const app = await githubApp(e);
   const [owner, name] = (e.GITHUB_REPO ?? "").split("/");
   if (!app || !e.GITHUB_APP_INSTALLATION_ID || !owner || !name) return { status: "skipped" };
   try {
@@ -108,7 +108,7 @@ export const PrComment = z.object({ repo: z.string().regex(/^[^/\s]+\/[^/\s]+$/,
 
 /** Approved pr_comment -> a comment on that PR (or issue) as the GitHub App. Installation = the org's connected one, else GITHUB_APP_INSTALLATION_ID. */
 export async function prComment(e: GithubEnv, installation: string | undefined, p: z.infer<typeof PrComment>): Promise<{ status: "created" | "skipped"; url?: string }> {
-  const app = githubApp(e);
+  const app = await githubApp(e);
   const id = installation ?? e.GITHUB_APP_INSTALLATION_ID;
   if (!app || !id) return { status: "skipped" };
   const octo = (await app.getInstallationOctokit(Number(id))) as unknown as Octo;

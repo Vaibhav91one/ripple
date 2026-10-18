@@ -12,5 +12,13 @@ export function redactSecrets(str: string): string {
   return s.replace(TOKEN_ENC, "$1[redacted]");
 }
 
-/** Message of an unknown thrown value, redacted. */
-export const safeMessage = (e: unknown) => redactSecrets(e instanceof Error ? e.message : String(e));
+/** Message of an unknown thrown value, redacted. pg-boss emits plain objects ({ ...err, message, stack, queue, worker }), which String() turns into "[object Object]": read their message, and say which queue. */
+export function safeMessage(e: unknown): string {
+  if (e instanceof Error) return redactSecrets(e.message);
+  if (e && typeof e === "object") {
+    const { message, queue, code } = e as { message?: unknown; queue?: unknown; code?: unknown };
+    if (typeof message === "string") return redactSecrets(`${message}${typeof queue === "string" ? ` (queue ${queue})` : ""}${typeof code === "string" ? ` [${code}]` : ""}`);
+    try { return redactSecrets(JSON.stringify(e)); } catch { /* circular: fall through */ }
+  }
+  return redactSecrets(String(e));
+}

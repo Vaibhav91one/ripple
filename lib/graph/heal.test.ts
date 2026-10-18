@@ -35,6 +35,23 @@ describe("healDemo", () => {
   }, 90_000);
 });
 
+describe("healDemo default clock", () => {
+  it("never reads Date.now (Next logs it as an unstable prerender value on every request to /) and still throttles", async () => {
+    const dn = vi.spyOn(Date, "now");
+    try {
+      const other = `test_heal_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+      const sleep = healDemo(other); // first call starts a heal against the (unreachable or empty) graph
+      expect(healDemo(other)).toBeUndefined(); // second call inside the window is throttled
+      expect(dn).not.toHaveBeenCalled(); // checked before the seed runs: the seed itself may read the clock, that is not a prerender path
+      await sleep;
+      await (await graphFor(other)).delete().catch(() => {});
+    } finally {
+      dn.mockRestore();
+      await closeClient().catch(() => {});
+    }
+  }, 90_000);
+});
+
 describe("GET /api/health with FalkorDB unreachable", () => {
   it("answers 503 falkordb:down within 3s", async () => {
     vi.resetModules();

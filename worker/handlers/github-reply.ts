@@ -9,7 +9,7 @@ export default async function githubReply(jobs: Job<GithubJob>[]) {
   ]);
   for (const j of jobs) {
     try {
-      const app = githubApp(await githubEnv());
+      const app = await githubApp(await githubEnv());
       if (!app) throw new Error("GitHub App is not configured");
       const { retrying, answerFor } = m;
       const octo = retrying((await app.getInstallationOctokit(j.data.installation)) as never);
