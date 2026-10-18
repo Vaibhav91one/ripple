@@ -2,534 +2,152 @@
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
-- **Live:** https://web-2fa0-3000.prg1.zerops.app (on Zerops; the custom domain ripple.vaibhav.quest is waiting on a Google Safe Browsing review)
-- **Track:** Track 03: Company Brain, WeMakeDevs x FalkorDB Graph Hacks
-- **Pitch:** before you ship a breaking change, ask the graph who it hits and who was never told.
-- **Modelling:** Telling a team is an edge (INVOLVED_IN / ACKED), so a missing edge is the finding.
+[Live demo](https://web-2fa0-3000.prg1.zerops.app) · [Demo walkthrough](#demo-walkthrough) · [Self-host in 5 minutes](SELF_HOSTING.md) · WeMakeDevs x FalkorDB Graph Hacks, Track 03 (Company Brain)
 
-**Tools are not context.** Connecting an agent to Jira, Zendesk and the CRM gives it lookups, not an understanding of how a decision travels through a company. Ripple is that missing layer: one graph where a decision, the systems that depend on it, the customers, deals and contracts on those systems, and the teams that own them are connected, so "what does this touch, and who hasn't heard?" is a single traversal instead of a hundred API calls.
+> The custom domain `ripple.vaibhav.quest` is waiting on a Google Safe Browsing review; the Zerops URL above is the live deployment.
 
-**Every answer is traceable.** Every edge carries the artifact it came from and a verbatim quote, every tool returns the Cypher it ran and the path it walked (`why_affected` shows the hops), and when nothing in the graph connects, Ripple says so instead of guessing.
+## The 60-second pitch
 
-![Ripple overview: the v1 sunset across every team](docs/screens/v2-final-overview.png)
+Every company makes decisions that ripple across teams, and the people who need to know usually find out last. Connecting an agent to Jira, Zendesk and the CRM gives it lookups, not an understanding of how a decision travels through a company. **Tools are not context.**
 
-Built for the WeMakeDevs x FalkorDB Graph Hacks, Track 03. Live demo data is a synthetic company, **Ledgerly**, that has just decided to sunset its API v1.
+Ripple puts the decision, the systems that depend on it, the customers, deals and contracts on those systems, and the teams that own them into one FalkorDB graph. "What does this touch, and who hasn't heard?" becomes a single traversal instead of a hundred API calls. Telling a team is an edge (`INVOLVED_IN`, `ACKED`), so a **missing edge is the finding**. Every edge carries the artifact it came from and a verbatim quote, every answer shows the Cypher it ran, and when nothing in the graph connects, Ripple says so instead of guessing.
 
-v2 is a dashboard product: `/overview`, a `/graph` explorer, `/changes` (one page per change), `/inbox`, and seven team workspaces under `/teams/<team>`, all reading one FalkorDB graph.
+The demo company, **Ledgerly**, has decided to sunset API v1. Ripple finds 40 customers and 180,000 of ARR on it, two contracts that guarantee v1 past the sunset date, and three teams (Legal, Security, DevRel) that were never told.
 
-## Use Ripple from your AI tools
+## Demo walkthrough
 
-Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (12 tools) or stdio against a local FalkorDB. The **[/integrations](https://web-2fa0-3000.prg1.zerops.app/integrations)** page has copy buttons for every client, filled with the deployment's own URL, plus the API keys panel.
+<!-- H3: when docs/demo.gif is committed, add ![Demo walkthrough](docs/demo.gif) here -->
+The walkthrough GIF is coming; until then the live demo is the demo: <https://web-2fa0-3000.prg1.zerops.app>.
 
-```bash
-# Claude Code plugin: the hosted MCP server + the ripple-impact skill
-/plugin marketplace add Vaibhav91one/ripple
-/plugin install ripple@ripple            # or, on Claude Code 2.1.275+: /plugin install ripple --marketplace Vaibhav91one/ripple
-# or just the MCP server (hosted demo)
-claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
-# local stdio: FalkorDB on :6379 with the seed loaded (this repo's .mcp.json already wires it)
-claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
-```
-
-| Client | Setup |
-| --- | --- |
-| Claude Desktop, claude.ai | Customize > Connectors > + > Add custom connector, paste the URL ("No sign in" for the demo). Skill: zip `skills/ripple-impact` and upload it under Customize > Skills. |
-| Codex | `~/.codex/config.toml`: `[mcp_servers.ripple]` `url = "https://web-2fa0-3000.prg1.zerops.app/api/mcp"`; for org keys add `bearer_token_env_var = "RIPPLE_API_KEY"`. The skill is also in `.agents/skills/`. |
-| Cursor | One-click "Add to Cursor" on /integrations, or `~/.cursor/mcp.json`: `{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }` |
-| ChatGPT | Developer mode connector, no auth: demo graph only. |
-| Slack, GitHub | `/ripple` and @Ripple in Slack (#240), @ripple-company-brain on pull requests (#236). |
-
-**Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). An org admin creates a key on **/integrations** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: same teams and role, so restricted text is redacted exactly as in their session. Send it as `Authorization: Bearer rpl_<prefix>_<secret>` (`claude mcp add ... --header "Authorization: Bearer rpl_..."`), or export `RIPPLE_API_KEY` for the plugin, `.mcp.json` (`"headers": { "Authorization": "Bearer ${RIPPLE_API_KEY:-}" }`) and Codex. A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
-
-**Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). The plugin bundles it; to install it by hand, `cp -r skills/ripple-impact ~/.claude/skills/`.
-
-**Demo.** Ask "what does sunsetting API v1 (d-1) hit?" and raise `depth`; measured live, 20 to 50 ms per tool call:
-
-| `ripple_impact` d-1 | Teams reached | Gap (never told) |
-|---|---|---|
-| depth 1 | devrel, legal, sales, support | legal, devrel |
-| depth 3 (default) | + security | legal, security, devrel |
-| depth 4 | + data | data, legal, security, devrel |
-
-## Screens
-
-| | |
-|---|---|
-| ![Overview](docs/screens/v2-final-overview.png) `/overview`: KPIs, activity, blockers, team strip | ![Graph explorer](docs/screens/v2-final-graph.png) `/graph`: the ripple as a Flowchart, edge evidence on click |
-| ![Decision](docs/screens/v2-final-decisions-d-1.png) `/changes/d-1`: the ripple, the gap, the conflict | ![Changes](docs/screens/v2-final-changes.png) `/changes`: dated edges added and ended |
-| ![Eng](docs/screens/v2-final-teams-eng.png) `/teams/eng` | ![Legal](docs/screens/v2-final-teams-legal.png) `/teams/legal` |
-| ![Security](docs/screens/v2-final-teams-security.png) `/teams/security` | ![Leadership](docs/screens/v2-final-teams-leadership.png) `/teams/leadership` |
-
-Every team page has more screenshots in `docs/screens/v2-final-teams-*.png`.
-
-## Team workspaces
-
-Each team gets a page modelled on the tool it already uses. Ripple does not replace those tools; it adds the part none of them has, which is how the v1 sunset reaches that team, from the same graph. Each page ends with a "Changes affecting <team>" panel (`ripple-angle.cypher`): why the decision reaches the team, who knows, recent edges, with source quotes.
-
-| Team | Feels like | What Ripple adds (the v1 sunset angle) |
-|---|---|---|
-| Eng (`/teams/eng`) | GitHub, LinearB | PRs and review load, plus which open PRs touch API v1 and who knows the system |
-| Support (`/teams/support`) | Zendesk, Gainsight | Ticket queue and SLA, plus which tickets and customers depend on v1 |
-| Sales (`/teams/sales`) | HubSpot | Pipeline and quarter goal, plus which open deals promised v1 and the ARR behind them |
-| Legal (`/teams/legal`) | Ironclad | Contracts, clauses and renewals, plus the MSAs that guarantee v1 past the sunset date, with the quote |
-| Security (`/teams/security`) | Vanta, Snyk | Controls by framework, findings, vendors, risk register, plus the controls and findings tied to v1 |
-| DevRel (`/teams/devrel`) | Mintlify | Docs pages, failed searches, SDK adoption, plus the docs pages that still describe v1 |
-| Leadership (`/teams/leadership`) | Asana Goals | Goals and risks, plus which goals are `BLOCKED_BY` the open decision |
+Prefer to click: open the [live demo](https://web-2fa0-3000.prg1.zerops.app), ask the Assistant "We're removing API v1. What breaks, and who doesn't know yet?", then follow the case file. The three-minute path is in [docs/demo-script.md](docs/demo-script.md).
 
 ## What it does
 
-- **The ripple.** Pick a decision ("Sunset API v1 on Jan 31"). One Cypher query walks decision, systems, their dependents, then tickets, deals, contracts, customers and the teams that own or handle them.
-- **The gap.** Teams the decision hits but never reached (no `INVOLVED_IN`, no `ACKED`). For the v1 sunset: Legal, Security and DevRel.
-- **Conflicts.** A contract that guarantees a system past the date a decision sunsets it is flagged, with both quotes. Here: the Northwind and Halden MSAs promise v1 until Jun 2027, the sunset is Jan 31, 180,000 ARR at risk.
-- **Sourced briefs.** Each team gets a short brief. Every claim cites an artifact and a verbatim quote; a claim whose citation is not in the ripple rows is dropped.
-- **Acks.** Each brief carries a signed link. One click ("seen", "concern", "not relevant") writes an `ACKED` edge and the gap shrinks.
-
-Ask it as a team (what hits me?) and inside a team (who knows this?):
-
-- Who knows a system best (authored, reviewed, handled evidence, scored).
-- Which team is the bottleneck (open `WAITING_ON` requests, grouped by blocker).
-- What changed since a date (edges added or ended, dated).
-- Why was a decision made (`SUPPORTED_BY` artifacts).
-- Assistant (`/`): the model picks one of six query templates and fills parameters; it never writes Cypher.
-
-## Why FalkorDB is load-bearing
-
-- **Variable-length `DEPENDS_ON` traversal.** `ripple.cypher` walks decision, systems, dependents, then tickets, deals, contracts, customers and teams in one statement; `depth` is the hop bound (see the table above).
-- **The missing-edge gap query.** `gap.cypher` finds teams the decision hits with no `INVOLVED_IN`/`ACKED` edge. The finding is an absence, which is natural in a graph and a set difference in application code elsewhere.
-- **Temporal edges.** Every edge has `valid_from` / `valid_to` (epoch ints), so "what changed" and "what was true then" are plain `WHERE` clauses; moving the sunset date ends one edge and writes another.
-- **`MERGE` write-back.** Conflicts, acks and tasks are written back with `MERGE`, so the gap shrinks when a team acks.
-- **Full-text and vector index on `Artifact`.** `search.cypher` and `search-vector.cypher` find the decision's evidence, and the vector query hops to the systems each hit is `ABOUT` in the same statement.
-- **Shortest path.** `why-affected.cypher` uses FalkorDB's `shortestPath` between a bound decision and a bound team to answer "why is this team affected?" with the chain of nodes and the quote on each edge (`why_affected` tool).
-- **Read-only queries.** Every read (agent tools, MCP tools, page data) goes through `GRAPH.RO_QUERY` (`roQuery`), so FalkorDB itself rejects a write from a read path; only the MERGE/CREATE/SET templates use `query`.
-- **Fixed Cypher tools.** The agent picks among a fixed set of Cypher-backed tools and fills parameters; it never writes Cypher.
-
-## Architecture
-
-One Next.js 16 app (UI plus route handlers) and one FalkorDB. No other services.
-
-```
- browser ──► Next.js app (React UI, /api/* route handlers)
-                │  lib/graph/queries.ts  (typed wrappers over *.cypher)
-                │  lib/teams             (one compute per team workspace)
-                │  lib/agent             (tool-calling loop, 6 templates)
-                │  lib/briefs.ts         (claims + citation check)
-                │  lib/ingest            (extract -> quote check -> cache; embed)
-                ▼
-            FalkorDB 6.0.2  (graph per company key: nodes, dated edges,
-                             full-text index, 384-d vector index)
-```
-
-- **Screens:** `app/(app)/` routes `overview`, `graph`, `changes`, `inbox`, `teams/[team]`. The `/graph` view uses the Beautiful UI Flowchart fed by `graph-view.cypher`.
-- **LLM: AI SDK, bring your own key** (Anthropic, OpenAI, Google, OpenRouter, OpenAI-compatible, Ollama). No key: the app runs on deterministic query wrappers and committed caches.
-- **Embeddings are local**: MiniLM-L6-v2 (384-d) via `@huggingface/transformers`, cached by content hash in `lib/ingest/cache/embed`.
-
-## Quickstart
-
-Runs with no API key.
-
-```bash
-# FalkorDB 6.0.2 (Apple container)
-container run -d --name falkor -p 6379:6379 -p 3000:3000 falkordb/falkordb:6.0.2
-# or Docker
-docker run -d --name falkor -p 6379:6379 -p 3000:3000 falkordb/falkordb:6.0.2
-
-cp .env.example .env     # defaults point at localhost:6379; LLM_API_KEY may stay empty
-pnpm i
-pnpm seed                # builds graph `demo` from the committed caches
-pnpm dev                 # http://localhost:3000 (map the FalkorDB browser to another port if 3000 is taken)
-```
-
-Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Assistant answers and brief rewording. Other scripts: `pnpm extract`, `pnpm embed`, `pnpm test`, `pnpm eval`.
-
-## Testing
-
-- `pnpm test`: unit and route tests (vitest).
-- `pnpm e2e`: Playwright smoke suite. Loads every route in `e2e/routes.ts` at 1440x900 and 390x844 and fails on a non-2xx/3xx status or any console or page error. Run `pnpm build` first; it starts `next start` on port 3201, or set `E2E_BASE_URL` to test a running deployment. Uses the installed Chrome locally.
-- Compose smoke: `docker compose up` plus a health check against `/api/health` (coming in #228).
-
-## Graph data model
-
-**Nodes** (label: properties). Artifacts carry two labels, `Artifact` plus their kind.
-
-| Label | Properties |
+| | |
 |---|---|
-| Team | id, name |
-| Person | id, name, title, email, teamId, active |
-| System | id, name, kind (api/service/repo), status, version, successor |
-| Customer | id, name, arr, tier, region, monthlyCalls |
-| Deal | id, name, stage, amount, closeDate, customerId |
-| Contract | id, name, endsAt, customerId |
-| Decision | id, title, status, decidedAt |
-| Incident, Task | id plus title/status/timestamps |
-| Clause | id, contractId, number, title, text, risk, dueAt, v1Related |
-| Framework | id, name |
-| Control | id, frameworkId, name, status (passing/failing), auditBlocking, ownerId, v1Related |
-| Vendor | id, name, riskTier, assessmentStatus, nextReview |
-| Finding | id, title, severity, slaDueAt, systemId, status, ownerId, v1Related |
-| Risk | id, title, likelihood, impact, status, ownerId, teamId, v1Related |
-| Page | id, path, views30d, feedbackUp, feedbackDown, v1Related |
-| DocsStats | id, failedSearchesJson, sdkAdoptionJson |
-| Goal | id, title, ownerTeamId, progress, status, target, current |
-| Artifact + Doc / Ticket / Message / PR | id, kind, title, text, ts, uri, author, emb (384-d vector), status (tickets); v2 adds ticket priority/SLA fields and PR repo/state/reviewer fields |
-| Conflict | id, kind, severity, status, decisionId, contractIds, detectedAt, sources (JSON) |
+| ![Assistant](docs/screens/237/1440-answer.jpg) **Assistant** (`/`): ask in plain language; the model picks one of a fixed set of Cypher-backed tools and never writes Cypher. | ![Case file](docs/screens/233/case-1440.jpg) **Reports and case files** (`/reports`, `/reports/d-1`): the ripple, the gap, the conflict, each claim with its source quote. |
+| ![Analytics](docs/screens/234/ripple-1440-top.jpg) **Analytics** (`/analytics`): forecast, leakage and the embedded graph explorer, all read from the same graph. | ![Agents](docs/screens/235/agents-1440.jpg) **Agents** (`/agents`): templates that run read-only against the graph; anything that would write returns a preview for approval. |
 
-**Edges**, grouped:
+- **Connections** (`/connections`): GitHub, Slack, CSV and file upload feed artifacts into the graph; extraction keeps only edges whose quote is verbatim in the source.
+- **Integrations** (`/integrations`): copy-paste setup for every AI client, filled with the deployment's own URL, plus API keys. See [Use Ripple from your AI tools](#use-ripple-from-your-ai-tools).
+- **Settings and Profile** (`/settings`, `/profile`): members, notifications and API keys, plus your own profile.
+- **Acknowledgements.** Each brief carries a signed link; one click ("seen", "concern", "not relevant") writes an `ACKED` edge and the gap closes.
 
-- Org: `MEMBER_OF`, `OWNS`, `CARES_ABOUT`, `MAINTAINS`, `ASSIGNED`, `CONTACT`
-- Work evidence: `AUTHORED`, `REVIEWED`, `ABOUT`, `RAISED_BY`, `HANDLED_BY`, `ATTENDED`
-- System graph: `DEPENDS_ON`, `USES`, `AFFECTED`, `CAUSED_BY`
-- Commercial: `PROMISED`, `GUARANTEES`, `PARTY_TO`, `OWNED_BY`, `MANAGED_BY`
-- Decisions: `SUNSETS`, `SUPPORTED_BY`, `SUPERSEDES`, `INVOLVED_IN`, `ACKED`, `BETWEEN`
-- Process: `WAITING_ON`, `NOTIFIES`
-- v2 workspaces: `HAS_CLAUSE` (Contract to Clause), `COVERS` (Control to Framework), `BLOCKED_BY` (Goal to a Decision, Finding or Task), `FOUND_IN` (Finding to System), `REQUESTED_REVIEW` (reviewer to PR)
+## The graph
 
-**Rules**
+Ripple is a graph product, so the graph is the first thing to read. Both sections below are generated from a freshly seeded graph by `pnpm graph:readme` (`scripts/graph-map.ts`, `scripts/graph-proof.ts`); nothing in them is hand-written output.
 
-- Every edge has `valid_from`, `valid_to` (absent/null = current) and `observed_at`. Ended edges are kept, not deleted.
-- Extracted edges carry `src` (artifact id) and `quote`. A quote must be a verbatim substring of the artifact text; edges that fail the check are dropped (`quoteCheck` in `lib/ingest/extract.ts`).
-- ACL fields: artifacts record `author`, and the ack link is a signed token scoped to one team and one decision. Graphs are separated per company key.
-- All dates are epoch-second integers (`$now` is passed in), so no date arithmetic is needed in Cypher.
+### Graph map
 
-## Cypher we run
-
-Every template in `lib/graph/queries/`, verbatim (this section is generated from the files). The agent only chooses a template and fills parameters.
-
-### `artifact-text.cypher`
-
-Text of artifacts by id, to build verbatim citation quotes.
-
-```cypher
-// Text of artifacts by id, to build verbatim citation quotes.
-MATCH (a:Artifact) WHERE a.id IN $ids
-RETURN a.id AS id, a.text AS text
+<!-- graph-map:start -->
+```mermaid
+graph LR
+  subgraph g0["People and org"]
+    Team
+    Person
+    Goal
+    Task
+  end
+  subgraph g1["Systems and customers"]
+    System
+    Customer
+    Incident
+    Page
+    DocsStats
+  end
+  subgraph g2["Commercial"]
+    Deal
+    Contract
+    Clause
+  end
+  subgraph g3["Decisions"]
+    Decision
+    Conflict
+    Finding
+    Risk
+  end
+  subgraph g4["Evidence"]
+    Ticket
+    PR
+  end
+  subgraph g5["Compliance"]
+    Control
+    Framework
+    Vendor
+  end
+  Conflict -->|BETWEEN| Contract
+  Conflict -->|BETWEEN| Decision
+  Contract -->|GUARANTEES| System
+  Contract -->|HAS_CLAUSE| Clause
+  Contract -->|MANAGED_BY| Team
+  Contract -->|PARTY_TO| Customer
+  Control -->|COVERS| Framework
+  Customer -->|USES| System
+  Deal -->|OWNED_BY| Team
+  Deal -->|PARTY_TO| Customer
+  Deal -->|PROMISED| System
+  Decision -->|SUNSETS| System
+  Finding -->|FOUND_IN| System
+  Goal -->|BLOCKED_BY| Decision
+  Goal -->|BLOCKED_BY| Finding
+  Goal -->|BLOCKED_BY| Task
+  Incident -->|AFFECTED| System
+  Person -->|ACKED| Decision
+  Person -->|AUTHORED| PR
+  Person -->|AUTHORED| System
+  Person -->|MEMBER_OF| Team
+  Person -->|REQUESTED_REVIEW| PR
+  Person -->|REVIEWED| PR
+  PR -->|ABOUT| System
+  System -->|DEPENDS_ON| System
+  Task -->|ASSIGNED| Person
+  Task -->|ASSIGNED| Team
+  Team -->|ACKED| Decision
+  Team -->|AFFECTED| System
+  Team -->|CARES_ABOUT| System
+  Team -->|INVOLVED_IN| Decision
+  Team -->|OWNS| DocsStats
+  Team -->|OWNS| Finding
+  Team -->|OWNS| Goal
+  Team -->|OWNS| Page
+  Team -->|OWNS| Risk
+  Team -->|OWNS| System
+  Team -->|OWNS| Vendor
+  Team -->|WAITING_ON| Team
+  Ticket -->|ABOUT| System
+  Ticket -->|HANDLED_BY| Person
+  Ticket -->|RAISED_BY| Customer
 ```
 
-### `bottleneck.cypher`
+Generated from the seeded graph by `scripts/graph-map.ts`: 29 node labels and 27 relationship types (289 nodes, 466 edges), drawn as 42 distinct (label, type, label) shapes across 27 types. `Artifact` is a second label on every Doc, Ticket, Message and PR; `Decision` also carries `Change`.
 
-Open WAITING_ON between teams, grouped by the team that is blocking.
+- **Temporal edges.** Every relationship carries `valid_from` and `valid_to` (epoch seconds; no `valid_to` means current) plus `observed_at`. Ended edges are kept, so "what was true on date X" and "what changed" are plain `WHERE` clauses.
+- **Evidence on the edge.** Extracted edges carry `src` (the artifact id) and `quote` (a verbatim substring of it). A quote that is not in the artifact is dropped at ingest.
+- **Absence is data.** Telling a team is an edge (`INVOLVED_IN`, `ACKED`), so a team the decision reaches with no such edge is the finding.
+- Index coverage: 27 labels have an `id` lookup index; `Artifact` also has a full-text and a 384-d vector index.
+<!-- graph-map:end -->
 
-```cypher
-// Open WAITING_ON between teams, grouped by the team that is blocking.
-MATCH (w:Team)-[r:WAITING_ON]->(b:Team)
-WHERE r.valid_to IS NULL
-RETURN b.id AS blockerTeamId, count(r) AS openRequests, sum($now - r.valid_from) AS totalWaitSecs,
-  min(r.valid_from) AS oldestSince, collect(DISTINCT w.id) AS waitingTeamIds
-ORDER BY totalWaitSecs DESC
-```
+### The graph does the work
 
-### `change-sunset.cypher`
+Three real queries from `lib/graph/queries/`, run against the seeded graph.
 
-End the current SUNSETS edge of a decision and write its replacement.
+<!-- graph-proof:start -->
+Measured on a freshly seeded graph for decision `d-1` ("Sunset API v1"), `GRAPH.RO_QUERY` from a Node client to FalkorDB 6.0.2 on the same machine, one warm-up then the median of 5 runs (round trip including the client). Regenerate with `pnpm graph:readme`. Temporal filters evaluate at `$now = 2026-10-17`.
 
-```cypher
-// End the current SUNSETS edge of a decision and write its replacement.
-MATCH (d:Decision {id: $id})-[s:SUNSETS]->(x:System)
-WHERE s.valid_to IS NULL
-SET s.valid_to = $now
-WITH d, x
-CREATE (d)-[n:SUNSETS {on: $newOn, valid_from: $now, observed_at: $now}]->(x)
-RETURN x.id AS systemId
-```
+#### 1. The ripple: what does the decision touch?
 
-### `conflicts-detect.cypher`
+`lib/graph/queries/ripple.cypher`: **80 rows, 3.5 ms** (runs: 6.1, 3.5, 3.7, 3.5, 3.3 ms)
 
-A contract guarantees a system past the date the decision sunsets it; both edges current.
+| branch (kind) | rows | examples |
+|---|---|---|
+| system | 4 | API v1; auth-service; api-gateway (+1 more) |
+| ticket | 12 | Cobalt Health: API v1 errors; Delta Retail: API v1 errors; Ember Energy: API v1… |
+| deal | 3 | Garnet Energy expansion; Harbor Labs expansion; Alder Freight expansion |
+| contract | 2 | Northwind Capital MSA; Halden Bank MSA |
+| customer | 40 | Northwind Capital; Halden Bank; Cobalt Health (+37 more) |
+| team | 19 | security; devrel; support (+2 more) |
 
-```cypher
-// A contract guarantees a system past the date the decision sunsets it; both edges current.
-MATCH (d:Decision {id: $id})-[s:SUNSETS]->(sys:System)<-[g:GUARANTEES]-(c:Contract)
-WHERE s.valid_to IS NULL AND g.valid_to IS NULL AND g.until > s.on
-RETURN sys.id AS systemId, collect(c.id) AS contractIds,
-  collect({artifactId: g.src, quote: g.quote}) AS guaranteeSources,
-  head(collect(s.src)) AS sunsetSrc, head(collect(s.quote)) AS sunsetQuote
-```
-
-### `conflicts-list.cypher`
-
-Conflict nodes for a decision.
-
-```cypher
-// Conflict nodes for a decision.
-MATCH (k:Conflict {decisionId: $id})
-RETURN k.id AS id, k.kind AS kind, k.severity AS severity, k.status AS status,
-  k.decisionId AS decisionId, k.contractIds AS contractIds, k.detectedAt AS detectedAt, k.sources AS sources
-ORDER BY k.id
-```
-
-### `conflicts-merge.cypher`
-
-Idempotent: one Conflict per (decision, system), open, BETWEEN the decision and each contract.
-
-```cypher
-// Idempotent: one Conflict per (decision, system), open, BETWEEN the decision and each contract.
-MERGE (k:Conflict {id: $cid})
-ON CREATE SET k.detectedAt = $now
-SET k.kind = 'sunset_vs_guarantee', k.severity = 'high', k.status = 'open',
-    k.decisionId = $id, k.contractIds = $contractIds, k.sources = $sources
-WITH k
-MATCH (d:Decision {id: $id})
-MERGE (k)-[b:BETWEEN]->(d)
-ON CREATE SET b.valid_from = $now, b.observed_at = $now
-WITH k
-UNWIND $contractIds AS cid
-MATCH (c:Contract {id: cid})
-MERGE (k)-[b2:BETWEEN]->(c)
-ON CREATE SET b2.valid_from = $now, b2.observed_at = $now
-RETURN count(k) AS n
-```
-
-### `conflicts-resolve.cypher`
-
-Open conflicts for this decision that were not re-detected are no longer true.
-
-```cypher
-// Open conflicts for this decision that were not re-detected are no longer true.
-MATCH (k:Conflict {decisionId: $id, status: 'open'})
-WHERE NOT k.id IN $keep
-SET k.status = 'resolved'
-RETURN count(k) AS n
-```
-
-### `create-tasks.cypher`
-
-Demo graph only: one open Task per gap team, linked with NOTIFIES.
-
-```cypher
-// Demo graph only: one open Task per gap team, linked with NOTIFIES.
-UNWIND $rows AS row
-MATCH (t:Team {id: row.teamId})
-MERGE (k:Task {id: row.id})
-SET k.title = row.title, k.teamId = row.teamId, k.status = 'open', k.createdAt = $now
-MERGE (k)-[n:NOTIFIES]->(t)
-SET n.valid_from = $now, n.valid_to = null
-RETURN k.id AS id, k.title AS title, t.id AS teamId
-```
-
-### `decision.cypher`
-
-The decision node plus the evidence of its current SUNSETS edge, for assembling a RippleResult.
-
-```cypher
-// The decision node plus the evidence of its current SUNSETS edge, for assembling a RippleResult.
-// One row per current SUNSETS edge (the wrapper takes the first).
-MATCH (d:Decision {id: $id})
-OPTIONAL MATCH (d)-[sn:SUNSETS]->(:System) WHERE sn.valid_to IS NULL
-RETURN d.id AS id, d.title AS title, d.status AS status, d.decidedAt AS decidedAt,
-  sn.src AS src, sn.quote AS quote
-```
-
-### `decisions.cypher`
-
-Every decision, oldest first.
-
-```cypher
-// Every decision, oldest first.
-MATCH (d:Decision)
-RETURN d.id AS id, d.title AS title, d.status AS status, d.decidedAt AS decidedAt
-ORDER BY d.decidedAt
-```
-
-### `diff.cypher`
-
-Edges added or ended after $since (conflict BETWEEN edges are detection bookkeeping, not changes).
-
-```cypher
-// Edges added or ended after $since (conflict BETWEEN edges are detection bookkeeping, not changes).
-MATCH (a)-[r]->(b)
-WHERE (r.valid_from > $since OR r.valid_to > $since) AND type(r) <> 'BETWEEN'
-RETURN a.id AS from, b.id AS to, type(r) AS type, r.valid_from AS validFrom, r.valid_to AS validTo,
-  r.src AS src, r.quote AS quote
-```
-
-### `gap.cypher`
-
-Per affected team: was it involved in, or did it acknowledge, the decision?
-
-```cypher
-// Per affected team: was it involved in, or did it acknowledge, the decision?
-MATCH (t:Team) WHERE t.id IN $affected
-OPTIONAL MATCH (t)-[i:INVOLVED_IN]->(:Decision {id: $id})
-OPTIONAL MATCH (t)-[a:ACKED]->(:Decision {id: $id})
-RETURN t.id AS team, t.name AS name, count(i) > 0 AS involved, count(a) > 0 AS acked
-```
-
-### `graph-view.cypher`
-
-Edge evidence for the /graph flowchart: every current edge into the systems a decision's sunset reaches,
-
-```cypher
-// Edge evidence for the /graph flowchart: every current edge into the systems a decision's sunset reaches,
-// plus the SUNSETS edge and the DEPENDS_ON chain. Row: from, to, type, validFrom, src, quote.
-MATCH (d:Decision {id: $id})-[sn:SUNSETS]->(s:System)
-WHERE sn.valid_to IS NULL
-MATCH p = (s)<-[:DEPENDS_ON*0..2]-(x:System)
-WHERE ALL(e IN relationships(p) WHERE e.valid_to IS NULL)
-WITH DISTINCT x
-MATCH (a)-[r:ABOUT|PROMISED|GUARANTEES|USES|OWNS|CARES_ABOUT]->(x)
-WHERE r.valid_to IS NULL
-RETURN a.id AS from, x.id AS to, type(r) AS type, r.valid_from AS validFrom, r.src AS src, r.quote AS quote
-UNION ALL
-MATCH (d:Decision {id: $id})-[sn:SUNSETS]->(s:System)
-WHERE sn.valid_to IS NULL
-RETURN d.id AS from, s.id AS to, 'SUNSETS' AS type, sn.valid_from AS validFrom, sn.src AS src, sn.quote AS quote
-UNION ALL
-MATCH (d:Decision {id: $id})-[sn:SUNSETS]->(s:System)
-WHERE sn.valid_to IS NULL
-MATCH p = (s)<-[:DEPENDS_ON*0..2]-(x:System)
-WHERE ALL(e IN relationships(p) WHERE e.valid_to IS NULL)
-WITH DISTINCT x
-MATCH (x)-[r:DEPENDS_ON]->(y:System)
-WHERE r.valid_to IS NULL
-RETURN x.id AS from, y.id AS to, 'DEPENDS_ON' AS type, r.valid_from AS validFrom, r.src AS src, r.quote AS quote
-```
-
-### `inbox-person.cypher`
-
-A person's team, and the decisions that sunset a system their team owns.
-
-```cypher
-// A person's team, and the decisions that sunset a system their team owns.
-MATCH (p:Person {id: $id})-[:MEMBER_OF]->(t:Team)
-OPTIONAL MATCH (t)-[:OWNS]->(:System)<-[s:SUNSETS]-(d:Decision) WHERE s.valid_to IS NULL
-RETURN t.id AS team, collect(DISTINCT d.id) AS decisions
-```
-
-### `inbox-reviews.cypher`
-
-Tasks in review assigned to a person.
-
-```cypher
-// Tasks in review assigned to a person.
-MATCH (k:Task {status: 'in_review'})-[a:ASSIGNED]->(:Person {id: $id})
-RETURN k.id AS id, k.title AS title, k.createdAt AS at, a.by AS fromId
-ORDER BY at DESC
-```
-
-### `inbox-waiting.cypher`
-
-Teams with an open request waiting on this team.
-
-```cypher
-// Teams with an open request waiting on this team.
-MATCH (w:Team)-[r:WAITING_ON]->(:Team {id: $team})
-WHERE r.valid_to IS NULL
-RETURN w.id AS id, w.name AS name, r.valid_from AS at
-ORDER BY at
-```
-
-### `names.cypher`
-
-id -> display name for every node with a name or title (teams, people, systems, customers, decisions, deals, contracts, artifacts, tasks, findings).
-
-```cypher
-// id -> display name for every node with a name or title (teams, people, systems, customers, decisions, deals, contracts, artifacts, tasks, findings).
-MATCH (n)
-WHERE n.name IS NOT NULL OR n.title IS NOT NULL
-RETURN n.id AS id, coalesce(n.name, n.title) AS name
-```
-
-### `overview-activity.cypher`
-
-Edges added since $since (type + timestamp); the wrapper buckets them per day into changes and acks.
-
-```cypher
-// Edges added since $since (type + timestamp); the wrapper buckets them per day into changes and acks.
-MATCH ()-[r]->()
-WHERE r.valid_from >= $since AND type(r) <> 'BETWEEN'
-RETURN type(r) AS type, r.valid_from AS at
-```
-
-### `overview-blockers.cypher`
-
-Open BLOCKED_BY edges: a goal that cannot move until a decision, finding or task is resolved.
-
-```cypher
-// Open BLOCKED_BY edges: a goal that cannot move until a decision, finding or task is resolved.
-MATCH (g)-[b:BLOCKED_BY]->(x) WHERE b.valid_to IS NULL
-RETURN g.id AS fromId, x.id AS toId, b.valid_from AS since
-ORDER BY since
-```
-
-### `overview-teams.cypher`
-
-Head count per team for the overview strip.
-
-```cypher
-// Head count per team for the overview strip.
-MATCH (t:Team)
-OPTIONAL MATCH (p:Person {teamId: t.id})
-RETURN t.id AS id, t.name AS name, count(p) AS people
-ORDER BY id
-```
-
-### `people.cypher`
-
-Everyone in the directory.
-
-```cypher
-// Everyone in the directory.
-MATCH (p:Person)
-RETURN p.id AS id, p.name AS name, p.title AS title, p.email AS email, p.teamId AS teamId, p.active AS active
-ORDER BY p.id
-```
-
-### `ripple-angle.cypher`
-
-What the decision means for one team ($team, $decision, $since). Each branch returns kind + rows.
-
-```cypher
-// What the decision means for one team ($team, $decision, $since). Each branch returns kind + rows.
-// changes: recent edges that touch the team, its people, or things it owns/manages/handles (newest 8)
-MATCH (a)-[r]->(b)
-WHERE r.valid_from > $since AND type(r) <> 'BETWEEN'
-  AND (a.id = $team OR b.id = $team OR a.teamId = $team OR b.teamId = $team OR a.ownerTeamId = $team
-    OR (a)-[:MANAGED_BY]->(:Team {id: $team}) OR (a)-[:OWNED_BY]->(:Team {id: $team})
-    OR (a)-[:HANDLED_BY]->(:Person {teamId: $team}) OR (:Team {id: $team})-[:OWNS]->(a))
-WITH a, r, b ORDER BY r.valid_from DESC LIMIT 8
-RETURN 'changes' AS kind, collect({from: a.id, to: b.id, type: type(r), validFrom: r.valid_from, validTo: r.valid_to,
-  src: r.src, quote: r.quote}) AS rows
-UNION ALL
-// gap: is the team hit by what the decision sunsets, and did it take part or acknowledge?
-MATCH (t:Team {id: $team})
-OPTIONAL MATCH (d:Decision {id: $decision})-[:SUNSETS]->(s:System)
-OPTIONAL MATCH (t)-[a:AFFECTED|OWNS|CARES_ABOUT]->(s)
-OPTIONAL MATCH (t)-[i:INVOLVED_IN]->(d)
-OPTIONAL MATCH (t)-[k:ACKED]->(d)
-WITH count(a) > 0 AS affected, count(i) > 0 AS involved, count(k) > 0 AS acked
-RETURN 'gap' AS kind, [{affected: affected, involved: involved, acked: acked}] AS rows
-UNION ALL
-// facts: one sourced line per way the team is tied to the sunset (the wrapper keeps the first 3)
-MATCH (t:Team {id: $team})-[r:OWNS|CARES_ABOUT]->(s:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
-WITH t, r, s LIMIT 1
-RETURN 'facts' AS kind, collect({text: CASE type(r) WHEN 'OWNS' THEN 'Owns ' ELSE 'Cares about ' END + s.name, src: r.src, quote: r.quote}) AS rows
-UNION ALL
-MATCH (c:Contract)-[:MANAGED_BY]->(:Team {id: $team})
-MATCH (c)-[r:GUARANTEES]->(s:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
-WITH c, r, s ORDER BY c.id LIMIT 1
-RETURN 'facts' AS kind, collect({text: c.name + ' guarantees ' + s.name + ' past the sunset', src: r.src, quote: r.quote}) AS rows
-UNION ALL
-MATCH (d:Deal)-[:OWNED_BY]->(:Team {id: $team})
-MATCH (d)-[r:PROMISED]->(s:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL AND d.stage <> 'closed_lost'
-WITH d, r, s ORDER BY d.id LIMIT 1
-RETURN 'facts' AS kind, collect({text: d.name + ' was promised ' + s.name + ' through 2027', src: r.src, quote: r.quote}) AS rows
-UNION ALL
-MATCH (a:Ticket {status: 'open'})-[r:ABOUT]->(s:System {id: 'api-v1'}) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
-MATCH (a)-[:HANDLED_BY]->(p:Person {teamId: $team})
-WITH a, r, s ORDER BY a.id LIMIT 1
-RETURN 'facts' AS kind, collect({text: 'Open ticket: ' + a.title, src: r.src, quote: r.quote}) AS rows
-UNION ALL
-MATCH (t:Team {id: $team})-[:OWNS]->(s:System)<-[r:SUNSETS]-(d:Decision {id: $decision}) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
-WITH d, r, s LIMIT 1
-RETURN 'facts' AS kind, collect({text: d.title + ' (owns ' + s.name + ')', src: r.src, quote: r.quote}) AS rows
-UNION ALL
-MATCH (g:Goal)-[r:BLOCKED_BY]->(d:Decision {id: $decision}) WHERE $team = 'leadership' AND r.src IS NOT NULL
-WITH g, r, d ORDER BY g.id LIMIT 1
-RETURN 'facts' AS kind, collect({text: g.title + ' is blocked by ' + d.title, src: r.src, quote: r.quote}) AS rows
-```
-
-### `ripple.cypher`
-
-Everything a decision touches: SUNSETS -> system <- DEPENDS_ON*0..2 dependents, then
+<details><summary>Cypher</summary>
 
 ```cypher
 // Everything a decision touches: SUNSETS -> system <- DEPENDS_ON*0..2 dependents, then
@@ -629,394 +247,171 @@ RETURN 'team' AS kind, c.id AS ref, c.name AS label, x.id AS sys, 0 AS hop, 'MAN
   t.id AS team, 'manages contracts that guarantee ' + x.name AS reason, r.src AS src, r.quote AS quote, 0 AS amount
 ```
 
-### `search-vector.cypher`
+</details>
 
-Hybrid: nearest Artifacts by embedding, then hop to the systems they are ABOUT.
+#### 2. The gap: which affected teams were never told?
 
-```cypher
-// Hybrid: nearest Artifacts by embedding, then hop to the systems they are ABOUT.
-CALL db.idx.vector.queryNodes('Artifact', 'emb', $k, vecf32($vec)) YIELD node, score
-OPTIONAL MATCH (node)-[:ABOUT]->(s:System)
-RETURN node.id AS id, node.kind AS kind, node.title AS title, score, collect(s.id) AS systemIds
-ORDER BY score
-```
+`lib/graph/queries/gap.cypher`: **5 rows, 0.8 ms** (runs: 0.7, 0.8, 0.9, 1.0, 0.7 ms)
 
-### `search.cypher`
+| team | involved | acked | verdict |
+|---|---|---|---|
+| security | false | false | **never told** |
+| devrel | false | false | **never told** |
+| sales | true | true | told |
+| support | true | true | told |
+| legal | false | false | **never told** |
 
-Full-text over Artifact.text.
-
-```cypher
-// Full-text over Artifact.text.
-CALL db.idx.fulltext.queryNodes('Artifact', $text) YIELD node, score
-RETURN node.id AS id, node.kind AS kind, node.title AS title, score
-ORDER BY score DESC LIMIT 10
-```
-
-### `source.cypher`
-
-One artifact (doc, ticket, message or PR) by id.
+<details><summary>Cypher</summary>
 
 ```cypher
-// One artifact (doc, ticket, message or PR) by id.
-MATCH (a:Artifact {id: $id})
-RETURN a.id AS id, a.kind AS kind, a.docKind AS docKind, a.status AS status, a.title AS title,
-  a.text AS text, a.ts AS ts, a.uri AS uri, a.author AS authorId
+// Per affected team: was it involved in, or did it acknowledge, the decision?
+MATCH (t:Team) WHERE t.id IN $affected
+OPTIONAL MATCH (t)-[i:INVOLVED_IN]->(:Decision {id: $id}) WHERE i.valid_to IS NULL
+OPTIONAL MATCH (t)-[a:ACKED]->(:Decision {id: $id}) WHERE a.valid_to IS NULL
+RETURN t.id AS team, t.name AS name, count(i) > 0 AS involved, count(a) > 0 AS acked
 ```
 
-### `teams-devrel.cypher`
+</details>
 
-DevRel dashboard rows: docs pages, docs stats (JSON strings), SDK repos, docs tasks, the team. Param: $team.
+#### 3. The conflict: a contract guarantees what the decision sunsets
+
+`lib/graph/queries/conflicts-detect.cypher`: **1 rows, 0.6 ms** (runs: 0.7, 0.6, 0.6, 0.6, 0.7 ms)
+
+| system | contracts | sunset source | sunset quote |
+|---|---|---|---|
+| api-v1 | ["ctr-1","ctr-2"] | art-rfc14 | API v1 will be shut down on Jan 31, 2027 |
+
+<details><summary>Cypher</summary>
 
 ```cypher
-// DevRel dashboard rows: docs pages, docs stats (JSON strings), SDK repos, docs tasks, the team. Param: $team.
-MATCH (g:Page)
-RETURN 'pages' AS kind, collect({id: g.id, path: g.path, views30d: g.views30d, feedbackUp: g.feedbackUp,
-  feedbackDown: g.feedbackDown, v1Related: coalesce(g.v1Related, false)}) AS rows
-UNION ALL
-MATCH (d:DocsStats)
-RETURN 'docsStats' AS kind, collect({id: d.id, failedSearches: d.failedSearchesJson, sdkAdoption: d.sdkAdoptionJson}) AS rows
-UNION ALL
-MATCH (s:System) WHERE s.id STARTS WITH 'sdk-'
-RETURN 'sdks' AS kind, collect({id: s.id, name: s.name, kind: s.kind, status: s.status, version: s.version,
-  successor: s.successor, onCallPersonId: s.onCallPersonId}) AS rows
-UNION ALL
-MATCH (k:Task {teamId: $team})
-RETURN 'tasks' AS kind, collect({id: k.id, title: k.title, teamId: k.teamId, assigneeId: k.assigneeId, status: k.status,
-  createdAt: k.createdAt, kind: k.kind, dueAt: k.dueAt}) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+// A contract guarantees a system past the date the decision sunsets it; both edges current.
+MATCH (d:Decision {id: $id})-[s:SUNSETS]->(sys:System)<-[g:GUARANTEES]-(c:Contract)
+WHERE s.valid_to IS NULL AND g.valid_to IS NULL AND g.until > s.on
+RETURN sys.id AS systemId, collect(c.id) AS contractIds,
+  collect({artifactId: g.src, quote: g.quote}) AS guaranteeSources,
+  head(collect(s.src)) AS sunsetSrc, head(collect(s.quote)) AS sunsetQuote
 ```
 
-### `teams-eng.cypher`
+</details>
 
-Eng dashboard rows. Every branch returns one row: kind + rows (a list of maps). Param: $team.
+**Why this is a graph problem.** The ripple is one statement of 12 `UNION ALL` branches, and every branch starts the same way: from the decision follow `SUNSETS` to a system, then `DEPENDS_ON*0..2` backwards through the dependency chain (up to three systems deep, `depth` raises the bound), keeping only edges whose `valid_to` is null. From each system reached it takes one more hop to the tickets (`ABOUT`), deals (`PROMISED`), contracts (`GUARANTEES` then `PARTY_TO` the customer), customers (`USES`) and teams (`OWNS`, `CARES_ABOUT`, `HANDLED_BY`, `OWNED_BY`, `MANAGED_BY`). In SQL that is a recursive CTE for the dependency walk, then a join per entity table and per ownership table, with the temporal predicate repeated on each join: a dozen branches of several joins each, and the whole shape changes whenever you add one more relationship type. The gap query goes the other way: it is an `OPTIONAL MATCH` for an edge that is not there, so the answer is an absence, which in SQL is a `LEFT JOIN ... IS NULL` per signal. The conflict query is a three-node pattern (decision, system, contract) with a comparison across two different edges (`g.until > s.on`). The temporal filter is not a feature bolted on: it is a property on the same edge the traversal already visits.
+<!-- graph-proof:end -->
 
-```cypher
-// Eng dashboard rows. Every branch returns one row: kind + rows (a list of maps). Param: $team.
-MATCH (p:PR) WHERE p.state IS NOT NULL
-RETURN 'prs' AS kind, collect({id: p.id, title: p.title, repo: p.repo, authorId: p.author, state: p.state,
-  additions: p.additions, deletions: p.deletions, createdAt: p.createdAt, firstReviewAt: p.firstReviewAt,
-  mergedAt: p.mergedAt, reviewerIds: p.reviewerIds, v1Related: coalesce(p.v1Related, false)}) AS rows
-UNION ALL
-MATCH (i:Incident)
-RETURN 'incidents' AS kind, collect({id: i.id, title: i.title, severity: i.severity, systemId: i.systemId,
-  startedAt: i.startedAt, acknowledgedAt: i.acknowledgedAt, resolvedAt: i.resolvedAt}) AS rows
-UNION ALL
-MATCH (s:System)
-RETURN 'services' AS kind, collect({id: s.id, name: s.name, kind: s.kind, status: s.status, version: s.version,
-  successor: s.successor, onCallPersonId: s.onCallPersonId}) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+More of what FalkorDB does here: `shortestPath` for "why is this team affected?" (`why-affected.cypher`), a full-text and a 384-d vector index on `Artifact` (`search.cypher`, `search-vector.cypher`), `algo.SPpaths` over `weight` for the cheapest dependency route, `MERGE` write-back for acks and conflicts, and `GRAPH.RO_QUERY` for every read so a read path cannot write. Quirks we hit are in [docs/reference.md](docs/reference.md#falkordb-gotchas-we-hit).
+
+## Architecture
+
+```mermaid
+graph LR
+  U[Browser] --> W[Next.js 16 app<br/>UI + route handlers]
+  AI[Claude Code, Desktop, Codex, Cursor, ChatGPT] -->|MCP /api/mcp| W
+  S[Slack, GitHub] -->|webhooks| W
+  W -->|typed Cypher, RO_QUERY| F[(FalkorDB 6.0.2<br/>graph per tenant)]
+  W --> P[(Postgres<br/>orgs, keys, audit, approvals)]
+  W -->|enqueue| Q[pg-boss queue]
+  Q --> K[Worker<br/>agents, notifications, sync]
+  K --> F
+  K --> P
+  W -.optional.-> C[Clerk sign-in]
 ```
 
-### `teams-leadership.cypher`
+- **FalkorDB** holds the company graph. Every question is a fixed Cypher template in `lib/graph/queries/`; the LLM chooses a template and fills parameters.
+- **Postgres** holds what is not graph-shaped: organisations, API keys (sha256 only), approvals, audit log, and the pg-boss queue.
+- **Worker** is the same codebase (`pnpm worker`), running agents, notifications and connector sync.
+- **Clerk is optional.** With no keys the app runs in local mode with no login; with an LLM key unset it answers from committed caches.
+- Embeddings are local (MiniLM-L6-v2, 384-d) and cached by content hash.
 
-Leadership dashboard rows: goals, the risk register, what blocks what, decisions, the team. Param: $team.
+## Use Ripple from your AI tools
 
-```cypher
-// Leadership dashboard rows: goals, the risk register, what blocks what, decisions, the team. Param: $team.
-MATCH (g:Goal)
-RETURN 'goals' AS kind, collect({id: g.id, title: g.title, ownerTeamId: g.ownerTeamId, progress: g.progress,
-  status: g.status, target: g.target, current: g.current}) AS rows
-UNION ALL
-MATCH (r:Risk)
-RETURN 'risks' AS kind, collect({id: r.id, title: r.title, likelihood: r.likelihood, impact: r.impact, status: r.status,
-  ownerId: r.ownerId, teamId: r.teamId, v1Related: coalesce(r.v1Related, false)}) AS rows
-UNION ALL
-MATCH (g:Goal)-[b:BLOCKED_BY]->(x)
-RETURN 'blockers' AS kind, collect({fromId: g.id, toId: x.id, since: b.valid_from}) AS rows
-UNION ALL
-MATCH (d:Decision)
-RETURN 'decisions' AS kind, collect({id: d.id, title: d.title, status: d.status, decidedAt: d.decidedAt}) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+The MCP server is stateless Streamable HTTP at `/api/mcp` (17 tools, all read-only except `ack_brief`) or stdio against a local FalkorDB. The hosted demo is anonymous and read-only. **[/integrations](https://web-2fa0-3000.prg1.zerops.app/integrations)** has copy buttons for each client below.
+
+**Claude Code**
+
+```bash
+# plugin: hosted MCP server + the ripple-impact skill
+/plugin marketplace add Vaibhav91one/ripple
+/plugin install ripple@ripple
+
+# or just the MCP server
+claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
 ```
 
-### `teams-legal.cypher`
+**Claude Desktop and claude.ai.** Customize > Connectors > + > Add custom connector, paste `https://web-2fa0-3000.prg1.zerops.app/api/mcp` ("No sign in" for the demo). Skill: zip `skills/ripple-impact` and upload it under Customize > Skills.
 
-Legal dashboard rows: contracts with their customer, clauses with the quote that sources them, the team. Param: $team.
+**Codex** (`~/.codex/config.toml`)
 
-```cypher
-// Legal dashboard rows: contracts with their customer, clauses with the quote that sources them, the team. Param: $team.
-MATCH (c:Contract)
-OPTIONAL MATCH (c)-[:PARTY_TO]->(cu:Customer)
-RETURN 'contracts' AS kind, collect({id: c.id, name: c.name, endsAt: c.endsAt, customerId: cu.id, noticeDays: c.noticeDays,
-  value: c.value, approvalState: c.approvalState}) AS rows
-UNION ALL
-MATCH (c:Contract)-[h:HAS_CLAUSE]->(k:Clause)
-RETURN 'clauses' AS kind, collect({id: k.id, contractId: c.id, number: k.number, title: k.title, text: k.text, risk: k.risk,
-  dueAt: k.dueAt, src: {artifactId: h.src, quote: h.quote}, v1Related: coalesce(k.v1Related, false)}) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```toml
+[mcp_servers.ripple]
+url = "https://web-2fa0-3000.prg1.zerops.app/api/mcp"
+# for org keys also: bearer_token_env_var = "RIPPLE_API_KEY"
 ```
 
-### `teams-sales.cypher`
+The skill ships in `.agents/skills/ripple-impact`; Codex reads `.agents/skills` in a repo.
 
-Sales dashboard rows: deals with their customer, the quarter goal, the team. Param: $team.
+**Cursor.** One-click "Add to Cursor" on [/integrations](https://web-2fa0-3000.prg1.zerops.app/integrations), or `~/.cursor/mcp.json`:
 
-```cypher
-// Sales dashboard rows: deals with their customer, the quarter goal, the team. Param: $team.
-MATCH (d:Deal)
-OPTIONAL MATCH (d)-[:PARTY_TO]->(c:Customer)
-RETURN 'deals' AS kind, collect({id: d.id, name: d.name, stage: d.stage, probability: d.probability, ownerId: d.ownerId,
-  amount: d.amount, closeDate: d.closeDate, customerId: c.id, v1Related: coalesce(d.v1Related, false)}) AS rows
-UNION ALL
-MATCH (g:Goal {ownerTeamId: $team}) WHERE g.target IS NOT NULL
-RETURN 'goals' AS kind, collect({id: g.id, title: g.title, ownerTeamId: g.ownerTeamId, progress: g.progress,
-  status: g.status, target: g.target, current: g.current}) AS rows
-UNION ALL
-MATCH (d:Deal)-[r:PROMISED]->(:System) WHERE r.valid_to IS NULL AND r.src IS NOT NULL
-RETURN 'promises' AS kind, collect({dealId: d.id, source: {artifactId: r.src, quote: r.quote}}) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+```json
+{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }
 ```
 
-### `teams-security.cypher`
+**ChatGPT** (demo only). Developer mode connector, no auth, URL `https://web-2fa0-3000.prg1.zerops.app/api/mcp`.
 
-Security dashboard rows: controls, frameworks, findings, vendors, the risk register, GRC tasks, the team. Param: $team.
+**Slack and GitHub.** `/ripple` and @Ripple in Slack, @ripple-company-brain on pull requests. See `/integrations` for setup (manifests: `slack-manifest.yaml`, `github-app-manifest.json`).
 
-```cypher
-// Security dashboard rows: controls, frameworks, findings, vendors, the risk register, GRC tasks, the team. Param: $team.
-MATCH (c:Control)
-RETURN 'controls' AS kind, collect({id: c.id, frameworkId: c.frameworkId, name: c.name, status: c.status,
-  auditBlocking: c.auditBlocking, ownerId: c.ownerId, v1Related: coalesce(c.v1Related, false)}) AS rows
-UNION ALL
-MATCH (f:Framework)
-RETURN 'frameworks' AS kind, collect({id: f.id, name: f.name}) AS rows
-UNION ALL
-MATCH (f:Finding)
-RETURN 'findings' AS kind, collect({id: f.id, title: f.title, severity: f.severity, slaDueAt: f.slaDueAt, systemId: f.systemId,
-  status: f.status, ownerId: f.ownerId, v1Related: coalesce(f.v1Related, false)}) AS rows
-UNION ALL
-MATCH (v:Vendor)
-RETURN 'vendors' AS kind, collect({id: v.id, name: v.name, riskTier: v.riskTier, assessmentStatus: v.assessmentStatus,
-  nextReview: v.nextReview}) AS rows
-UNION ALL
-MATCH (r:Risk)
-RETURN 'risks' AS kind, collect({id: r.id, title: r.title, likelihood: r.likelihood, impact: r.impact, status: r.status,
-  ownerId: r.ownerId, teamId: r.teamId, v1Related: coalesce(r.v1Related, false)}) AS rows
-UNION ALL
-MATCH (k:Task {teamId: $team}) WHERE k.kind IN ['questionnaire', 'access_review']
-RETURN 'tasks' AS kind, collect({id: k.id, title: k.title, teamId: k.teamId, assigneeId: k.assigneeId, status: k.status,
-  createdAt: k.createdAt, kind: k.kind, dueAt: k.dueAt}) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
+**Your own org.** An org admin creates an API key on `/integrations` (shown once, only its sha256 is stored, revocable). It acts as the admin who created it, so restricted text is redacted exactly as in their session. Send `Authorization: Bearer rpl_<prefix>_<secret>` (`claude mcp add ... --header "Authorization: Bearer rpl_<prefix>_<secret>"`) or export `RIPPLE_API_KEY`. Local stdio: `claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp`.
+
+## Self-host in 5 minutes
+
+No accounts, no API keys. Needs Docker Compose v2 and about 3 GB of RAM.
+
+```bash
+git clone https://github.com/Vaibhav91one/ripple.git
+cd ripple/deploy/fallback
+cp .env.example .env
+docker compose up -d --build
+curl http://localhost:3000/api/health
 ```
 
-### `teams-support.cypher`
+Open <http://localhost:3000>; local mode has no login and is published on `127.0.0.1` only. HTTPS, an LLM key, GitHub and Slack are optional, see [SELF_HOSTING.md](SELF_HOSTING.md). Zerops deploy runbook: [docs/deploy.md](docs/deploy.md).
 
-Support dashboard rows: every ticket with its customer and system, the customers, the team. Param: $team.
+For development: `cp .env.example .env && pnpm i && pnpm seed && pnpm dev` with FalkorDB on `:6379` (`docker run -d -p 6379:6379 falkordb/falkordb:6.0.2`).
 
-```cypher
-// Support dashboard rows: every ticket with its customer and system, the customers, the team. Param: $team.
-MATCH (t:Ticket) WHERE t.priority IS NOT NULL
-OPTIONAL MATCH (t)-[:RAISED_BY]->(c:Customer)
-OPTIONAL MATCH (t)-[:ABOUT]->(s:System)
-RETURN 'tickets' AS kind, collect({id: t.id, title: t.title, status: t.status, priority: t.priority,
-  createdAt: t.createdAt, firstResponseAt: t.firstResponseAt, slaDueAt: t.slaDueAt, assigneeId: t.assigneeId,
-  customerId: c.id, systemId: s.id, v1Related: coalesce(t.v1Related, false)}) AS rows
-UNION ALL
-MATCH (c:Customer)
-RETURN 'customers' AS kind, collect({id: c.id, name: c.name, arr: c.arr, tier: c.tier, region: c.region,
-  monthlyCalls: c.monthlyCalls, healthScore: c.healthScore, renewalDate: c.renewalDate}) AS rows
-UNION ALL
-MATCH (c:Customer)-[:USES]->(:System {id: 'api-v1'})
-RETURN 'v1CustomerIds' AS kind, collect(c.id) AS rows
-UNION ALL
-MATCH (p:Person {teamId: $team})
-RETURN 'people' AS kind, collect({id: p.id, name: p.name, title: p.title, email: p.email, teamId: p.teamId, active: p.active}) AS rows
-```
+## What is real and what is seeded
 
-### `trace-decision.cypher`
+| Real | Seeded or synthetic |
+|---|---|
+| The graph engine, schema, indexes and every Cypher template (fixed, parameterised, read-only on read paths) | **The company.** Ledgerly, its people, customers, contracts, tickets and PRs are synthetic (hackathon rule 6 allows it); the artifacts come from the seed, not from a live Jira, Zendesk or HubSpot |
+| Quote check at ingest: an edge whose quote is not verbatim in the artifact is dropped | The extraction cache is seeded from mocks; with an LLM key `pnpm extract` fills it and every edge still passes the quote check |
+| MCP server, API keys, audit log, approvals, acks writing `ACKED` edges, conflict detection | Some team KPIs are estimated (eng coding and deploy times, support CSAT, devrel adoption) |
+| GitHub and Slack connectors, CSV and upload ingestion | The Assistant falls back to cached answers when no LLM key is set; the live deployment uses OpenAI `gpt-5.4` |
 
-A decision and the artifacts that support it (SUPPORTED_BY, with the edge quote when present).
+`affected_controls` is coarse (a `v1Related` flag; there is no Control-to-System edge). Details and measured numbers: [docs/reference.md](docs/reference.md).
 
-```cypher
-// A decision and the artifacts that support it (SUPPORTED_BY, with the edge quote when present).
-MATCH (d:Decision {id: $id})
-OPTIONAL MATCH (d)-[r:SUPPORTED_BY]->(a:Artifact) WHERE r.valid_to IS NULL
-RETURN d.id AS id, d.title AS title, d.status AS status, d.decidedAt AS decidedAt,
-  a.id AS sourceId, a.title AS sourceTitle, r.quote AS quote
-```
+## Testing
 
-### `who-knows.cypher`
-
-Active people with PRs (AUTHORED|REVIEWED) ABOUT the system, or tickets about it HANDLED_BY them.
-
-```cypher
-// Active people with PRs (AUTHORED|REVIEWED) ABOUT the system, or tickets about it HANDLED_BY them.
-// One evidence row per (person, role, artifact); the wrapper scores and takes the top 5.
-MATCH (p:Person {active: true})-[r:AUTHORED]->(a)
-WHERE a.id = $id OR (a)-[:ABOUT]->(:System {id: $id})
-RETURN p.id AS personId, 'authored' AS role, a.id AS id, coalesce(a.ts, r.valid_from) AS ts
-UNION ALL
-MATCH (p:Person {active: true})-[r:REVIEWED]->(a)
-WHERE a.id = $id OR (a)-[:ABOUT]->(:System {id: $id})
-RETURN p.id AS personId, 'reviewed' AS role, a.id AS id, coalesce(a.ts, r.valid_from) AS ts
-UNION ALL
-MATCH (h:Ticket)-[:HANDLED_BY]->(p:Person {active: true})
-WHERE (h)-[:ABOUT]->(:System {id: $id})
-RETURN p.id AS personId, 'handled' AS role, h.id AS id, h.ts AS ts
-```
-
-### `why-affected.cypher`
-
-Shortest path from a decision to a team over the ripple edges (sunset, dependencies, contracts, deals,
-
-```cypher
-// Shortest path from a decision to a team over the ripple edges (sunset, dependencies, contracts, deals,
-// tickets, ownership), any direction. FalkorDB's shortestPath must sit in WITH/RETURN, takes no property
-// filters on edges, so ended edges (valid_to set) are dropped after the fact: such a path gives no row.
-// Rows: nodes [{id, label, name}], rels [{type, src, quote}]; none when unreachable.
-MATCH (d:Decision {id: $id}), (t:Team {id: $team})
-WITH d, t, shortestPath((d)-[:SUNSETS|DEPENDS_ON|ABOUT|PROMISED|GUARANTEES|MANAGED_BY|OWNED_BY|OWNS|CARES_ABOUT|HANDLED_BY|MEMBER_OF|PARTY_TO|USES*..8]-(t)) AS p
-WHERE p IS NOT NULL AND ALL(r IN relationships(p) WHERE r.valid_to IS NULL)
-RETURN [n IN nodes(p) | {id: n.id, label: labels(n)[0], name: coalesce(n.name, n.title)}] AS nodes,
-  [r IN relationships(p) | {type: type(r), src: r.src, quote: r.quote}] AS rels
-```
-
-### `why-affected-any.cypher`
-
-Fallback for why-affected.cypher when the team is not on a dependency path: the shortest path over any edge
-
-```cypher
-// Fallback for why-affected.cypher when the team is not on a dependency path: the shortest path over any edge
-// (e.g. a team reached only through a WAITING_ON hop from a team that was involved).
-MATCH (d:Decision {id: $id}), (t:Team {id: $team})
-WITH d, t, shortestPath((d)-[*..8]-(t)) AS p
-WHERE p IS NOT NULL AND ALL(r IN relationships(p) WHERE r.valid_to IS NULL)
-RETURN [n IN nodes(p) | {id: n.id, label: labels(n)[0], name: coalesce(n.name, n.title)}] AS nodes,
-  [r IN relationships(p) | {type: type(r), src: r.src, quote: r.quote}] AS rels
-```
-
-## Numbers
-
-Local graph `demo`, measured with `GRAPH.RO_QUERY`: 284 nodes, 462 edges across 27 edge types (the live server reports 287 nodes).
-
-| Node label | Count | | Edge type | Count |
-|---|---|---|---|---|
-| Artifact | 89 | | USES | 42 |
-| Customer | 41 | | ABOUT | 69 |
-| Person | 31 | | HANDLED_BY, RAISED_BY | 37 each |
-| Deal | 16 | | OWNS | 36 |
-| Control | 14 | | AUTHORED | 32 |
-| Clause | 13 | | MEMBER_OF | 31 |
-| Team | 10 | | PARTY_TO | 24 |
-| System | 9 | | REVIEWED | 20 |
-| Contract, Task, Page | 8 each | | ASSIGNED, OWNED_BY | 16 each |
-| Goal | 7 | | ACKED | 15 |
-| Vendor, Risk, Incident, Finding | 6 each | | COVERS, HAS_CLAUSE, MANAGED_BY, AFFECTED, others | 87 (15 types) |
-| Decision, Framework | 2 each | | | |
-| Conflict, DocsStats | 1 each | | | |
-
-Live MCP latency: 20 to 50 ms per tool call. Eval: 16/16 (see Eval).
-
-## FalkorDB gotchas we hit
-
-- **`--` comments fail.** Use `//`.
-- **Old full-text procedure.** Create the index with `CREATE FULLTEXT INDEX FOR (a:Artifact) ON (a.text)`, query with `db.idx.fulltext.queryNodes`.
-- **Vector index** needs `OPTIONS {dimension:384, similarityFunction:'cosine'}`. The returned `score` is a distance, so `ORDER BY score` ascending.
-- **No label OR in `MATCH`** (`(:A|:B)` fails), but relationship OR (`-[:A|B]->`) works. That is why artifacts get a shared `Artifact` label.
-- **No date arithmetic**: store epoch ints and pass `$now`; `r.last_seen >= $now - 120 * 86400` works on ints.
-- **Aggregates**: a `count()` next to non-aggregated columns groups by them, so `gap.cypher` uses `count(i) > 0` after `OPTIONAL MATCH`; collecting maps works (`collect({artifactId: g.src, ...})`), and `head(collect(x))` picks one value per group. `ripple.cypher` avoids one big aggregate: it is `UNION ALL` branches with a single row shape, and the wrapper groups and dedupes in TypeScript.
-- **Bundling the client breaks the Next build** (`a.BigInt is not a function`): list `falkordb` and `@redis/client` in `serverExternalPackages`.
-
-## Eval
-
-`pnpm eval` runs 16 questions about Ledgerly against the `demo` graph using the deterministic query wrappers (no LLM). Each question names its tool and expected source artifact ids; a row passes only if the answer matches and every expected source id is returned. `lib/eval/eval.test.ts` runs the same harness on a throwaway `test_v_<uuid>` graph.
-
-| # | Question | Answer | Tool | Sources ok | Pass |
-|---|---|---|---|---|---|
-| 1 | Who knows the v1 auth flow best? | p-priya | who-knows (api-v1) | yes | PASS |
-| 2 | Who has handled the most v1 tickets? | p-ana | who-knows (api-v1) | yes | PASS |
-| 3 | Who reviewed Priya's v1 pull requests? | p-sam | who-knows (api-v1) | yes | PASS |
-| 4 | Which contracts still promise v1 past the sunset? | ctr-1, ctr-2 | conflicts-detect | yes | PASS |
-| 5 | Which document set the Jan 31 sunset date? | art-rfc14 | conflicts-detect | yes | PASS |
-| 6 | What is the gap for the v1 sunset (teams hit but never told)? | devrel, legal, security | gap | yes | PASS |
-| 7 | Which teams does the v1 sunset ripple into? | devrel, legal, sales, security, support | ripple | yes | PASS |
-| 8 | How much ARR is at risk from the open conflict? | 180000 | ripple + conflicts-detect | yes | PASS |
-| 9 | How many open conflicts does the sunset have? | 1 | conflicts-list | yes | PASS |
-| 10 | How many open tickets are about v1? | 12 | ripple | yes | PASS |
-| 11 | How many open deals promised v1? | 3 | ripple | yes | PASS |
-| 12 | Why is Security in the ripple? | owns auth-service, which depends on API v1 | ripple | yes | PASS |
-| 13 | Which team blocks the most open requests? | legal | bottleneck | yes | PASS |
-| 14 | Who is waiting on Legal? | eng, finance, product, sales | bottleneck | yes | PASS |
-| 15 | Which artifact mentions Northwind (full-text)? | art-msa-northwind | search | yes | PASS |
-| 16 | Who is affected if we sunset the fax-gateway service? | not in graph | who_knows (fax-gateway) | yes | PASS |
-
-16/16 passed
-
-## Email and ack screens
-
-| | | |
-|---|---|---|
-| ![Brief email](docs/screens/brief-email.png) The per-team brief email | ![Ack](docs/screens/ack.png) One-click ack | ![Ack expired](docs/screens/ack-expired.png) Expired ack link |
-
-## Deploy
-
-See [docs/deploy.md](docs/deploy.md) (Zerops: `web` Next.js standalone plus a `falkordb` docker service; a Caddy/Docker fallback is in `deploy/fallback`).
-
-## MCP tools
-
-Tools (all read-only except `ack_brief`; each returns JSON `{ rows, sources, cypher, trace }`):
-
-- `list_decisions`: every decision id, title and status.
-- `search`: full-text search over documents, tickets, messages and PRs.
-- `ripple_impact`: teams, customers, ARR and conflicts a decision touches (optional `depth`).
-- `who_knows`: top people for a system, with evidence.
-- `trace_decision`: a decision and the artifacts that support it.
-- `bottleneck`: teams blocking the most open requests.
-- `why_affected`: the shortest evidence path from a decision to one team (decision, system, contract/deal/ticket, team) with source quotes.
-- `who_wasnt_told`: affected teams that never saw the decision, and why.
-- `check_contract_conflict`: contract conflicts with severity and verbatim clause quotes.
-- `deals_at_risk`: open deals in the ripple with amount, stage and the PROMISED quote.
-- `affected_controls`: security controls tied to the decision (coarse: v1-related controls, there is no Control-to-System edge).
-- `ack_brief`: record a team's acknowledgement (writes to the demo graph).
+- `pnpm test`: unit and route tests (vitest). Graph tests run against a live FalkorDB on throwaway `test_v_<uuid>` graphs.
+- `pnpm eval`: 16 questions about Ledgerly answered by the deterministic query wrappers, each checked for its expected source ids (16/16, table in [docs/reference.md](docs/reference.md#eval)).
+- `pnpm e2e`: Playwright smoke suite over every route in `e2e/routes.ts` at 1440x900 and 390x844; fails on a bad status or any console error. Run `pnpm build` first.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build`; CI also runs the Compose smoke against `/api/health`.
+- `pnpm graph:readme` regenerates the graph map and proof above.
 
 ## How this was built (AI-use disclosure)
 
-Ripple was built with Claude Code: Claude Opus as the lead agent, Claude Sonnet subagents for parallel issues and research. The author (GitHub [Vaibhav91one](https://github.com/Vaibhav91one)) chose the track and the product (decision impact, "who wasn't told"), the data-model direction, the seven team workspaces, the UI kits, the Zerops deployment and the scope (no cuts), and reviewed every PR. Commits carry `Co-Authored-By` trailers.
-
-## Honest limits
-
-- The data is **synthetic** (Ledgerly), seeded; hackathon rule 6 allows synthetic data. No live connectors: today artifacts come from the seed, not GitHub, Zendesk, HubSpot, Ironclad, Vanta, Mintlify, Asana, Slack or Jira.
-- **No auth or permissions.**
-- **Single demo graph** (`demo`): `graphFor(tenant)` exists, but multigraph per tenant is not wired.
-- **Some team KPIs are estimated**: eng coding and deploy times, support CSAT, devrel v2 adoption. Legal shows "awaiting approval" instead of cycle time.
-- **`affected_controls` is coarse**: a `v1Related` flag, there is no Control to System edge.
-- **The live Ask agent runs on OpenAI `gpt-5.4`** (any AI SDK provider works via `LLM_PROVIDER`; without a key it falls back to cached answers). The extraction cache is seeded from mocks; with a key, `pnpm extract` fills it and every edge still passes the quote check.
+Ripple was built with Claude Code: Claude Opus as the lead agent, Claude Sonnet subagents for parallel issues and research. The author (GitHub [Vaibhav91one](https://github.com/Vaibhav91one)) chose the track and the product (decision impact, "who wasn't told"), the data-model direction, the team workspaces, the UI kits, the Zerops deployment and the scope, and reviewed every PR. Commits carry `Co-Authored-By` trailers.
 
 ## Prior art
 
-[Hopper](https://www.falkordb.com/blog/memory-meets-motion-the-falkordb-standouts/) (security advisory to customer to contract clause; "no path = safe") and Drift (decision contradictions from meetings) were both standouts at FalkorDB's Memory Meets Motion hackathon. Ripple starts from a company decision, crosses every team, and the finding is the missing INVOLVED_IN/ACKED edge plus contract conflicts, with acknowledgement write-back.
+[Hopper](https://www.falkordb.com/blog/memory-meets-motion-the-falkordb-standouts/) (security advisory to customer to contract clause; "no path = safe") and Drift (decision contradictions from meetings) were standouts at FalkorDB's Memory Meets Motion hackathon. Ripple starts from a company decision, crosses every team, and the finding is the missing `INVOLVED_IN`/`ACKED` edge plus contract conflicts, with acknowledgement write-back.
 
-## Next (not built)
-
-- GitHub PR check
-- Slack app
-- Remote MCP OAuth with per-team scopes
-- Real connectors (GitHub, Zendesk, HubSpot)
-- Per-tenant graphs
-
-## Licence
+## Credits and licences
 
 MIT for Ripple's own code, see `LICENSE`. The component kits keep their own licences, see `THIRD_PARTY_NOTICES.md`.
-
-## Third-party components
-
-Kit components live in `components/kit/<kit>/`, restyled to the Ripple tokens, each with its licence file. See `THIRD_PARTY_NOTICES.md`.
 
 | Kit | Licence | Link |
 | --- | --- | --- |
 | Rare UI (`components/kit/rareui`) | MIT + Commons Clause + Attribution (not covered by Ripple's MIT licence) | https://rareui.com |
 | Beautiful UI, incl. Flowchart (`components/kit/beautifului`) | MIT | https://www.beautifului.dev |
-| Bencho, free blocks only: Slide to confirm, Toast stack, Time scrubber, Magnetic Select (`components/kit/bencho`) | MIT | https://bencho.dev |
-| Obsidian UI, Dashboard Shell and analytics components (`components/kit/obsidian`) | MIT | https://www.obsidianui.dev |
+| Bencho, free blocks only (`components/kit/bencho`) | MIT | https://bencho.dev |
+| Obsidian UI, dashboard shell and analytics components (`components/kit/obsidian`) | MIT | https://www.obsidianui.dev |
 
 Components by [Rare UI](https://rareui.com), [Beautiful UI](https://www.beautifului.dev), [Bencho](https://bencho.dev) and [Obsidian UI](https://www.obsidianui.dev).
