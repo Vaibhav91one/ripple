@@ -8,7 +8,7 @@ const Form = z.object({ teamId: z.string().min(1), channelId: z.string().regex(/
 // POST /api/slack/channels (form): sets or clears the Slack channel a team's channel notifications go to. Admins only.
 export async function POST(req: Request) {
   const ctx = await getContext(req);
-  const back = (q: string) => redirectTo(`/connectors/slack?${q}`, 303);
+  const back = (q: string) => redirectTo(`/connections/slack?${q}`, 303);
   if (ctx.readonly || ctx.viewer.kind !== "user" || ctx.viewer.role !== "admin") return Response.json({ error: "forbidden" }, { status: 403 });
   if (!env().DATABASE_URL) return Response.json({ error: "db_not_configured" }, { status: 503 });
   const f = Form.safeParse(Object.fromEntries(await req.formData()));

@@ -51,7 +51,7 @@ Option A, the form (what the orchestrator does in Chrome): <https://github.com/s
 
 Then "Generate a private key" (downloads the `.pem`), and note the App ID and the slug from the app URL.
 
-Option B, the manifest flow itself: POST the manifest JSON in a `manifest` form field to `https://github.com/settings/apps/new`. GitHub redirects to `redirect_url` (`/connectors/github`) with `?code=...`; within one hour exchange it for the app id, PEM and webhook secret:
+Option B, the manifest flow itself: POST the manifest JSON in a `manifest` form field to `https://github.com/settings/apps/new`. GitHub redirects to `redirect_url` (`/connections/github`) with `?code=...`; within one hour exchange it for the app id, PEM and webhook secret:
 
 ```bash
 curl -X POST -H "Accept: application/vnd.github+json" https://api.github.com/app-manifests/<code>/conversions
@@ -61,7 +61,7 @@ curl -X POST -H "Accept: application/vnd.github+json" https://api.github.com/app
 
 ## Install flow
 
-1. An admin opens `/connectors/github` and presses Connect GitHub -> `GET /api/connectors/github/install` redirects to `github.com/apps/<slug>/installations/new?state=...` (`state` is encrypted: org, user, 10 minute expiry).
+1. An admin opens `/connections/github` and presses Connect GitHub -> `GET /api/connectors/github/install` redirects to `github.com/apps/<slug>/installations/new?state=...` (`state` is encrypted: org, user, 10 minute expiry).
 2. After install GitHub redirects to the Setup URL `GET /api/connectors/github/setup?installation_id=...&state=...`. The route checks the state belongs to this admin and org, checks with the app JWT that the installation is ours, then stores a `connector_account` (`external_id` = installation id, `token_enc` = the installation id encrypted with `lib/crypto.ts`) and queues the first sync.
 3. Installation tokens are never stored: `@octokit/app` mints them from the JWT and caches them in memory.
 

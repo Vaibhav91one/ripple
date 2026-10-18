@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/shell/PageHeader";
 import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -34,7 +35,7 @@ async function Github({ searchParams }: { searchParams: Promise<{ connected?: st
       </p>
       <p className="text-sm text-faint">{count ? `${count} installation${count > 1 ? "s" : ""} connected.` : "Nothing connected yet."}</p>
       {canConnect ? (
-        <a href="/api/connectors/github/install" className="inline-flex h-9 items-center rounded-md bg-ripple px-4 text-sm font-medium text-page">Connect GitHub</a>
+        <a href="/api/connectors/github/install" className="inline-flex h-10 items-center rounded-control bg-strong px-3.5 text-sm font-medium text-ink-on-strong hover:bg-body">Connect GitHub</a>
       ) : (
         <p className="text-sm text-faint">Only an admin of a signed-in org can connect GitHub.</p>
       )}
@@ -44,12 +45,9 @@ async function Github({ searchParams }: { searchParams: Promise<{ connected?: st
 
 export default function GithubConnectorPage(props: { searchParams: Promise<{ connected?: string; error?: string }> }) {
   return (
-    <div className="space-y-4 p-6">
-      <div>
-        <h1 className="text-lg font-medium text-strong">GitHub</h1>
-        <p className="text-sm text-faint">Repos, pull requests and CODEOWNERS ownership.</p>
-      </div>
+    <>
+      <PageHeader title="GitHub" subtitle="Repos, pull requests and CODEOWNERS ownership." crumbs={[{ label: "Connections", href: "/connections" }, { label: "GitHub" }]} />
       <Suspense fallback={<PageLoading />}><Github searchParams={props.searchParams} /></Suspense>
-    </div>
+    </>
   );
 }
