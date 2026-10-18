@@ -70,16 +70,22 @@ describe.skipIf(!process.env.DATABASE_URL)("delivery ledger (Postgres)", () => {
     const { GET } = await import("../../app/r/[id]/route");
     const res = await GET(new Request(`http://t/r/${id}`), { params: Promise.resolve({ id }) } as never);
     expect(res.status).toBe(302);
-    expect(new URL(res.headers.get("location")!).pathname).toBe("/items/decision/d-1");
+    expect(res.headers.get("location")).toBe("/items/decision/d-1");
     const row = await status(id);
     expect(row.status).toBe("clicked");
     expect(row.clickedAt).toBeTruthy();
+  });
+  it("behind the proxy (req.url is 0.0.0.0) the redirect stays relative", async () => {
+    const id = await delivery();
+    const { GET } = await import("../../app/r/[id]/route");
+    const res = await GET(new Request(`https://0.0.0.0:3000/r/${id}`), { params: Promise.resolve({ id }) } as never);
+    expect(res.headers.get("location")).toBe("/items/decision/d-1");
   });
   it("an unknown delivery goes home", async () => {
     const id = randomUUID();
     const { GET } = await import("../../app/r/[id]/route");
     const res = await GET(new Request(`http://t/r/${id}`), { params: Promise.resolve({ id }) } as never);
-    expect(new URL(res.headers.get("location")!).pathname).toBe("/");
+    expect(res.headers.get("location")).toBe("/");
   });
   it("an ack button records acked, and a later click does not undo it", async () => {
     const id = await delivery();
