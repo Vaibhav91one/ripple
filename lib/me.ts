@@ -1,27 +1,33 @@
 // Who is asking, in plain words: the identity /api/me, /profile and /settings show. No secrets, no tokens.
-import { shellUser } from "@/components/shell/identity";
+import { DEMO_USER, shellUser } from "@/components/shell/identity";
 import { LENSES, LENS_TEAM, type Lens } from "./lens";
 import { LOCAL_ORG, type Context } from "./server/context";
 
 export type Mode = "demo" | "local" | "clerk";
-export type Me = { mode: Mode; name: string; role: string; org: string; teamIds: string[]; lens: Lens | null };
+export type Me = { mode: Mode; name: string; role: string; org: string; initials: string; teamIds: string[]; lens: Lens | null };
+
+const ROLE_WORD = { admin: "Admin", lead: "Lead", change_owner: "Change owner", member: "Member" } as const;
 
 export const modeOf = (ctx: Pick<Context, "viewer" | "org">): Mode =>
   ctx.viewer.kind === "anon" ? "demo" : ctx.viewer.userId === "local" && ctx.org.id === LOCAL_ORG ? "local" : "clerk";
 
-/** Demo and local read the same identity as the sidebar card (shellUser); a Clerk session adds the real name, role and org. */
+/** The one identity /api/me, /profile and the sidebar card show. Demo and local use shellUser; a Clerk session adds the real name, role and org name. */
 export async function me(ctx: Pick<Context, "viewer" | "org">): Promise<Me> {
   const mode = modeOf(ctx);
-  const u = shellUser();
+  const u = mode === "demo" ? DEMO_USER : shellUser();
   const teamIds = ctx.viewer.teamIds;
-  if (mode !== "clerk") return { mode, name: u.name, role: u.role, org: u.org, teamIds, lens: LENSES.find((l) => LENS_TEAM[l] === teamIds[0]) ?? null };
-  let name = u.name;
+  if (mode !== "clerk") return { mode, name: u.name, role: u.role, org: u.org, initials: initials(u.name), teamIds, lens: LENSES.find((l) => LENS_TEAM[l] === teamIds[0]) ?? null };
+  const v = ctx.viewer;
+  let name = "Signed-in user";
+  let org = "Your organization"; // never the raw org id
   try {
-    const { currentUser } = await import("@clerk/nextjs/server");
+    const { currentUser, clerkClient } = await import("@clerk/nextjs/server");
     const c = await currentUser();
-    name = c?.fullName || c?.username || name;
-  } catch { /* no Clerk lookup: keep the fallback name */ }
-  return { mode, name, role: ctx.viewer.role, org: ctx.org.id, teamIds, lens: null };
+    name = c?.fullName || c?.username || c?.primaryEmailAddress?.emailAddress || name;
+    org = (await (await clerkClient()).organizations.getOrganization({ organizationId: ctx.org.id })).name || org;
+  } catch { /* no Clerk lookup: keep the fallbacks */ }
+  const role = v.kind === "user" ? ROLE_WORD[v.role] : "Member";
+  return { mode, name, role, org, initials: initials(name), teamIds, lens: null };
 }
 
 export const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";

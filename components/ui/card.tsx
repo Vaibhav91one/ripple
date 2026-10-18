@@ -2,7 +2,7 @@ import { Ellipsis } from "lucide-react";
 
 /** v2 card: white, 20px radius, one hairline, no shadow. */
 export function Card({ className = "", children, ...rest }: React.ComponentProps<"section">) {
-  return <section className={`rounded-card border border-hairline bg-surface p-6 ${className}`} {...rest}>{children}</section>;
+  return <section className={`min-w-0 rounded-card border border-hairline bg-surface p-6 ${className}`} {...rest}>{children}</section>;
 }
 
 /** Card title (18px) + muted one-liner, with an action (link or ⋯ button) on the right. */

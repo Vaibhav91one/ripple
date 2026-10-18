@@ -93,7 +93,7 @@ export default function FilterTable<R = DemoRow>(props: Partial<FilterTableProps
       {/* filter chips */}
       {p.filters.length > 0 && (
         <div
-          className="-mx-1 mb-1 flex items-center gap-1 overflow-x-auto px-1 py-1"
+          className="-mx-1 mb-1 flex items-center gap-1 relative overflow-x-auto px-1 py-1"
           style={{ scrollbarWidth: "none" }}
         >
           {p.filters.map((f) => {
@@ -125,7 +125,7 @@ export default function FilterTable<R = DemoRow>(props: Partial<FilterTableProps
       {/* table */}
       <div
         aria-label={p.ariaLabel ?? "Scrollable table"}
-        className="overflow-x-auto rounded-xl bg-surface shadow-[var(--kit-shadow-card)]"
+        className="relative overflow-x-auto rounded-xl bg-surface shadow-[var(--kit-shadow-card)]"
         role="region"
         tabIndex={0}
         style={{ scrollbarWidth: "none" }}

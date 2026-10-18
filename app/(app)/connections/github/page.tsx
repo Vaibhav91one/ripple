@@ -1,9 +1,9 @@
-import { PageHeader } from "@/components/shell/PageHeader";
-import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { env } from "@/lib/env";
-import { safeMessage } from "@/lib/log";
+import { ConnectionStatus } from "@/components/connectors/ConnectionStatus";
+import { loadConnections } from "@/components/connectors/load";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { PageLoading } from "@/components/states/States";
 import { getContext } from "@/lib/server/context";
 
 const MESSAGES: Record<string, string> = {
@@ -12,35 +12,25 @@ const MESSAGES: Record<string, string> = {
   installation_taken: "That GitHub installation is already connected to another workspace.",
   unverified_installation: "GitHub did not confirm that you control that installation. Try Connect GitHub again.",
   unknown_installation: "GitHub doesn't know that installation for our app.",
+  forbidden: "Only an admin of the active organization can connect GitHub. Select an organization, then try again.",
 };
 
 async function Github({ searchParams }: { searchParams: Promise<{ connected?: string; error?: string }> }) {
   await connection(); // per-request: depends on the viewer
   const { connected, error } = await searchParams;
   const ctx = await getContext();
-  const canConnect = !ctx.readonly && ctx.viewer.kind === "user" && ctx.viewer.role === "admin";
-  let count = 0;
-  if (env().DATABASE_URL) {
-    try {
-      count = (await (await import("@/lib/connectors/accounts")).listAccounts(ctx.org.id)).filter((a) => a.kind === "github").length;
-    } catch (e) {
-      console.error("github account list failed:", safeMessage(e));
-    }
-  }
-  const note = error ? (MESSAGES[error] ?? "Could not connect GitHub.") : connected ? "GitHub connected. The first sync is queued." : null;
+  const view = await loadConnections(ctx);
+  const flash = error ? (MESSAGES[error] ?? "Could not connect GitHub.") : connected ? "GitHub connected. The first sync is queued." : null;
   return (
-    <div className="max-w-xl space-y-4">
-      {note && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body">{note}</p>}
-      <p className="text-sm text-body">
-        Ripple reads repositories, CODEOWNERS and recent pull requests to learn which systems exist, who owns them and who works on them.
-        It never writes code. Permissions: contents (read), metadata (read), pull requests (write, for comments), checks (write), issues (write).
-      </p>
-      <p className="text-sm text-faint">{count ? `${count} installation${count > 1 ? "s" : ""} connected.` : "Nothing connected yet."}</p>
-      {canConnect ? (
-        <a href="/api/connectors/github/install" className="inline-flex h-10 items-center rounded-control bg-strong px-3.5 text-sm font-medium text-ink-on-strong hover:bg-body">Connect GitHub</a>
-      ) : (
-        <p className="text-sm text-faint">Only an admin of a signed-in org can connect GitHub.</p>
-      )}
+    <div className="max-w-2xl min-w-0 space-y-4">
+      {flash && <p role="status" className="rounded-inset border border-hairline bg-raised px-4 py-3 text-sm text-body">{flash}</p>}
+      {view.note && <p role="status" className="rounded-inset border border-hairline bg-surface px-4 py-3 text-sm text-body">{view.note}</p>}
+      <ConnectionStatus c={view.conns.github} name="GitHub" connectHref="/api/connectors/github/install" canManage={view.canManage} demo={view.demo} syncable />
+      <p className="text-sm text-body">Ripple reads repositories, CODEOWNERS and recent pull requests to learn which systems exist, who owns them and who works on them. It never writes code.</p>
+      <details className="text-sm text-faint">
+        <summary className="cursor-pointer text-body">Permissions the app asks for</summary>
+        <p className="mt-2">Contents (read), metadata (read), pull requests (write, for comments), checks (write), issues (write). Disconnecting here stops Ripple reading; uninstall the app on GitHub to revoke it there too.</p>
+      </details>
     </div>
   );
 }

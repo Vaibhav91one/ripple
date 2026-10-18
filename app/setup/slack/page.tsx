@@ -26,7 +26,7 @@ async function Setup() {
   const { url: base, guessed } = await origin();
   const yaml = slackManifest(base);
   return (
-    <main className="mx-auto max-w-2xl space-y-4 px-4 py-16">
+    <main className="mx-auto w-full min-w-0 max-w-2xl space-y-4 px-4 py-16">
       <h1 className="text-xl font-semibold text-strong">Set up the Slack app</h1>
       <p className="text-sm text-body">Ripple replies to <code>@Ripple</code> mentions and direct messages in a thread, with sources. The manifest below points at <code data-testid="slack-origin">{base}</code>.</p>
       {guessed && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body"><code>APP_URL</code> is not set, so the URL below comes from this request&apos;s host header. Set <code>APP_URL</code> to your public https URL before you create the app.</p>}

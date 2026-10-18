@@ -106,7 +106,7 @@ export function LeadershipDashboard() {
       </Widget>
 
       <Widget title="Risk register" wide meta="Likelihood × impact">
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr><th className={th}>Score</th><th className={th}>Risk</th><th className={th}>Owner</th><th className={th}>Team</th><th className={th}>Status</th></tr></thead>
             <tbody className="divide-y divide-hairline">

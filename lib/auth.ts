@@ -18,3 +18,15 @@ export async function sessionViewer() {
     return null; // no request scope (scripts, tests) or no clerkMiddleware on this path: stay public
   }
 }
+
+/** Signed in to Clerk but no active org: getContext treats this as the demo, so pages say "Select an organization" instead of the demo note. */
+export async function signedInWithoutOrg(): Promise<boolean> {
+  if (!authEnabled()) return false;
+  try {
+    const { auth } = await import("@clerk/nextjs/server");
+    const { userId, orgId } = await auth();
+    return !!userId && !orgId;
+  } catch {
+    return false;
+  }
+}

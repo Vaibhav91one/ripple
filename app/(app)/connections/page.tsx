@@ -7,9 +7,8 @@ import { SyncButton } from "@/components/connectors/SyncButton";
 import { PageHeader, PrimaryButton } from "@/components/shell/PageHeader";
 import { PageLoading } from "@/components/states/States";
 import { StatusPill } from "@/components/ui/status-pill";
-import type { AccountRow } from "@/lib/connectors/accounts";
-import { env } from "@/lib/env";
-import { safeMessage } from "@/lib/log";
+import { loadConnections } from "@/components/connectors/load";
+import { STATE_LABEL, STATE_TONE } from "@/lib/connectors/state";
 import { getContext } from "@/lib/server/context";
 
 type Source = { kind: string; name: string; reads: string; icon: BrandName | typeof FileText; href?: string; action?: string };
@@ -40,47 +39,41 @@ function SourceIcon({ icon }: { icon: Source["icon"] }) {
 async function Catalog() {
   await connection(); // per-request: the viewer differs for every visit
   const ctx = await getContext();
-  let accounts: AccountRow[] = [];
-  let note: string | undefined;
-  if (env().DATABASE_URL) {
-    try {
-      accounts = await (await import("@/lib/connectors/accounts")).listAccounts(ctx.org.id);
-    } catch (e) {
-      console.error("connector list failed:", safeMessage(e));
-      note = "Connected accounts could not be loaded.";
-    }
-  } else note = "Postgres isn't configured, so no accounts can be connected.";
-  if (ctx.readonly) note = "This is the shared demo. Its graph is seeded, so nothing is connected here; self-host Ripple to connect your own sources.";
-  const canSync = ctx.viewer.kind === "user" && ctx.viewer.role === "admin";
-  const live = SOURCES.filter((s) => s.href).length;
-  const connected = SOURCES.filter((s) => accounts.some((a) => a.kind === s.kind));
+  const { conns, note, canManage } = await loadConnections(ctx);
+  const live = (["github", "slack"] as const).map((k) => conns[k]);
+  const connected = live.filter((c) => c.state === "connected").length;
 
   return (
     <>
-      <PageHeader title="Connections" subtitle={`${connected.length} of ${live} sources connected. Each one adds people, systems, tickets or contracts to the company graph.`}>
+      <PageHeader title="Connections" subtitle={`${connected} of ${live.length} live sources connected. Each one adds people, systems, tickets or contracts to the company graph.`}>
         <PrimaryButton href="/integrations">Where Ripple shows up <ArrowRight size={15} aria-hidden /></PrimaryButton>
       </PageHeader>
       {note && <p role="status" className="mb-4 rounded-inset border border-hairline bg-surface px-4 py-3 text-sm text-body">{note}</p>}
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {SOURCES.map((s) => {
-          const account = accounts.find((a) => a.kind === s.kind);
+          const c = s.kind === "github" || s.kind === "slack" ? conns[s.kind] : null;
+          const imported = s.kind === "csv" || s.kind === "upload" ? conns.imports[s.kind] : undefined;
+          const has = !!c && c.state !== "none";
           return (
-            <li key={s.kind} className="flex flex-col gap-4 rounded-card border border-hairline bg-surface p-6">
+            <li key={s.kind} className="flex min-w-0 flex-col gap-4 rounded-card border border-hairline bg-surface p-6">
               <div className="flex items-start justify-between gap-3">
                 <SourceIcon icon={s.icon} />
-                {account ? <StatusPill tone="covered">Connected</StatusPill> : s.href ? <StatusPill tone="neutral">Not connected</StatusPill> : <StatusPill tone="neutral">Coming soon</StatusPill>}
+                {c ? <StatusPill tone={STATE_TONE[c.state]}>{STATE_LABEL[c.state]}</StatusPill>
+                  : imported !== undefined ? <StatusPill tone="neutral">{imported ? `Last import ${imported.slice(0, 10)}` : "No imports yet"}</StatusPill>
+                  : <StatusPill tone="neutral">Coming soon</StatusPill>}
               </div>
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-medium leading-6 text-strong">{s.name}</h2>
+                {c?.label && <p className="mt-0.5 truncate text-sm font-medium text-body">{c.label}</p>}
                 <p className="mt-1 text-sm text-faint">{s.reads}</p>
-                {account?.lastSyncAt && <p className="mt-2 text-xs text-faint">Last sync {account.lastSyncAt.slice(0, 10)}</p>}
+                {c?.lastSyncAt && <p className="mt-2 text-xs text-faint">Last sync {c.lastSyncAt.slice(0, 10)}</p>}
               </div>
               {s.href && (
                 <div className="flex flex-wrap items-center gap-2">
                   <Link href={s.href} className="inline-flex h-10 items-center gap-1.5 rounded-control border border-hairline bg-surface px-3.5 text-sm font-medium text-strong hover:bg-raised">
-                    {account ? "Manage" : s.action} <ArrowRight size={14} aria-hidden className="text-faint" />
+                    {has ? "Manage" : canManage ? s.action : "Details"} <ArrowRight size={14} aria-hidden className="text-faint" />
                   </Link>
-                  {account && canSync && <SyncButton kind={account.kind} accountId={account.id} />}
+                  {c?.kind === "github" && has && canManage && c.accountIds[0] && <SyncButton kind={c.kind} accountId={c.accountIds[0]} />}
                 </div>
               )}
             </li>

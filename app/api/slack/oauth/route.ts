@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   if (url.searchParams.get("error")) return back("error=denied");
   if (!code || !state || state !== url.searchParams.get("state")) return back("error=state");
   const ctx = await getContext();
-  if (ctx.readonly || ctx.viewer.kind !== "user" || ctx.viewer.role !== "admin") return Response.json({ error: "forbidden" }, { status: 403 });
+  if (ctx.readonly || ctx.viewer.kind !== "user" || ctx.viewer.role !== "admin") return back("error=forbidden");
   try {
     await completeInstall(ctx.org.id, code, { save: saveInstall });
   } catch (e) {

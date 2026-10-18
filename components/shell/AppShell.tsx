@@ -13,8 +13,11 @@ import { NAV, NAV_FOOTER, activeHref, type NavItem } from "./nav";
 import type { ShellUser } from "./identity";
 
 /** v2 shell (margin layout): a calm sidebar on the page colour, content on the right. Below lg the sidebar is a drawer. */
-export function AppShell({ user, lensSlot, authSlot, children }: { user: ShellUser; lensSlot?: React.ReactNode; authSlot?: React.ReactNode; children: React.ReactNode }) {
+export function AppShell({ user: fallback, lensSlot, authSlot, children }: { user: ShellUser; lensSlot?: React.ReactNode; authSlot?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname();
+  // The card shows the same identity as /api/me and /profile (per viewer, never shared); the env fallback renders until it loads.
+  const me = useQuery({ queryKey: ["me"], queryFn: async () => (await fetch("/api/me")).json() as Promise<ShellUser> });
+  const user = me.data?.name ? me.data : fallback;
   // The drawer remembers the path it opened on, so navigating closes it without an effect.
   const [openAt, setOpenAt] = useState<string | null>(null);
   const open = openAt === pathname;

@@ -10,15 +10,14 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { PageLoading } from "@/components/states/States";
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
+import { loadConnections } from "@/components/connectors/load";
+import { STATE_LABEL, STATE_TONE, type Connection, type Connections } from "@/lib/connectors/state";
 import { env } from "@/lib/env";
 import { cursorDeeplink, mcpUrl, snippets, type Snippet } from "@/lib/integrations";
 import { getContext } from "@/lib/server/context";
 import { publicOrigin } from "@/lib/server/redirect";
 
-// The /setup/* pages arrive with #240 (Slack) and #236 (GitHub). Flip to true when they merge so the cards link there.
-const SETUP_LIVE = { slack: false, github: false };
-
-type Client = { id: string; name: string; icon: BrandName | typeof MessageSquare; line: string; tag: string; steps: React.ReactNode[]; snippets?: Snippet[]; extra?: React.ReactNode };
+type Client = { id: string; name: string; icon: BrandName | typeof MessageSquare; line: string; tag: string; conn?: Connection; steps: React.ReactNode[]; snippets?: Snippet[]; extra?: React.ReactNode };
 
 const Steps = ({ steps }: { steps: React.ReactNode[] }) => (
   <ol className="space-y-2 text-sm text-body">
@@ -34,7 +33,7 @@ const Steps = ({ steps }: { steps: React.ReactNode[] }) => (
 const Kbd = ({ children }: { children: React.ReactNode }) => <span className="font-medium text-strong">{children}</span>;
 const Code = ({ children }: { children: React.ReactNode }) => <code className="rounded-chip bg-raised px-1 py-0.5 font-mono text-xs text-strong">{children}</code>;
 
-function clients(origin: string): Client[] {
+function clients(origin: string, conns: Connections): Client[] {
   const s = snippets(origin);
   return [
     {
@@ -92,33 +91,29 @@ function clients(origin: string): Client[] {
       snippets: s.chatgpt,
     },
     {
-      id: "slack", name: "Slack", icon: "slack", tag: SETUP_LIVE.slack ? "Slash command" : "Coming",
+      id: "slack", name: "Slack", icon: "slack", tag: "Slash command", conn: conns.slack,
       line: "Type /ripple in any channel or mention @Ripple in a thread; Ripple answers in the thread with sources.",
       steps: [
-        <>Install the Slack app from <Link href="/connections/slack" className="font-medium text-strong underline underline-offset-2">Connections › Slack</Link>.</>,
+        conns.slack.state === "connected" ? <>Installed in <Kbd>{conns.slack.label ?? "your workspace"}</Kbd>. Manage it in <Link href="/connections/slack" className="font-medium text-strong underline underline-offset-2">Connections › Slack</Link>.</> : <>Install the Slack app from <Link href="/connections/slack" className="font-medium text-strong underline underline-offset-2">Connections › Slack</Link>.</>,
         <>Ask <Code>/ripple who wasn&apos;t told about the v1 sunset?</Code> or mention <Code>@Ripple</Code>.</>,
       ],
-      extra: <SetupLink live={SETUP_LIVE.slack} href="/setup/slack" label="Slack setup" />,
+      extra: <SetupLink href="/setup/slack" label="Slack setup" />,
     },
     {
-      id: "github", name: "GitHub", icon: "github", tag: SETUP_LIVE.github ? "@mention" : "Coming",
+      id: "github", name: "GitHub", icon: "github", tag: "@mention", conn: conns.github,
       line: "Mention @ripple-company-brain on a pull request or issue and Ripple comments with the change's impact.",
       steps: [
-        <>Connect the GitHub App from <Link href="/connections/github" className="font-medium text-strong underline underline-offset-2">Connections › GitHub</Link>.</>,
+        conns.github.state === "connected" ? <>Installed on <Kbd>{conns.github.label ?? "your account"}</Kbd>. Manage it in <Link href="/connections/github" className="font-medium text-strong underline underline-offset-2">Connections › GitHub</Link>.</> : <>Connect the GitHub App from <Link href="/connections/github" className="font-medium text-strong underline underline-offset-2">Connections › GitHub</Link>.</>,
         <>Comment <Code>@ripple-company-brain what does this break?</Code> on a pull request.</>,
       ],
-      extra: <SetupLink live={SETUP_LIVE.github} href="/setup/github" label="GitHub setup" />,
+      extra: <SetupLink href="/setup/github" label="GitHub setup" />,
     },
   ];
 }
 
-function SetupLink({ live, href, label }: { live: boolean; href: string; label: string }) {
-  return live ? (
-    <Link href={href} className="inline-flex h-10 items-center gap-1.5 rounded-control border border-hairline bg-surface px-3.5 text-sm font-medium text-strong hover:bg-raised">{label} <ExternalLink size={14} aria-hidden className="text-faint" /></Link>
-  ) : (
-    <StatusPill tone="neutral">{label}: coming</StatusPill>
-  );
-}
+const SetupLink = ({ href, label }: { href: string; label: string }) => (
+  <Link href={href} className="inline-flex h-10 items-center gap-1.5 rounded-control border border-hairline bg-surface px-3.5 text-sm font-medium text-strong hover:bg-raised">{label} <ExternalLink size={14} aria-hidden className="text-faint" /></Link>
+);
 
 function ClientCard({ c, open }: { c: Client; open?: boolean }) {
   const Icon = c.icon;
@@ -132,6 +127,7 @@ function ClientCard({ c, open }: { c: Client; open?: boolean }) {
           <span className="flex flex-wrap items-center gap-2">
             <span className="text-lg font-medium leading-6 text-strong">{c.name}</span>
             <StatusPill tone="neutral">{c.tag}</StatusPill>
+            {c.conn && c.conn.state !== "none" && <StatusPill tone={STATE_TONE[c.conn.state]}>{STATE_LABEL[c.conn.state]}</StatusPill>}
           </span>
           <span className="mt-0.5 block text-sm text-faint">{c.line}</span>
         </span>
@@ -165,7 +161,7 @@ async function Integrations() {
   await connection(); // per-request: the origin and viewer differ per visit
   const h = await headers();
   const origin = publicOrigin(new Request(`http://${h.get("host") ?? "localhost"}`, { headers: h }));
-  const list = clients(origin);
+  const list = clients(origin, (await loadConnections(await getContext())).conns);
   return (
     <>
       <PageHeader title="Integrations" subtitle={`Ripple shows up in ${list.length} places you already work. Every snippet below points at ${new URL(origin).host}.`} />

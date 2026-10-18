@@ -122,7 +122,7 @@ export default function StreamingText({
 
   return (
     <div className={`w-full ${controlled ? "" : "min-h-[15.5rem] max-w-95"}`}>
-      <p className={`${textClassName} text-strong`}>
+      <p className={`${textClassName} text-strong [overflow-wrap:anywhere]`}>
         {tokens.slice(0, count).map((token, i) =>
           token.cite ? (
             <SourceChip key={i} source={token.cite} />

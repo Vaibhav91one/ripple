@@ -157,7 +157,6 @@ export default function PromptBar({
   const [modelOpen, setModelOpen] = useState(false);
   const [model, setModel] = useState(MODELS[1]);
   const [attachments, setAttachments] = useState<string[]>([]);
-  const [connected, setConnected] = useState(false);
   const [active, setActive] = useState(0);
   const [listening, setListening] = useState(false);
   const [auto, setAuto] = useState(!live);
@@ -203,7 +202,7 @@ export default function PromptBar({
   useLayoutEffect(() => {
     const target = rowRefs.current[active];
     if (target) setRowBox({ top: target.offsetTop, height: target.offsetHeight });
-  }, [menu, query, active, connected, rows.length]);
+  }, [menu, query, active, rows.length]);
 
   /* same gliding highlight in the model menu — floats to the hovered
    * row, falling back to the currently-selected model */
@@ -229,7 +228,6 @@ export default function PromptBar({
     const step = AUTO_STEPS[autoStep % AUTO_STEPS.length];
     setDraft(step.draft);
     if (step.active !== undefined) setActive(step.active);
-    if (step.connect !== undefined) setConnected(step.connect);
     if (step.modelOpen !== undefined) setModelOpen(step.modelOpen);
     if (step.model) {
       const next = MODELS.find((m) => m.key === step.model);
@@ -374,21 +372,6 @@ export default function PromptBar({
                   {row.name}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-[12px] text-faint">{row.desc}</span>
-                {source?.connect && (
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setConnected((current) => !current);
-                    }}
-                    className={`shrink-0 text-[12px] font-medium transition-colors duration-100 ${
-                      connected ? "text-covered" : "text-ripple hover:underline"
-                    }`}
-                  >
-                    {connected ? "Connected" : "Connect"}
-                  </span>
-                )}
               </button>
             );
           })}
