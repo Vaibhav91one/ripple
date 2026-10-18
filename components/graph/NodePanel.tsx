@@ -18,7 +18,12 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
   useEffect(() => {
     if (!open) return;
     const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented) onClose();
+      // leave Escape to any open drawer or dialog (e.g. the source panel opened from here)
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector("[role=dialog]")) return;
+      e.preventDefault();
+      const node = document.querySelector<HTMLElement>("[data-node] button[aria-pressed=true]");
+      onClose();
+      node?.focus(); // back to the card that opened the panel
     };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);

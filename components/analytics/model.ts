@@ -2,7 +2,6 @@
 import type { Analytics, GapType, Scenario } from "@/lib/schemas/analytics";
 
 type A = Analytics;
-const DAY = 86_400;
 
 /** $950, $62K, $1.2M (ARR is whole dollars). */
 export function fmtUsd(n: number): string {
@@ -24,8 +23,8 @@ export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n ==
 /** Points then dollars, margin's "−1.6 pts · $7.7K". */
 export const stepText = (pts: number, arr: number | null) => `−${pts} pts${arr ? ` · ${fmtUsd(arr)}` : ""}`;
 
-/** ARR still exposed: the waterfall attributes each figure to one team step, so these do not double count. */
-export const exposedArr = (a: A) => (a.waterfall?.steps ?? []).reduce((s, x) => s + (x.arrAtRisk ?? 0), 0);
+/** ARR still exposed: the one figure the API puts on the contract-conflict cell. null = none attributable, or restricted. */
+export const exposedArr = (a: A): number | null => a.heatmap.cells.find((c) => c.gap === "contract_conflict" && c.arrAtRisk !== null)?.arrAtRisk ?? null;
 
 /** "40% of affected teams told. 3 teams and $180K ARR still exposed before Jan 31." */
 export function coverageSentence(a: A): string {
@@ -89,6 +88,9 @@ export function heatmapSentence(h: A["heatmap"]): string {
   return parts.join(" ") || "No gaps: every affected team is told and acked.";
 }
 
+/** Link to the graph section under one team's lens, keeping the decision (?d=) the numbers are about. */
+export const graphHref = (a: A, teamId: string | null) => `?${new URLSearchParams({ ...(a.coverage ? { d: a.coverage.caseId } : {}), ...(teamId ? { team: teamId } : {}) })}#graph`;
+
 export type ActCard = { key: string; teamId: string; gap: GapType; title: string; figure: string; figureTone: "conflict" | "gap" | "neutral"; figureNote: string; chip: string | null; dots: number; dotsLabel: string; note: string; action: { label: string; href: string } };
 
 /** "Where to act first": the three cells with the most at stake (ARR, then gap severity, then count), one action each. */
@@ -106,34 +108,42 @@ export function actFirst(a: A): ActCard[] {
       const s = step.get(c.teamId);
       const waited = wait.get(c.teamId);
       const title = { contract_conflict: `Contract conflict in ${team}`, not_told: `${team} has not been told`, not_acked: `${team} has not acked`, overdue: `${gapCount("overdue", c.count)} overdue in ${team}` }[c.gap];
-      const figure = c.arrAtRisk ? fmtUsd(c.arrAtRisk) : s ? `${s.pts} pts` : String(c.count);
-      const figureNote = c.arrAtRisk ? "ARR at stake" : s ? "of coverage at stake" : `${GAP_NOUN[c.gap][c.count === 1 ? 0 : 1]} open`;
+      // coverage points belong to "not told" only (the waterfall steps are the untold teams); other gaps show their count
+      const pts = c.gap === "not_told" ? s?.pts : undefined;
+      const figure = c.arrAtRisk ? fmtUsd(c.arrAtRisk) : pts ? `${pts} pts` : String(c.count);
+      const figureNote = c.arrAtRisk ? "ARR at stake" : pts ? "of coverage at stake" : `${GAP_NOUN[c.gap][c.count === 1 ? 0 : 1]} open`;
       const action = {
-        contract_conflict: { label: "Trace it", href: `?team=${c.teamId}#graph` },
+        contract_conflict: { label: "Trace it", href: graphHref(a, c.teamId) },
         not_told: { label: `Notify ${team}`, href: caseHref },
         not_acked: { label: `Nudge ${team}`, href: caseHref },
-        overdue: { label: `Review ${gapCount("overdue", c.count)}`, href: "/approvals" },
+        overdue: { label: `Review ${gapCount("overdue", c.count)}`, href: "/reports" },
       }[c.gap];
       return {
         key: `${c.teamId}|${c.gap}`, teamId: c.teamId, gap: c.gap, title, figure, figureNote,
         figureTone: c.arrAtRisk ? "conflict" : GAP_TONE[c.gap],
-        chip: waited ? `waiting ${fmtHours(waited)}` : null,
+        chip: c.gap === "not_told" && waited ? `waiting ${fmtHours(waited)}` : null,
         dots: c.count, dotsLabel: gapCount(c.gap, c.count),
-        note: s?.note ? `${s.note}.` : c.gap === "overdue" ? "Tasks past their due date, counted across the org." : `${GAP_LABEL[c.gap]} on this change.`,
+        note: {
+          not_told: s?.note ? `${s.note}.` : "Affected by the change and not told yet.",
+          contract_conflict: "A contract this team owns conflicts with the change.",
+          not_acked: "Told, but has not acknowledged the change yet.",
+          overdue: "Tasks past their due date, counted across the org.",
+        }[c.gap],
         action,
       };
     });
 }
 
 /**
- * Forecast with the toggled scenarios. `approvals` counts only real pending actions (what approving them would do);
- * `ifProposed` adds the toggled derived ones, which are not actions yet. Both are capped at 100.
+ * Forecast with the toggled scenarios, on top of the current path (so it never reads below it). `approvals` counts only
+ * real pending actions (what approving them would do); `ifProposed` adds the toggled derived ones, which are not actions
+ * yet. Both are capped at 100.
  */
-export function forecastWith(f: { currentPct: number; scenarios: Scenario[] }, on: ReadonlySet<string>) {
+export function forecastWith(f: { projectedPct: number; scenarios: Scenario[] }, on: ReadonlySet<string>) {
   const sum = (src: Scenario["source"]) => f.scenarios.filter((s) => s.source === src && on.has(s.id)).reduce((t, s) => t + s.pts, 0);
-  const approvals = Math.min(100, f.currentPct + sum("pending"));
+  const approvals = Math.min(100, f.projectedPct + sum("pending"));
   const ifProposed = Math.min(100, approvals + sum("derived"));
-  return { approvals, ifProposed, gainPts: approvals - f.currentPct, proposedPts: ifProposed - approvals };
+  return { approvals, ifProposed, gainPts: approvals - f.projectedPct, proposedPts: ifProposed - approvals };
 }
 
 /** Pending actions start on (they exist and wait for you); derived ones start off. */
@@ -172,7 +182,8 @@ export function forecastPoints(a: A) {
   if (!c || !c.trend.length) return null;
   const t0 = c.trend[0].day;
   const today = c.trend[c.trend.length - 1].day;
-  const t1 = f?.effectiveAt && f.effectiveAt > today ? f.effectiveAt : today + 30 * DAY;
-  const x = (t: number) => (t - t0) / (t1 - t0);
-  return { x, t0, today, t1, actual: c.trend.map((p) => [x(p.day), p.pct / 100] as const) };
+  // no effective date: the axis ends today and nothing is projected
+  const t1 = f?.effectiveAt && f.effectiveAt > today ? f.effectiveAt : today;
+  const x = (t: number) => (t1 > t0 ? (t - t0) / (t1 - t0) : 1);
+  return { x, t0, today, t1, projected: t1 > today, actual: c.trend.map((p) => [x(p.day), p.pct / 100] as const) };
 }

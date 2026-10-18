@@ -2,15 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { useState } from "react";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { useEffect, useState } from "react";
 import { ChevronRight, Code2, CircleAlert, CircleCheck, Clock, FileWarning, Scale, Send, Users, type LucideIcon } from "lucide-react";
 import { DateRange, ExportButton, PageHeader } from "@/components/shell/PageHeader";
 import { GraphPage } from "@/components/graph/GraphPage";
 import { getGraph } from "@/components/graph/api";
 import { useKinds } from "@/components/graph/GraphToolbar";
 import CodeBlock from "@/components/kit/beautifului/code-block";
-import { useDecisionId } from "@/components/ripple/useDecisionId";
 import { TEAM_TABS, useTeam } from "@/components/ripple/useTeam";
 import { Card, CardHeader, Takeaway } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -29,7 +28,7 @@ import { getAnalytics } from "./api";
 import { ForecastChart } from "./ForecastChart";
 import {
   GAP_LABEL, GAP_TONE, actFirst, coverageSentence, defaultOn, exposedArr, fmtDay, fmtHours, fmtUsd, forecastWith, gapCount, heatmapGrid,
-  heatmapSentence, listNames, plural, scenarioLabel, stepText, timeDots, timeSentence, waterfallAxis,
+  graphHref, heatmapSentence, listNames, plural, scenarioLabel, stepText, timeDots, timeSentence, waterfallAxis,
 } from "./model";
 
 const TABS = ["overview", "team", "customer", "system", "agent"] as const;
@@ -44,7 +43,14 @@ function Demo() {
 export function AnalyticsPage() {
   const [team, setTeam] = useTeam();
   const [tab, setTab] = useQueryState("view", parseAsStringLiteral(TABS).withDefault("overview"));
-  const { data: a, error, refetch } = useQuery({ queryKey: ["analytics"], queryFn: getAnalytics });
+  // ?d= is the one decision for the numbers and the graph; without it the API picks the focus change, and we pin that
+  // into ?d= so the embedded graph (which reads ?d=) shows the same change
+  const [d, setD] = useQueryState("d", parseAsString);
+  const { data: a, error, refetch } = useQuery({ queryKey: ["analytics", d], queryFn: () => getAnalytics(d) });
+  const caseId = a?.coverage?.caseId ?? null;
+  useEffect(() => {
+    if (!d && caseId) void setD(caseId);
+  }, [d, caseId, setD]);
   const start = a?.coverage?.trend[0]?.day;
 
   return (
@@ -80,20 +86,19 @@ export function AnalyticsPage() {
         <>
           {tab === "overview" && <Overview a={a} team={team} />}
           {tab === "team" && <ByTeam a={a} team={team} />}
-          {tab === "customer" && <ByCustomer a={a} />}
-          {tab === "system" && <BySystem a={a} />}
+          {tab === "customer" && <ByCustomer a={a} team={team} />}
+          {tab === "system" && <BySystem a={a} team={team} />}
           {tab === "agent" && <AgentCard a={a} wide />}
         </>
       )}
 
-      <GraphSection />
+      {caseId && <GraphSection d={caseId} />}
     </>
   );
 }
 
 /** The existing graph explorer, with the Cypher it ran docked beside it (below on phones) instead of over the canvas. */
-function GraphSection() {
-  const [d] = useDecisionId();
+function GraphSection({ d }: { d: string }) {
   const [team] = useTeam();
   const [kinds] = useKinds();
   const { data } = useQuery({ queryKey: ["graph", d, team, kinds.join()], queryFn: () => getGraph(d, { team, kinds }) });
@@ -140,7 +145,7 @@ function Overview({ a, team }: { a: Analytics; team: string | null }) {
       <HeatmapCard a={a} team={team} />
       <ActFirst a={a} />
       <h2 id="forecast" className="scroll-mt-6 pt-6 text-2xl font-normal tracking-tight text-strong">Forecast</h2>
-      <ForecastSection a={a} />
+      <ForecastSection key={(a.forecast?.scenarios ?? []).map((x) => x.id).join()} a={a} />
       <div className="grid gap-4 *:min-w-0 lg:grid-cols-2"><TimeToTell a={a} /><AgentCard a={a} /></div>
     </div>
   );
@@ -163,8 +168,8 @@ function CoverageCard({ a }: { a: Analytics }) {
       <dl className="mt-5 divide-y divide-hairline text-md">
         <Row k="Teams told" v={`${c.teams.told} of ${c.teams.affected}`} />
         <Row k="Acks" v={`${c.acks.done} of ${c.acks.of}`} />
-        <Row k="Customers notified" v={<>{c.notices.sent} of {c.notices.of}{c.notices.demo && <Demo />}</>} />
-        <Row k="ARR exposed" v={exposedArr(a) ? fmtUsd(exposedArr(a)) : "None"} />
+        <Row k="Notices sent" v={<>{c.notices.sent} of {c.notices.of}{c.notices.demo && <Demo />}</>} />
+        <Row k="ARR exposed" v={(() => { const arr = exposedArr(a); return arr === null ? "–" : fmtUsd(arr); })()} />
       </dl>
     </Card>
   );
@@ -210,7 +215,7 @@ function Insight({ a }: { a: Analytics }) {
       figure={s.arrAtRisk ? fmtUsd(s.arrAtRisk) : `${s.pts} pts`} figureNote={s.arrAtRisk ? "of ARR behind a team that has not heard" : "of coverage behind one team"}
       headline={conflict ? `${team} holds the contract conflict and has not been told` : `${team} has not been told`}
       body={`${s.note}. The graph found it ${conflict ? "through the contracts that guarantee the system" : "through who owns the system"}.`}
-      action={{ label: "Trace it in the graph", href: `?team=${s.teamId ?? ""}#graph` }}
+      action={{ label: "Trace it in the graph", href: graphHref(a, s.teamId) }}
     />
   );
 }
@@ -226,10 +231,11 @@ function NeedsYou({ a }: { a: Analytics }) {
     const longest = [...untold].sort((x, y) => (y.waitingHours ?? 0) - (x.waitingHours ?? 0))[0];
     rows.push({ id: "untold", icon: Send, tone: "gap", title: `${plural(untold.length, "team")} not told`, sub: `${longest.name} has waited ${fmtHours(longest.waitingHours ?? 0)}`, href: caseHref });
   }
-  for (const c of conflicts) rows.push({ id: `c-${c.teamId}`, icon: Scale, tone: "conflict", title: `${plural(c.count, "contract conflict")}`, sub: `${name.get(c.teamId) ?? c.teamId}${c.arrAtRisk ? ` · ${fmtUsd(c.arrAtRisk)} ARR` : ""}`, href: `?team=${c.teamId}#graph` });
-  if (a.agents.pending) rows.push({ id: "approvals", icon: CircleCheck, tone: "ripple", title: `${plural(a.agents.pending, "approval")} waiting`, sub: "Drafted by the agents, waiting for your OK", href: "/approvals" });
+  for (const c of conflicts) rows.push({ id: `c-${c.teamId}`, icon: Scale, tone: "conflict", title: `${plural(c.count, "contract conflict")}`, sub: `${name.get(c.teamId) ?? c.teamId}${c.arrAtRisk ? ` · ${fmtUsd(c.arrAtRisk)} ARR` : ""}`, href: graphHref(a, c.teamId) });
+  // agents.pending is org-wide (not this change), and seeded history when agents.demo
+  if (a.agents.pending) rows.push({ id: "approvals", icon: CircleCheck, tone: "ripple", title: `${plural(a.agents.pending, "approval")} waiting org-wide`, sub: a.agents.demo ? "Demo data: seeded agent history" : "Drafted by the agents, waiting for your OK", href: "/reports" });
   const od = overdue.reduce((s, c) => s + c.count, 0);
-  if (od) rows.push({ id: "overdue", icon: Clock, tone: "neutral", title: `${plural(od, "task")} overdue`, sub: listNames(overdue.map((c) => name.get(c.teamId) ?? c.teamId)), href: "/approvals" });
+  if (od) rows.push({ id: "overdue", icon: Clock, tone: "neutral", title: `${plural(od, "task")} overdue`, sub: `Org-wide · ${listNames(overdue.map((c) => name.get(c.teamId) ?? c.teamId))}`, href: "/reports" });
   return <NeedsYouCard id="needs-you" rows={rows} sub={`${plural(rows.length, "thing")} on this change`} empty="Nothing needs you on this change." />;
 }
 
@@ -251,7 +257,7 @@ function HeatmapCard({ a, team }: { a: Analytics; team: string | null }) {
                   <span className="block font-medium tabular-nums text-strong">{gapCount(c.gap, c.total)}</span>
                 </th>
               ))}
-              <th scope="col" className="w-16 pb-1 text-right text-xs font-normal text-faint">Total</th>
+              <th scope="col" className="w-16 pb-1 text-right text-xs font-normal text-faint" title="Includes org-wide overdue tasks">Total<span className="sr-only"> (includes org-wide overdue tasks)</span></th>
             </tr>
           </thead>
           <tbody>
@@ -269,7 +275,7 @@ function HeatmapCard({ a, team }: { a: Analytics; team: string | null }) {
                           {c.arrAtRisk ? fmtUsd(c.arrAtRisk) : c.count}
                           {c.arrAtRisk ? <span className="block text-2xs font-normal opacity-80">{gapCount(c.gap, c.count)}</span> : null}
                         </span>
-                      ) : <span className="text-faint" aria-label="none">·</span>}
+                      ) : <span className="text-faint"><span aria-hidden>·</span><span className="sr-only">none</span></span>}
                     </td>
                   );
                 })}
@@ -304,7 +310,7 @@ function ActFirst({ a }: { a: Analytics }) {
               <p className="flex items-center gap-2 text-sm text-faint"><span className={`grid size-8 place-items-center rounded-full ${TINT[tone]}`}><Icon size={15} aria-hidden /></span>{i + 1}</p>
               <h3 className="mt-4 text-lg font-medium text-strong">{c.title}</h3>
               <p className="mt-2 flex items-baseline gap-2"><span className={`text-3xl font-light tracking-[-0.03em] tabular-nums ${INK[c.figureTone]}`}>{c.figure}</span><span className="text-sm text-faint">{c.figureNote}</span></p>
-              {c.chip && <p className="mt-3"><span className="inline-flex h-7 items-center rounded-full border border-hairline bg-surface px-2.5 text-sm font-medium text-strong">{c.chip}</span><span className="ml-2 text-sm text-faint">and not told</span></p>}
+              {c.chip && <p className="mt-3"><span className="inline-flex h-7 items-center rounded-full border border-hairline bg-surface px-2.5 text-sm font-medium text-strong">{c.chip}</span><span className="ml-2 text-sm text-faint">since the announcement</span></p>}
               <p className="mt-3 flex items-center gap-2 text-sm text-faint">
                 <span className="flex flex-wrap gap-1" aria-hidden>{Array.from({ length: Math.min(c.dots, 24) }, (_, k) => <span key={k} className={`size-2 rounded-full ${DOT[tone]}`} />)}</span>
                 {c.dotsLabel}
@@ -333,12 +339,23 @@ function ForecastSection({ a }: { a: Analytics }) {
   return (
     <div className="space-y-4">
       <Card className="grid grid-cols-2 gap-5 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-hairline">
-        <Kpi label={`Projected coverage on ${due}`} value={`${f.projectedPct}%`} sub={`At the pace so far · ${f.daysLeft ?? "?"} days left`} />
-        <Kpi label="Today" value={`${f.currentPct}%`} sub={`${f.projectedPct - f.currentPct} more pts expected by ${due}`} />
-        <Kpi label="Gap to target" value={`${gap} pts`} tone={gap ? "text-gap" : undefined} sub={gap ? `Short of 100% on ${due} at this pace` : "On track for every team"} />
-        <Kpi label="With your approvals" value={`${w.approvals}%`} tone={w.gainPts ? "text-covered" : undefined}
-          chip={w.gainPts ? `${w.gainPts} pts` : undefined}
-          sub={pending ? `${plural(pending, "pending action")} you can approve` : "No agent action is pending yet"} />
+        {f.effectiveAt ? (
+          <>
+            <Kpi label={`Projected coverage on ${due}`} value={`${f.projectedPct}%`} sub={`At the pace so far · ${f.daysLeft ?? 0} days left`} />
+            <Kpi label="Today" value={`${f.currentPct}%`} sub={`${f.projectedPct - f.currentPct} more pts expected by ${due}`} />
+            <Kpi label="Gap to target" value={`${gap} pts`} tone={gap ? "text-gap" : undefined} sub={gap ? `Short of 100% on ${due} at this pace` : "On track for every team"} />
+            <Kpi label="With your approvals" value={`${w.approvals}%`} tone={w.gainPts ? "text-covered" : undefined}
+              chip={w.gainPts ? `${w.gainPts} pts` : undefined}
+              sub={pending ? `${plural(pending, "pending action")} on top of the current path` : "No agent action is pending, so it matches the current path"} />
+          </>
+        ) : (
+          <>
+            <Kpi label="Projected coverage" value="–" sub="No effective date set" />
+            <Kpi label="Today" value={`${f.currentPct}%`} sub="Nothing to project to without a date" />
+            <Kpi label="Gap to target" value={`${100 - f.currentPct} pts`} tone={f.currentPct < 100 ? "text-gap" : undefined} sub="Short of 100% today" />
+            <Kpi label="With your approvals" value="–" sub="No effective date set" />
+          </>
+        )}
       </Card>
       <Card>
         <CardHeader title="Coverage outlook" sub={`Actual so far, then the path to ${due}`} action={<Legend proposed={w.proposedPts > 0} />} />
@@ -461,46 +478,64 @@ function ByTeam({ a, team }: { a: Analytics; team: string | null }) {
   );
 }
 
-function useGraph(a: Analytics) {
-  return useQuery({ queryKey: ["graph", a.coverage?.caseId ?? "d-1", null, ""], queryFn: () => getGraph(a.coverage?.caseId ?? "d-1") });
+/** The graph view for the analytics decision, under the team lens. Never fetched without a change to look at. */
+function useGraph(a: Analytics, team: string | null) {
+  const d = a.coverage?.caseId ?? null;
+  const q = useQuery({ queryKey: ["graph", d, team, ""], queryFn: () => getGraph(d as string, { team }), enabled: d !== null });
+  // with a lens, keep only the nodes on that team's paths back to the decision
+  const inLens = (id: string) => !q.data?.lens || q.data.lens.nodeIds.includes(id);
+  return { ...q, nodes: (q.data?.nodes ?? []).filter((n) => inLens(n.id)) };
 }
 
-function ByCustomer({ a }: { a: Analytics }) {
-  const { data } = useGraph(a);
-  const items = (data?.nodes ?? []).filter((n) => n.kind === "customers").flatMap((n) => n.items);
+/** Loading, error and empty states for the graph-backed tabs; renders `children` only when there is something to show. */
+function GraphState({ a, q, empty, children }: { a: Analytics; q: { isPending: boolean; error: Error | null; refetch: () => unknown }; empty: string | null; children: React.ReactNode }) {
+  if (!a.coverage) return <p className="text-sm text-faint">No open change to trace.</p>;
+  if (q.error) return <p className="text-sm text-conflict">Could not load the graph: {q.error.message}. <button className="underline" onClick={() => void q.refetch()}>Retry</button></p>;
+  if (q.isPending) return <div className="h-40 animate-pulse rounded-inset bg-raised" aria-busy="true" aria-label="Loading the graph" />;
+  if (empty) return <p className="text-sm text-faint">{empty}</p>;
+  return <>{children}</>;
+}
+
+function ByCustomer({ a, team }: { a: Analytics; team: string | null }) {
+  const q = useGraph(a, team);
+  const items = q.nodes.filter((n) => n.kind === "customers").flatMap((n) => n.items);
   const c = a.coverage;
   return (
     <Card>
-      <CardHeader title="By customer" sub={c ? <>{c.notices.sent} of {c.notices.of} customers notified{c.notices.demo && <Demo />} · {plural(items.length, "customer")} on the system in the graph</> : "No open change"} />
+      <CardHeader title="By customer" sub={c ? <>{c.notices.sent} of {c.notices.of} notices sent{c.notices.demo && <Demo />}{q.data && <> · {plural(items.length, "customer")} on the system in the graph</>}</> : "No open change"} />
       <div className="mt-4">
-        <DataTable caption="Customers" rows={items} rowKey={(r) => r.id}
-          columns={[
-            { key: "n", header: "Customer", render: (r) => <span className="font-medium">{r.label}</span> },
-            { key: "s", header: "Status", render: (r) => r.conflict ? <StatusPill tone="conflict">Contract conflict</StatusPill> : <StatusPill tone="neutral">Uses the system</StatusPill> },
-            { key: "d", header: "In the graph since", align: "right", render: (r) => fmtDay(r.validFrom) },
-          ]}
-          footer={<span>From the customers cluster of the graph below</span>}
-        />
+        <GraphState a={a} q={q} empty={items.length ? null : team ? "No customers on this team's paths to the change." : "No customers on the systems this change touches."}>
+          <DataTable caption="Customers" rows={items} rowKey={(r) => r.id}
+            columns={[
+              { key: "n", header: "Customer", render: (r) => <span className="font-medium">{r.label}</span> },
+              { key: "s", header: "Status", render: (r) => r.conflict ? <StatusPill tone="conflict">Contract conflict</StatusPill> : <StatusPill tone="neutral">Uses the system</StatusPill> },
+              { key: "d", header: "In the graph since", align: "right", render: (r) => fmtDay(r.validFrom) },
+            ]}
+            footer={<span>From the customers cluster of the graph below</span>}
+          />
+        </GraphState>
       </div>
     </Card>
   );
 }
 
-function BySystem({ a }: { a: Analytics }) {
-  const { data } = useGraph(a);
-  const systems = (data?.nodes ?? []).filter((n) => n.kind === "system");
+function BySystem({ a, team }: { a: Analytics; team: string | null }) {
+  const q = useGraph(a, team);
+  const systems = q.nodes.filter((n) => n.kind === "system");
   const tone = { conflict: "conflict", gap: "gap", covered: "covered", neutral: "neutral" } as const;
   return (
     <Card>
-      <CardHeader title="By system" sub={`${plural(systems.length, "system")} the change touches, traced in the graph`} />
+      <CardHeader title="By system" sub={q.data ? `${plural(systems.length, "system")} the change touches, traced in the graph` : "Systems the change touches, traced in the graph"} />
       <div className="mt-4">
-        <DataTable caption="Systems" rows={systems} rowKey={(r) => r.id}
-          columns={[
-            { key: "n", header: "System", render: (r) => <><span className="block font-medium">{r.title}</span><span className="text-xs text-faint">{r.subtitle}</span></> },
-            { key: "s", header: "Status", render: (r) => <StatusPill tone={tone[r.status]}>{r.status === "neutral" ? "No gap" : r.status === "gap" ? "Not told" : r.status === "conflict" ? "Conflict" : "Covered"}</StatusPill> },
-            { key: "c", header: "Linked records", align: "right", render: (r) => r.count },
-          ]}
-        />
+        <GraphState a={a} q={q} empty={systems.length ? null : team ? "No systems on this team's paths to the change." : "The graph has no systems for this change."}>
+          <DataTable caption="Systems" rows={systems} rowKey={(r) => r.id}
+            columns={[
+              { key: "n", header: "System", render: (r) => <><span className="block font-medium">{r.title}</span><span className="text-xs text-faint">{r.subtitle}</span></> },
+              { key: "s", header: "Status", render: (r) => <StatusPill tone={tone[r.status]}>{r.status === "neutral" ? "No gap" : r.status === "gap" ? "Not told" : r.status === "conflict" ? "Conflict" : "Covered"}</StatusPill> },
+              { key: "c", header: "Linked records", align: "right", render: (r) => r.count },
+            ]}
+          />
+        </GraphState>
       </div>
     </Card>
   );

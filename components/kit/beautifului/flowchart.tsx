@@ -463,7 +463,8 @@ export default function Flowchart({
   };
 
   /* ── pan / zoom ── */
-  /* on a phone-width canvas, never shrink cards below a readable size: pan instead */
+  /* on a phone-width canvas, never shrink cards below a readable size: pan instead (a filled canvas is touch-action:
+     none, so a one-finger drag pans it; the page scrolls from outside the fixed-height canvas) */
   const minZ = size.w && size.w < 640 ? MOBILE_MIN_Z : MIN_Z;
   const layoutSig = placed.map((p) => `${p.n.id}${p.cx}${p.top}${p.h}`).join();
   const fit = useCallback(() => {
@@ -560,7 +561,7 @@ export default function Flowchart({
       onPointerMove={onCanvasMove}
       onPointerUp={() => (pan.current = null)}
       onPointerCancel={() => (pan.current = null)}
-      className={`relative w-full select-none overflow-hidden rounded-xl bg-page shadow-[var(--kit-shadow-hairline)] ${fill ? "h-full cursor-grab active:cursor-grabbing" : ""} ${className}`}
+      className={`relative w-full select-none overflow-hidden rounded-xl bg-page shadow-[var(--kit-shadow-hairline)] ${fill ? "h-full touch-none cursor-grab active:cursor-grabbing" : ""} ${className}`}
       style={{
         height: fill ? undefined : canvasH,
         backgroundImage: "radial-gradient(color-mix(in oklab, var(--faint) 38%, transparent) 1px, transparent 1.25px)",
