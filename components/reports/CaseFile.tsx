@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, Bot, ChevronRight, CircleCheck, ExternalLink, FileText, Lock, Megaphone, Share2, ShieldAlert, Sparkles, UserX, X } from "lucide-react";
+import { GraphEmbed } from "@/components/graph/GraphEmbed";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, NotFoundBlock } from "@/components/states/States";
 import { ActionToast } from "@/components/ui/action-toast";
@@ -234,6 +235,17 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
           />
         </div>
       </div>
+
+      <Card id="graph" className="scroll-mt-6 overflow-hidden !p-0">
+        <div className="p-6 pb-4">
+          <CardHeader
+            title="The ripple in the graph"
+            sub="Every team, system and customer this change reaches, as FalkorDB holds them. Hover a dot to light up what it touches."
+            action={<Link href={`/graph?q=${encodeURIComponent(r.title)}`} className="inline-flex items-center gap-1 text-sm text-faint hover:text-strong">Open in the graph<ChevronRight size={14} aria-hidden /></Link>}
+          />
+        </div>
+        <div className="border-t border-hairline"><GraphEmbed d={r.id} height={360} /></div>
+      </Card>
 
       {conflict && (
         <Card id="evidence" className="scroll-mt-6">

@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "@/lib/graph/client";
 import { seed } from "@/lib/ingest/seed";
 import { GraphView } from "@/lib/graph/view";
-import { toFlow } from "@/components/graph/model";
+import { toCanvas } from "@/components/graph/canvas";
 import { GET } from "./route";
 
 const name = `test_g_${randomUUID().replaceAll("-", "")}`;
@@ -62,17 +62,15 @@ describe("GET /api/graph", () => {
     expect(v.nodes.filter((n) => n.lane === 2).map((n) => n.id).sort()).toEqual(["c-contracts", "c-tickets"]);
   });
 
-  t("toFlow expands a cluster into a sub-lane and the time cut hides newer edges", async () => {
+  t("toCanvas draws the ripple: teal path, amber not told, red conflict, items as dots", async () => {
     const v = GraphView.parse(await (await get("/api/graph?d=d-1")).json());
-    const flat = toFlow(v, { expanded: [], q: "", at: null });
-    const open = toFlow(v, { expanded: ["c-contracts"], q: "", at: null });
-    expect(open.nodes.length).toBe(flat.nodes.length + 2);
-    expect(new Set(open.nodes.map((n) => n.x)).size).toBe(5);
-    expect(toFlow(v, { expanded: [], q: "legal", at: null }).nodes.filter((n) => n.hit).map((n) => n.id)).toContain("legal");
-    const early = Math.min(...v.edges.map((e) => e.validFrom));
-    const cut = toFlow(v, { expanded: [], q: "", at: early });
-    expect(cut.edges.length).toBeLessThan(flat.edges.length);
-    expect(cut.nodes.map((n) => n.id)).toContain("d-1");
+    const g = toCanvas(v);
+    const role = (key: string) => g.nodes.find((n) => n.key === key)?.role;
+    expect(role("d-1")).toBe("ripple");
+    expect(role("devrel")).toBe("gap");
+    expect(role("legal")).toBe("conflict");
+    expect(g.nodes.length).toBeGreaterThan(v.nodes.length); // cluster items hang off their cluster
+    expect(g.links.every((l) => g.nodes[l.source] && g.nodes[l.target])).toBe(true);
   });
 
   t("400 for a bad kind, 404 for an unknown decision", async () => {

@@ -5,7 +5,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, Waypoints } from "lucide-react";
+import { GraphEmbed } from "@/components/graph/GraphEmbed";
 import ApprovalCard from "@/components/kit/beautifului/approval-card";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -162,13 +163,27 @@ function ProposalCard({ run, readonly }: { run: ToolRun; readonly: boolean }) {
   );
 }
 
+/** "Show the graph": the ripple of the change drawn by RippleGraph, opened on demand so a thread stays light. */
+function GraphCard({ decisionId }: { decisionId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className={shell} aria-label="The ripple in the graph">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-medium text-strong hover:bg-raised/60">
+        <span className="flex items-center gap-2"><Waypoints size={15} aria-hidden className="text-faint" />{open ? "Hide the graph" : "Show the graph"}</span>
+        <ChevronRight size={14} aria-hidden className={`text-faint transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && <div className="border-t border-hairline"><GraphEmbed d={decisionId} height={360} /></div>}
+    </section>
+  );
+}
+
 /** Tool name -> card. Tools without a card still show their "Cypher used" chip. */
 export function ResultCard({ run, readonly }: { run: ToolRun; readonly: boolean }) {
   if (run.rows === undefined) return null;
   const d = decisionOf(run);
-  if ((run.tool === "ripple" || run.tool === "access_gap") && d) return <ImpactCard decisionId={d} />;
+  if ((run.tool === "ripple" || run.tool === "access_gap") && d) return <><ImpactCard decisionId={d} /><GraphCard decisionId={d} /></>;
   if (run.tool === "contract_conflicts" && d) return <ConflictCard decisionId={d} />;
-  if (run.tool === "why_affected" || run.tool === "weighted_path") return <PathCard run={run} />;
+  if (run.tool === "why_affected" || run.tool === "weighted_path") return <><PathCard run={run} />{d && <GraphCard decisionId={d} />}</>;
   if (run.tool.startsWith("propose_")) return <ProposalCard run={run} readonly={readonly} />;
   return null;
 }

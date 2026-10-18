@@ -12,7 +12,7 @@ import { STATUS_LABEL, type Inspected } from "./model";
 const BADGE = { conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft text-gap", covered: "bg-covered-soft text-covered", neutral: "bg-raised text-faint" } as const;
 
 /** Side panel for the selected node: properties, neighbours and the sourced edges (chips open SourcePanel). */
-export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null; onSelect: (id: string) => void; onClose: () => void }) {
+export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { info: Inspected | null; onSelect: (id: string) => void; onClose: () => void; top?: string }) {
   const source = useSourcePanel();
   const open = info !== null;
   useEffect(() => {
@@ -21,9 +21,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
       // leave Escape to any open drawer or dialog (e.g. the source panel opened from here)
       if (e.key !== "Escape" || e.defaultPrevented || document.querySelector("[role=dialog]")) return;
       e.preventDefault();
-      const node = document.querySelector<HTMLElement>("[data-node] button[aria-pressed=true]");
       onClose();
-      node?.focus(); // back to the card that opened the panel
     };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
@@ -34,7 +32,7 @@ export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null;
         <m.aside
           key="panel"
           aria-label="Node details"
-          className="absolute bottom-3 right-3 top-[64px] z-10 flex w-[320px] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-xl bg-surface text-body shadow-[var(--kit-shadow-overlay)]"
+          className={`absolute bottom-3 right-3 ${top} z-10 flex w-[320px] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-xl bg-surface text-body shadow-[var(--kit-shadow-overlay)]`}
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 12 }}

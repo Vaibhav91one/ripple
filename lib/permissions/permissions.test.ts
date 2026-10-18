@@ -114,6 +114,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "changes/[id]/campaign": [{ url: "/api/changes/d-1/campaign", params: { id: "d-1" } }],
   "ripple": [{ url: "/api/ripple?d=d-1" }, { url: "/api/ripple?d=d-1&depth=4" }],
   "graph": [{ url: "/api/graph?d=d-1" }, { url: "/api/graph?d=d-1&team=legal" }],
+  "graph/all": [{ url: "/api/graph/all" }, { url: "/api/graph/all?team=legal" }],
   "inbox": [{ url: "/api/inbox?p=p-ana" }],
   "home": [{ url: "/api/home" }],
   "inbox/notifications": [{ url: "/api/inbox/notifications" }],
@@ -202,6 +203,16 @@ describe("sentinel leak: GET routes", () => {
     expect((await get("teams/[team]", "/api/teams/security", { team: "security" })).text).toContain("SENTINEL_FINDING");
     as("legal");
     expect((await get("graph", "/api/graph?d=d-1")).text).toContain("SENTINEL_SRC"); // legal's quotes
+  });
+
+  t("the whole-graph explorer keeps restricted nodes in place, unnamed, for non-owners", async () => {
+    const nodes = async () => (JSON.parse((await get("graph/all", "/api/graph/all")).text) as { nodes: { id: string; kind: string; title: string }[] }).nodes;
+    as("sales");
+    const seen = (await nodes()).filter((n) => n.kind === "contracts");
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((n) => !n.title.includes("SENTINEL"))).toBe(true);
+    as("legal");
+    expect((await nodes()).map((n) => n.title).join("|")).toContain("SENTINEL_CONTRACT");
   });
 
   t("item pages hide a restricted node's title but keep its place in the graph", async () => {
