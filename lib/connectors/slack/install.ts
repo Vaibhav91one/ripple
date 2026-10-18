@@ -6,6 +6,7 @@ import type { SaveInstall } from "./store";
 export const SLACK_SCOPES = [
   "chat:write", "chat:write.public", "channels:manage", "channels:join", "channels:read", "channels:history",
   "groups:write", "groups:history", "im:write", "users:read", "users:read.email", "pins:write", "commands",
+  "app_mentions:read", "im:history", "assistant:write", "groups:read",
 ];
 export const redirectUri = () => `${env().APP_URL ?? ""}/api/slack/oauth`;
 

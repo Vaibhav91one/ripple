@@ -82,7 +82,7 @@ npx smee-client --url https://smee.io/<your-channel> --target http://localhost:3
 
 For smee, use the smee channel URL as the GitHub App's webhook URL. Restart with the new `APP_URL`: `docker compose up -d`.
 
-**Slack Socket Mode**: Socket Mode would avoid the tunnel for Slack, but Ripple's Slack integration uses HTTP request URLs (`socket_mode_enabled: false` in `slack-manifest.yaml`), so a tunnel is required for Slack today, including for `@Ripple` mentions and DMs. Start the tunnel, set `APP_URL` to it, restart, then open `/setup/slack`: it renders the manifest with your tunnel URL ready to paste into "Create app from a manifest".
+**Slack Socket Mode**: Socket Mode would avoid the tunnel for Slack, but Ripple's Slack integration uses HTTP request URLs (`socket_mode_enabled: false` in `slack-manifest.yaml`), so a tunnel is required for Slack today, including for `@Ripple` mentions and DMs. Start the tunnel, set `APP_URL` to it, restart, then open `/setup/slack`: it renders the manifest with your tunnel URL ready to paste into "Create app from a manifest". In channels Ripple answers with the redacted no-team viewer (everyone in the channel can read the reply); the answer uses your own team access only in a direct message with the bot. Existing Slack installs must be reinstalled to pick up the new scopes.
 
 ## Troubleshooting
 

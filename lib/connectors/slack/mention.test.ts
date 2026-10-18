@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ingest } from "./ingest";
 import { handleInbound, type Deps, type InboundJob } from "./interactive";
-import { neutralizeSlack, replyGate, resetReplyGate } from "./mention";
+import { isFullMember, neutralizeSlack, replyGate, resetReplyGate } from "./mention";
+import { readFileSync } from "node:fs";
+import { SLACK_SCOPES } from "./install";
 import { slackManifest } from "./manifest";
 import { signSlack } from "./verify";
 
@@ -11,20 +13,21 @@ const MENTION = { type: "app_mention", user: "U1", channel: "C1", ts: "100.1", t
 
 function setup(answer: string | (() => never) = "The **legal** team is hit.") {
   const calls: { method: string; params: Record<string, unknown> }[] = [];
-  const asker = vi.fn(async () => ({ viewer: { teamIds: [] as string[] } }));
+  const asker = vi.fn(async () => ({ viewer: { teamIds: ["legal"] as string[] } }));
   let question = "";
+  const viewers: unknown[] = [];
   const d = {
     graph: async () => ({}) as never,
     slack: { call: async (method: string, params: Record<string, unknown> = {}) => { calls.push({ method, params }); return {} as never; } },
     botUserId: async () => "UBOT", asker, onMessageEvent: vi.fn(),
-    ask: async function* (q: string) {
-      question = q;
+    ask: async function* (q: string, _g: unknown, v: unknown) {
+      question = q; viewers.push(v);
       if (typeof answer === "function") answer();
       yield { type: "text_delta", text: answer } as const;
       yield { type: "citation", sources: [{ artifactId: "art-1", quote: "Legal owns it" }] } as never;
     },
   } as unknown as Deps;
-  return { d, calls, asker, posts: () => calls.filter((c) => c.method === "chat.postMessage").map((c) => c.params), q: () => question };
+  return { d, calls, asker, viewers, posts: () => calls.filter((c) => c.method === "chat.postMessage").map((c) => c.params), q: () => question };
 }
 
 beforeEach(() => { resetReplyGate(); delete process.env.SLACK_REPLIES_PER_HOUR; });
@@ -94,11 +97,68 @@ describe("slack mentions and DMs", () => {
   });
 });
 
+describe("viewer and workspace safety", () => {
+  it("channel mentions use the redacted no-team viewer; only DMs use the mapped viewer", async () => {
+    const t = setup();
+    await handleInbound(job({ ...MENTION, channel_type: "channel" }), t.d);
+    expect(t.asker).not.toHaveBeenCalled();
+    expect(t.viewers[0]).toEqual({ teamIds: [] });
+    await handleInbound(job({ type: "message", channel_type: "im", user: "U1", channel: "D1", ts: "5.5", text: "hi" }), t.d);
+    expect(t.viewers[1]).toEqual({ teamIds: ["legal"] });
+  });
+
+  it("only full members of the bound workspace may borrow an identity", () => {
+    expect(isFullMember({ team_id: "T1" }, "T1")).toBe(true);
+    expect(isFullMember({ team_id: "T2" }, "T1")).toBe(false);
+    expect(isFullMember({}, "T1")).toBe(false);
+    for (const k of ["is_stranger", "is_restricted", "is_ultra_restricted"]) expect(isFullMember({ team_id: "T1", [k]: true }, "T1")).toBe(false);
+  });
+
+  it("fails closed on a foreign team id or an external shared channel without user_team", async () => {
+    const t = setup();
+    for (const x of [{ team: "T9" }, { source_team: "T9" }, { user_team: "T9" }, { is_ext_shared_channel: true }]) await handleInbound(job({ ...MENTION, ...x }), t.d);
+    expect(t.posts()).toHaveLength(0);
+    await handleInbound(job({ ...MENTION, user_team: "T1", team: "T1" }), t.d);
+    expect(t.posts()).toHaveLength(1);
+  });
+
+  it("when several orgs bound the workspace only the first-bound one answers", async () => {
+    const t = setup();
+    (t.d as Deps).primaryAccount = async () => false;
+    await handleInbound(job(MENTION), t.d);
+    expect(t.posts()).toHaveLength(0);
+    (t.d as Deps).primaryAccount = async () => true;
+    await handleInbound(job(MENTION), t.d);
+    expect(t.posts()).toHaveLength(1);
+  });
+
+  it("rate limit is per workspace and org; an empty question costs nothing; long questions are capped", async () => {
+    process.env.SLACK_REPLIES_PER_HOUR = "1";
+    const t = setup();
+    await handleInbound(job({ ...MENTION, text: "<@UBOT>" }), t.d);
+    await handleInbound(job({ ...MENTION, text: "x".repeat(5000) }), t.d);
+    expect(t.q()).toHaveLength(2000);
+    await handleInbound({ ...job(MENTION), orgId: "o2" }, t.d);
+    expect(t.posts().map((p) => String(p.text)).filter((x) => x.includes("hourly reply limit"))).toHaveLength(0);
+  });
+
+  it("every bot scope in slack-manifest.yaml is requested at install", () => {
+    const y = readFileSync("slack-manifest.yaml", "utf8");
+    const scopes = [...y.split("bot:\n")[1].split("settings:")[0].matchAll(/^\s+- (\S+)/gm)].map((m) => m[1]);
+    expect(scopes).toContain("app_mentions:read");
+    expect(scopes.filter((s) => !SLACK_SCOPES.includes(s))).toEqual([]);
+  });
+});
+
 describe("neutralizeSlack", () => {
   it("defuses user, group, here/channel/everyone pings", () => {
     const out = neutralizeSlack("hi <@U123ABC> <@W9|bob> <!here> <!channel|channel> <!subteam^S1|@eng> @everyone @here");
     expect(out).not.toMatch(/<@|<!|@here|@channel|@everyone/);
     expect(out).toContain("@​U123ABC");
+  });
+  it("shows non-Slack link targets instead of a disguised label", () => {
+    expect(neutralizeSlack("<https://evil.example/x|docs.slack.com>")).toBe("docs.slack.com (https://evil.example/x)");
+    expect(neutralizeSlack("<https://acme.slack.com/archives/C1|thread>")).toBe("<https://acme.slack.com/archives/C1|thread>");
   });
   it("is applied to the posted reply", async () => {
     const t = setup("ping <@U999> <!channel> @here");

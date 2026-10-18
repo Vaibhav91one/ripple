@@ -7,11 +7,11 @@ import { slackManifest } from "@/lib/connectors/slack/manifest";
 
 export const metadata = { title: "Set up the Slack app" };
 
-async function origin() {
-  if (env().APP_URL) return env().APP_URL!.replace(/\/+$/, "");
+async function origin(): Promise<{ url: string; guessed: boolean }> {
+  if (env().APP_URL) return { url: env().APP_URL!.replace(/\/+$/, ""), guessed: false };
   const h = await headers();
   const host = h.get("x-forwarded-host")?.split(",")[0].trim() ?? h.get("host") ?? "localhost:3000";
-  return `${h.get("x-forwarded-proto")?.split(",")[0].trim() ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
+  return { url: `${h.get("x-forwarded-proto")?.split(",")[0].trim() ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`, guessed: true };
 }
 
 const STEPS = [
@@ -23,12 +23,13 @@ const STEPS = [
 
 async function Setup() {
   await connection(); // the URL depends on the request host
-  const base = await origin();
+  const { url: base, guessed } = await origin();
   const yaml = slackManifest(base);
   return (
     <main className="mx-auto max-w-2xl space-y-4 px-4 py-16">
       <h1 className="text-xl font-semibold text-strong">Set up the Slack app</h1>
       <p className="text-sm text-body">Ripple replies to <code>@Ripple</code> mentions and direct messages in a thread, with sources. The manifest below points at <code data-testid="slack-origin">{base}</code>.</p>
+      {guessed && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body"><code>APP_URL</code> is not set, so the URL below comes from this request&apos;s host header. Set <code>APP_URL</code> to your public https URL before you create the app.</p>}
       <ol className="list-decimal space-y-2 pl-5 text-sm text-body">{STEPS.map((s, i) => <li key={i}>{s}</li>)}</ol>
       <div className="flex gap-2">
         <a download="slack-manifest.yaml" href={`data:text/yaml;charset=utf-8,${encodeURIComponent(yaml)}`} className="rounded-lg border border-hairline bg-raised px-4 py-2 text-sm text-strong hover:bg-overlay">Download manifest</a>

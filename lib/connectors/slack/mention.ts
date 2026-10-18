@@ -8,6 +8,7 @@ type Ev = Record<string, any>; // eslint-disable-line @typescript-eslint/no-expl
 /** Break every Slack ping form (<@U..>, <!here>, <!subteam^..>, bare @here/@channel/@everyone) with a zero-width space. */
 export function neutralizeSlack(t: string): string {
   return t
+    .replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, (m, url, label) => (/^https?:\/\/([^/]+\.)?slack\.com(\/|$)/i.test(url) ? m : `${label} (${url})`))
     .replace(/<!(here|channel|everyone)(?:\|[^>]*)?>/g, "@​$1")
     .replace(/<!subteam\^[A-Z0-9]+(?:\|([^>]*))?>/g, (_, n) => `@​${String(n ?? "group").replace(/^@/, "")}`)
     .replace(/<@([UW][A-Z0-9]+)(?:\|[^>]*)?>/g, "@​$1")
@@ -16,28 +17,34 @@ export function neutralizeSlack(t: string): string {
 
 const hits = new Map<string, { at: number[]; warned: boolean }>();
 /** Sliding-window reply limiter per Slack workspace. ponytail: per process; a shared store if workers multiply. */
-export function replyGate(teamId: string, now = Date.now(), limit = Number(process.env.SLACK_REPLIES_PER_HOUR) || 30): "ok" | "limited" | "limited-first" {
-  const s = hits.get(teamId) ?? { at: [], warned: false };
+export function replyGate(key: string, now = Date.now(), limit = Number(process.env.SLACK_REPLIES_PER_HOUR) || 30): "ok" | "limited" | "limited-first" {
+  const s = hits.get(key) ?? { at: [], warned: false };
   s.at = s.at.filter((t) => t > now - 3_600_000);
   if (s.at.length >= limit) {
     const first = !s.warned;
     s.warned = true;
-    hits.set(teamId, s);
+    hits.set(key, s);
     return first ? "limited-first" : "limited";
   }
   s.warned = false;
   s.at.push(now);
-  hits.set(teamId, s);
+  hits.set(key, s);
   return "ok";
 }
 export const resetReplyGate = () => hits.clear();
 
 const toMrkdwn = (t: string) => t.replace(/^#{1,6}\s+(.+)$/gm, "**$1**").replace(/\*\*(.+?)\*\*/g, "*$1*");
 
+/** A full member of the bound workspace: the only Slack user whose email may select a Ripple identity. */
+export const isFullMember = (u: { team_id?: string; is_stranger?: boolean; is_restricted?: boolean; is_ultra_restricted?: boolean }, teamId: string) =>
+  u.team_id === teamId && !u.is_stranger && !u.is_restricted && !u.is_ultra_restricted;
+
 /** Is this event a human message we should answer? (bots, our own posts, edits and other workspaces are not.) */
 export function isAskable(ev: Ev, job: Pick<InboundJob, "teamId">, botUserId: string): boolean {
   if (ev.bot_id || ev.subtype || !ev.user || ev.user === botUserId || !ev.channel || !ev.ts) return false;
-  if (ev.user_team && ev.user_team !== job.teamId) return false; // Slack Connect user from another workspace
+  // Slack Connect / other workspace: fail closed on any team id that is not the bound one, and on a shared channel that names no user_team.
+  for (const t of [ev.user_team, ev.team, ev.source_team]) if (t && t !== job.teamId) return false;
+  if (ev.is_ext_shared_channel && !ev.user_team) return false;
   if (ev.type === "app_mention") return true;
   return ev.type === "message" && ev.channel_type === "im";
 }
@@ -50,19 +57,22 @@ export async function handleMention(job: InboundJob, d: Deps): Promise<boolean> 
   const thread = String(ev.thread_ts ?? ev.ts);
   const say = (text: string) => d.slack.call("chat.postMessage", { channel: ev.channel, thread_ts: thread, text, unfurl_links: false, unfurl_media: false });
 
-  const gate = replyGate(job.teamId);
-  if (gate !== "ok") { if (gate === "limited-first") await say("This workspace has reached Ripple's hourly reply limit. Try again in a little while."); return true; }
+  if (d.primaryAccount && !(await d.primaryAccount())) return true; // several orgs share this workspace: the first-bound one answers, once
 
-  const question = String(ev.text ?? "").replace(/<@[UW][A-Z0-9]+(?:\|[^>]*)?>/g, "").trim();
+  const question = String(ev.text ?? "").replace(/<@[UW][A-Z0-9]+(?:\|[^>]*)?>/g, "").trim().slice(0, 2000);
   if (!question) { await say("Ask me who a change affects, for example `@Ripple who needs to know about the Q4 pricing change?`"); return true; }
+
+  const gate = replyGate(`${job.teamId}:${job.orgId}`);
+  if (gate !== "ok") { if (gate === "limited-first") await say("This workspace has reached Ripple's hourly reply limit. Try again in a little while."); return true; }
 
   const status = (s: string) => d.slack.call("assistant.threads.setStatus", { channel_id: ev.channel, thread_ts: thread, status: s }).catch(() => undefined); // best effort: only works in assistant threads
   await status("is checking the graph...");
   try {
-    const who = await d.asker(ev.user); // unknown email -> no-team viewer, restricted text stays redacted
+    // Channels are visible to everyone in them, so they get the redacted no-team viewer; the mapped viewer only answers in a DM.
+    const viewer = ev.channel_type === "im" ? (await d.asker(ev.user)).viewer : { teamIds: [] as string[] };
     let answer = "";
     const sources = new Map<string, string>();
-    for await (const e of d.ask(question, await d.graph(), who.viewer)) {
+    for await (const e of d.ask(question, await d.graph(), viewer)) {
       if (e.type === "text_delta") answer += e.text;
       else if (e.type === "citation") for (const s of e.sources) sources.set(s.artifactId, s.quote);
     }

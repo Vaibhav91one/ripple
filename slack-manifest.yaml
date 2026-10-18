@@ -52,6 +52,7 @@ oauth_config:
       - app_mentions:read
       - im:history
       - assistant:write
+      - groups:read
 settings:
   event_subscriptions:
     request_url: https://ripple.vaibhav.quest/api/slack/events

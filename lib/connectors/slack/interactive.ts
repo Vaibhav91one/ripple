@@ -26,6 +26,8 @@ export type Deps = {
   /** Evidence from every `message` event (#177, wired in #199). */
   onMessageEvent: (p: MessageEventPayload) => Promise<void>;
   /** Our bot's Slack user id (auth.test), to ignore our own posts. Optional: without it only bot_id/subtype filtering applies. */
+  /** False when several orgs bound this workspace and this job is not the first-bound one: only that one answers. */
+  primaryAccount?: () => Promise<boolean>;
   botUserId?: () => Promise<string>;
 };
 
