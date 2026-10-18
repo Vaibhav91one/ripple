@@ -1,0 +1,150 @@
+{
+  "now": 1792227600,
+  "actor": "all",
+  "items": [
+    {
+      "id": "demo-issue",
+      "at": 1790586000,
+      "kind": "issue",
+      "actor": {
+        "type": "system",
+        "id": null,
+        "name": "GitHub"
+      },
+      "teamId": "eng",
+      "text": "Opened issue: migrate internal callers off API v1",
+      "source": "demo",
+      "demo": true,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "demo-notif",
+      "at": 1790503200,
+      "kind": "notified",
+      "actor": {
+        "type": "system",
+        "id": null,
+        "name": "Ripple"
+      },
+      "teamId": "sales",
+      "text": "Notice sent to 12 customers",
+      "source": "demo",
+      "demo": true,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "demo-appr",
+      "at": 1790499600,
+      "kind": "approved",
+      "actor": {
+        "type": "person",
+        "id": "p-ana",
+        "name": "Ana"
+      },
+      "teamId": "support",
+      "text": "Approved the customer notice for Support",
+      "source": "demo",
+      "demo": true,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "demo-prop",
+      "at": 1790327400,
+      "kind": "proposed",
+      "actor": {
+        "type": "agent",
+        "id": "legal-agent",
+        "name": "Legal agent"
+      },
+      "teamId": "legal",
+      "text": "Proposed a notice draft for Legal to review",
+      "source": "demo",
+      "demo": true,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "conf-d-1",
+      "at": 1790326800,
+      "kind": "conflict",
+      "actor": {
+        "type": "system",
+        "id": null,
+        "name": "Ripple"
+      },
+      "teamId": "legal",
+      "text": "Ripple noticed the sunset conflicts with a contract guarantee (high severity)",
+      "source": "graph",
+      "demo": false,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "ack-sales",
+      "at": 1790240400,
+      "kind": "ack",
+      "actor": {
+        "type": "person",
+        "id": "p-arjun",
+        "name": "Sales"
+      },
+      "teamId": "sales",
+      "text": "Sales acknowledged the change",
+      "source": "graph",
+      "demo": false,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "ack-support",
+      "at": 1790154000,
+      "kind": "ack",
+      "actor": {
+        "type": "person",
+        "id": "p-ana",
+        "name": "Support"
+      },
+      "teamId": "support",
+      "text": "Support acknowledged the change",
+      "source": "graph",
+      "demo": false,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "demo-trav",
+      "at": 1790067660,
+      "kind": "traversed",
+      "actor": {
+        "type": "system",
+        "id": null,
+        "name": "Ripple"
+      },
+      "teamId": null,
+      "text": "Ripple traced 5 teams, 40 customers and 2 contracts behind API v1",
+      "source": "demo",
+      "demo": true,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    },
+    {
+      "id": "ann-d-1",
+      "at": 1790067600,
+      "kind": "announced",
+      "actor": {
+        "type": "person",
+        "id": "p-priya",
+        "name": "Priya Shah"
+      },
+      "teamId": "eng",
+      "text": "Announced: Sunset API v1 on Jan 31",
+      "source": "graph",
+      "demo": false,
+      "caseId": "d-1",
+      "caseTitle": "Sunset API v1 on Jan 31"
+    }
+  ]
+}

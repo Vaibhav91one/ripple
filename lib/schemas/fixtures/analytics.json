@@ -1,0 +1,350 @@
+{
+  "now": 1792227600,
+  "coverage": {
+    "caseId": "d-1",
+    "title": "Sunset API v1 on Jan 31",
+    "pct": 40,
+    "targetPct": 100,
+    "deltaPts": 0,
+    "teams": {
+      "told": 2,
+      "affected": 5
+    },
+    "acks": {
+      "done": 2,
+      "of": 5
+    },
+    "customers": {
+      "notified": 12,
+      "of": 40,
+      "demo": true
+    },
+    "trend": [
+      {
+        "day": 1790067600,
+        "pct": 0,
+        "today": false
+      },
+      {
+        "day": 1790154000,
+        "pct": 20,
+        "today": false
+      },
+      {
+        "day": 1790240400,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790326800,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790413200,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790499600,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790586000,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790672400,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790758800,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790845200,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1790931600,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791018000,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791104400,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791190800,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791277200,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791363600,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791450000,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791536400,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791622800,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791709200,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791795600,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791882000,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1791968400,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1792054800,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1792141200,
+        "pct": 40,
+        "today": false
+      },
+      {
+        "day": 1792227600,
+        "pct": 40,
+        "today": true
+      }
+    ]
+  },
+  "waterfall": {
+    "targetPct": 100,
+    "actualPct": 40,
+    "steps": [
+      {
+        "id": "legal",
+        "label": "Legal not told",
+        "teamId": "legal",
+        "teams": 1,
+        "pts": 20,
+        "arrAtRisk": 180000,
+        "note": "Legal manages the 2 contracts that guarantee API v1 past the sunset"
+      },
+      {
+        "id": "security",
+        "label": "Security not told",
+        "teamId": "security",
+        "teams": 1,
+        "pts": 20,
+        "arrAtRisk": null,
+        "note": "Security cares about API v1"
+      },
+      {
+        "id": "devrel",
+        "label": "DevRel not told",
+        "teamId": "devrel",
+        "teams": 1,
+        "pts": 20,
+        "arrAtRisk": null,
+        "note": "DevRel owns the docs for API v1"
+      }
+    ],
+    "takeaway": "Legal, Security and DevRel explain the whole 60 point gap."
+  },
+  "heatmap": {
+    "teams": [
+      {
+        "teamId": "legal",
+        "name": "Legal"
+      },
+      {
+        "teamId": "security",
+        "name": "Security"
+      },
+      {
+        "teamId": "devrel",
+        "name": "DevRel"
+      },
+      {
+        "teamId": "sales",
+        "name": "Sales"
+      },
+      {
+        "teamId": "support",
+        "name": "Support"
+      }
+    ],
+    "columns": [
+      "not_told",
+      "not_acked",
+      "contract_conflict",
+      "overdue"
+    ],
+    "cells": [
+      {
+        "teamId": "legal",
+        "gap": "not_told",
+        "count": 1,
+        "arrAtRisk": 180000
+      },
+      {
+        "teamId": "legal",
+        "gap": "contract_conflict",
+        "count": 1,
+        "arrAtRisk": 180000
+      },
+      {
+        "teamId": "security",
+        "gap": "not_told",
+        "count": 1,
+        "arrAtRisk": null
+      },
+      {
+        "teamId": "devrel",
+        "gap": "not_told",
+        "count": 1,
+        "arrAtRisk": null
+      },
+      {
+        "teamId": "sales",
+        "gap": "overdue",
+        "count": 2,
+        "arrAtRisk": null
+      }
+    ]
+  },
+  "forecast": {
+    "effectiveAt": 1801386000,
+    "daysLeft": 106,
+    "currentPct": 40,
+    "projectedPct": 60,
+    "withApprovalsPct": 100,
+    "scenarios": [
+      {
+        "id": "tell-legal",
+        "label": "Notify Legal",
+        "teamId": "legal",
+        "pts": 20,
+        "source": "derived",
+        "actionId": null
+      },
+      {
+        "id": "tell-security",
+        "label": "Notify Security",
+        "teamId": "security",
+        "pts": 20,
+        "source": "derived",
+        "actionId": null
+      },
+      {
+        "id": "tell-devrel",
+        "label": "Notify DevRel",
+        "teamId": "devrel",
+        "pts": 20,
+        "source": "derived",
+        "actionId": null
+      }
+    ]
+  },
+  "timeToTell": {
+    "medianHours": 36,
+    "rows": [
+      {
+        "teamId": "support",
+        "name": "Support",
+        "hours": 24,
+        "toldAt": 1790154000,
+        "waitingHours": null
+      },
+      {
+        "teamId": "sales",
+        "name": "Sales",
+        "hours": 48,
+        "toldAt": 1790240400,
+        "waitingHours": null
+      },
+      {
+        "teamId": "legal",
+        "name": "Legal",
+        "hours": null,
+        "toldAt": null,
+        "waitingHours": 600
+      },
+      {
+        "teamId": "security",
+        "name": "Security",
+        "hours": null,
+        "toldAt": null,
+        "waitingHours": 600
+      },
+      {
+        "teamId": "devrel",
+        "name": "DevRel",
+        "hours": null,
+        "toldAt": null,
+        "waitingHours": 600
+      }
+    ]
+  },
+  "agents": {
+    "proposed": 6,
+    "approved": 4,
+    "rejected": 1,
+    "pending": 1,
+    "approvalRatePct": 80,
+    "medianDecisionHours": 3.5,
+    "demo": true,
+    "byKind": [
+      {
+        "kind": "notice",
+        "proposed": 2,
+        "approved": 2
+      },
+      {
+        "kind": "email",
+        "proposed": 3,
+        "approved": 2
+      },
+      {
+        "kind": "talk_track",
+        "proposed": 1,
+        "approved": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,300 @@
+{
+  "list": {
+    "now": 1792227600,
+    "summary": {
+      "total": 1,
+      "needYou": 1,
+      "byState": {
+        "blocked": 1,
+        "waiting": 0,
+        "done": 0
+      }
+    },
+    "cases": [
+      {
+        "id": "d-1",
+        "title": "Sunset API v1 on Jan 31",
+        "kind": "change",
+        "state": "blocked",
+        "needsYou": true,
+        "systems": [
+          {
+            "id": "api-v1",
+            "name": "API v1"
+          }
+        ],
+        "announcedAt": 1790067600,
+        "effectiveAt": 1801386000,
+        "arrAtRisk": 180000,
+        "coverage": {
+          "told": 2,
+          "affected": 5,
+          "pct": 40
+        },
+        "mainGap": {
+          "teamId": "legal",
+          "name": "Legal",
+          "reason": "Legal manages contracts that guarantee API v1 and has not been told"
+        },
+        "openConflicts": 1
+      }
+    ]
+  },
+  "detail": {
+    "now": 1792227600,
+    "report": {
+      "id": "d-1",
+      "title": "Sunset API v1 on Jan 31",
+      "kind": "change",
+      "state": "blocked",
+      "needsYou": true,
+      "systems": [
+        {
+          "id": "api-v1",
+          "name": "API v1"
+        }
+      ],
+      "announcedAt": 1790067600,
+      "effectiveAt": 1801386000,
+      "arrAtRisk": 180000,
+      "coverage": {
+        "told": 2,
+        "affected": 5,
+        "pct": 40
+      },
+      "mainGap": {
+        "teamId": "legal",
+        "name": "Legal",
+        "reason": "Legal manages contracts that guarantee API v1 and has not been told"
+      },
+      "openConflicts": 1
+    },
+    "announcedBy": {
+      "type": "person",
+      "id": "p-priya",
+      "name": "Priya Shah"
+    },
+    "sourceRef": {
+      "artifactId": "art-rfc14",
+      "quote": "API v1 will be shut down on Jan 31, 2027"
+    },
+    "counts": {
+      "teams": 5,
+      "customers": 40,
+      "tickets": 12,
+      "deals": 3,
+      "contracts": 2
+    },
+    "teams": [
+      {
+        "teamId": "support",
+        "name": "Support",
+        "expected": "Acknowledge and brief the queue",
+        "status": "acked",
+        "doneAt": 1790154000,
+        "why": "handles open tickets about API v1"
+      },
+      {
+        "teamId": "sales",
+        "name": "Sales",
+        "expected": "Acknowledge and notify customers",
+        "status": "acked",
+        "doneAt": 1790240400,
+        "why": "owns open deals that promised API v1"
+      },
+      {
+        "teamId": "legal",
+        "name": "Legal",
+        "expected": "Review contracts that guarantee API v1",
+        "status": "not_told",
+        "doneAt": null,
+        "why": "manages contracts that guarantee API v1"
+      },
+      {
+        "teamId": "security",
+        "name": "Security",
+        "expected": "Review controls and findings on API v1",
+        "status": "not_told",
+        "doneAt": null,
+        "why": "cares about API v1"
+      },
+      {
+        "teamId": "devrel",
+        "name": "DevRel",
+        "expected": "Update the docs and migration guide",
+        "status": "not_told",
+        "doneAt": null,
+        "why": "cares about API v1"
+      }
+    ],
+    "timeline": [
+      {
+        "id": "ann-d-1",
+        "at": 1790067600,
+        "kind": "announced",
+        "actor": {
+          "type": "person",
+          "id": "p-priya",
+          "name": "Priya Shah"
+        },
+        "teamId": "eng",
+        "text": "Announced: Sunset API v1 on Jan 31",
+        "source": "graph",
+        "demo": false
+      },
+      {
+        "id": "demo-trav",
+        "at": 1790067660,
+        "kind": "traversed",
+        "actor": {
+          "type": "system",
+          "id": null,
+          "name": "Ripple"
+        },
+        "teamId": null,
+        "text": "Ripple traced 5 teams, 40 customers and 2 contracts behind API v1",
+        "source": "demo",
+        "demo": true
+      },
+      {
+        "id": "ack-support",
+        "at": 1790154000,
+        "kind": "ack",
+        "actor": {
+          "type": "person",
+          "id": "p-ana",
+          "name": "Support"
+        },
+        "teamId": "support",
+        "text": "Support acknowledged the change",
+        "source": "graph",
+        "demo": false
+      },
+      {
+        "id": "ack-sales",
+        "at": 1790240400,
+        "kind": "ack",
+        "actor": {
+          "type": "person",
+          "id": "p-arjun",
+          "name": "Sales"
+        },
+        "teamId": "sales",
+        "text": "Sales acknowledged the change",
+        "source": "graph",
+        "demo": false
+      },
+      {
+        "id": "conf-d-1",
+        "at": 1790326800,
+        "kind": "conflict",
+        "actor": {
+          "type": "system",
+          "id": null,
+          "name": "Ripple"
+        },
+        "teamId": "legal",
+        "text": "Ripple noticed the sunset conflicts with a contract guarantee (high severity)",
+        "source": "graph",
+        "demo": false
+      },
+      {
+        "id": "demo-prop",
+        "at": 1790327400,
+        "kind": "proposed",
+        "actor": {
+          "type": "agent",
+          "id": "legal-agent",
+          "name": "Legal agent"
+        },
+        "teamId": "legal",
+        "text": "Proposed a notice draft for Legal to review",
+        "source": "demo",
+        "demo": true
+      },
+      {
+        "id": "demo-appr",
+        "at": 1790499600,
+        "kind": "approved",
+        "actor": {
+          "type": "person",
+          "id": "p-ana",
+          "name": "Ana"
+        },
+        "teamId": "support",
+        "text": "Approved the customer notice for Support",
+        "source": "demo",
+        "demo": true
+      },
+      {
+        "id": "demo-notif",
+        "at": 1790503200,
+        "kind": "notified",
+        "actor": {
+          "type": "system",
+          "id": null,
+          "name": "Ripple"
+        },
+        "teamId": "sales",
+        "text": "Notice sent to 12 customers",
+        "source": "demo",
+        "demo": true
+      },
+      {
+        "id": "demo-issue",
+        "at": 1790586000,
+        "kind": "issue",
+        "actor": {
+          "type": "system",
+          "id": null,
+          "name": "GitHub"
+        },
+        "teamId": "eng",
+        "text": "Opened issue: migrate internal callers off API v1",
+        "source": "demo",
+        "demo": true
+      }
+    ],
+    "conflicts": [
+      {
+        "id": "conf-d-1-api-v1",
+        "severity": "high",
+        "status": "open",
+        "detectedAt": 1790326800,
+        "contracts": [
+          {
+            "id": "ctr-1",
+            "name": "Northwind Capital MSA",
+            "guaranteedUntil": 1814346000,
+            "arr": 62000
+          },
+          {
+            "id": "ctr-2",
+            "name": "Halden Bank MSA",
+            "guaranteedUntil": 1814346000,
+            "arr": 118000
+          }
+        ],
+        "sources": [
+          {
+            "artifactId": "art-rfc14",
+            "quote": "API v1 will be shut down on Jan 31, 2027"
+          },
+          {
+            "artifactId": "art-msa-northwind",
+            "quote": "guarantees availability of API v1 until 2027-06-30"
+          }
+        ]
+      }
+    ],
+    "result": {
+      "arrAtRisk": 180000,
+      "teamsTold": 2,
+      "teamsAcked": 2,
+      "openGaps": 3,
+      "openConflicts": 1,
+      "customersNotified": 12,
+      "customersNotifiedDemo": true
+    }
+  }
+}
