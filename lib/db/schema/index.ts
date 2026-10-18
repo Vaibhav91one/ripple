@@ -12,3 +12,4 @@ export * from "./documents";
 export * from "./team-channel";
 export * from "./evidence";
 export * from "./change-channel";
+export * from "./chat";

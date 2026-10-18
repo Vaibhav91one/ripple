@@ -34,6 +34,21 @@ export const StreamEvent = z.discriminatedUnion("type", [
     claimId: id,
     sources: z.array(Source),
   }),
+  /** First event of every /api/chat stream: the demo budget and where the thread lives. */
+  z.object({
+    type: z.literal("meta"),
+    /** Live prompts left today; null = unlimited (self-host, signed-in orgs). */
+    remaining: z.number().int().min(0).nullable(),
+    limit: z.number().int().nullable(),
+    /** Served from the cache (starter prompt, agent sample, tour): did not count against the quota. */
+    cached: z.boolean(),
+    /** The daily budget is spent; the stream is the cached tour. */
+    exhausted: z.boolean(),
+    /** false = demo: the client keeps the thread in localStorage. */
+    persist: z.boolean(),
+    conversationId: z.string().optional(),
+    agent: z.string().optional(),
+  }),
   z.object({ type: z.literal("done"), outcome: Outcome.optional(), /** Why validation replaced the model's answer, when it did. */ rejected: z.array(z.string()).optional() }),
 ]);
 

@@ -22,6 +22,12 @@ To ask another agent (for example "what would Contract Sentinel say about d-1?")
 export type LoopOpts = {
   model: LanguageModel;
   question: string;
+  /** Earlier turns of a chat, oldest first; `question` is the new user message. */
+  history?: { role: "user" | "assistant"; content: string }[];
+  /** Overrides the Ask system prompt (an @agent's own). */
+  system?: string;
+  /** Restricts the read tools (an @agent's tool list). */
+  toolNames?: readonly ToolName[];
   g: Graph;
   now: number;
   demo?: boolean;
@@ -40,7 +46,7 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   const ctx = { g: o.g, now: o.now, demo: o.demo ?? false, readonly: o.readonly, viewer: o.viewer, propose: o.propose, model: o.model };
 
   const tools = Object.fromEntries(
-    READ_TOOLS.map((name) => {
+    READ_TOOLS.filter((n) => !o.toolNames || o.toolNames.includes(n)).map((name) => {
       const d = TOOLS[name];
       return [name, tool({
         description: d.description,
@@ -104,13 +110,18 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
 
   const result = streamText({
     model: o.model,
-    system: SYSTEM,
-    prompt: o.question,
+    system: o.system ?? SYSTEM,
+    ...(o.history?.length ? { messages: [...o.history, { role: "user" as const, content: o.question }] } : { prompt: o.question }),
     tools,
     stopWhen: isStepCount(o.maxSteps ?? 5),
   });
 
+  let spent = 0;
+  let reported = false;
+  const report = () => { if (!reported) { reported = true; o.onUsage?.(spent); } }; // also on abort (finally), so a cancelled stream still costs its tokens
+  try {
   for await (const part of result.fullStream) {
+    if (part.type === "finish-step") spent += part.usage.totalTokens ?? 0;
     if (part.type === "tool-call") {
       const t = TOOLS[part.toolName as ToolName];
       yield { type: "tool_call", tool: part.toolName, args: (part.input ?? {}) as Record<string, unknown>, cypher: t ? templateText(t.templates) : "" };
@@ -132,6 +143,9 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   buf = full.trim() ? v.answer : "";
   yield* drain(true);
   if (v.ok && spoke && cited === 0 && !notFound) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
-  o.onUsage?.((await result.totalUsage).totalTokens ?? 0);
+  report();
   yield { type: "done", outcome: v.outcome, ...(v.ok ? {} : { rejected: v.reasons }) };
+  } finally {
+    report();
+  }
 }
