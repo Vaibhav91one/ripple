@@ -1,6 +1,7 @@
 // The one place a request (or script) learns which graph it is on, who is asking and what "now" is.
 // Demo org only for now; multi-tenancy swaps the body of getContext, not its callers.
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { audit, type AuditEvent } from "../audit";
 import { env } from "../env";
 import { safeMessage } from "../log";
@@ -97,6 +98,8 @@ async function keyViewer(req?: Request) {
 
 /** Signed in with an active Clerk org -> that org's graph; RIPPLE_MODE=local (no Clerk) -> the writable `local` org; anyone else -> the read-only demo. RIPPLE_GRAPH is a test-only graph override. */
 export async function getContext(req?: Request): Promise<Context> {
+  // the context is per request (viewer, clock): mark it dynamic before reading Date.now(); outside a request (tests, scripts) there is nothing to mark
+  try { await connection(); } catch { /* not in a request scope */ }
   const e = env();
   const keyed = await keyViewer(req);
   if (keyed) {
