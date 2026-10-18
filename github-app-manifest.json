@@ -6,7 +6,7 @@
     "url": "https://ripple.vaibhav.quest/api/connectors/github/webhook",
     "active": true
   },
-  "redirect_url": "https://ripple.vaibhav.quest/connectors/github",
+  "redirect_url": "https://ripple.vaibhav.quest/connections/github",
   "callback_urls": ["https://ripple.vaibhav.quest/api/connectors/github/setup"],
   "setup_url": "https://ripple.vaibhav.quest/api/connectors/github/setup",
   "setup_on_update": true,

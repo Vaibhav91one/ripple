@@ -1,0 +1,16 @@
+{
+  "name": "ripple",
+  "owner": {
+    "name": "Vaibhav91one"
+  },
+  "metadata": {
+    "description": "Ripple's Claude Code plugin: the hosted MCP server plus the ripple-impact skill."
+  },
+  "plugins": [
+    {
+      "name": "ripple",
+      "source": "./plugin",
+      "description": "Ripple company brain: decision impact, who wasn't told, contract conflicts, over MCP."
+    }
+  ]
+}

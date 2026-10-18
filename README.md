@@ -17,42 +17,31 @@ Built for the WeMakeDevs x FalkorDB Graph Hacks, Track 03. Live demo data is a s
 
 v2 is a dashboard product: `/overview`, a `/graph` explorer, `/changes` (one page per change), `/inbox`, and seven team workspaces under `/teams/<team>`, all reading one FalkorDB graph.
 
-## Use Ripple from your agent
+## Use Ripple from your AI tools
 
-Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (12 tools) or stdio against a local FalkorDB.
+Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (12 tools) or stdio against a local FalkorDB. The **[/integrations](https://web-2fa0-3000.prg1.zerops.app/integrations)** page has copy buttons for every client, filled with the deployment's own URL, plus the API keys panel.
 
 ```bash
-# Claude Code, hosted demo
+# Claude Code plugin: the hosted MCP server + the ripple-impact skill
+/plugin marketplace add Vaibhav91one/ripple
+/plugin install ripple@ripple            # or, on Claude Code 2.1.275+: /plugin install ripple --marketplace Vaibhav91one/ripple
+# or just the MCP server (hosted demo)
 claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
 # local stdio: FalkorDB on :6379 with the seed loaded (this repo's .mcp.json already wires it)
 claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
 ```
 
-Cursor and other clients (`mcp.json`):
+| Client | Setup |
+| --- | --- |
+| Claude Desktop, claude.ai | Customize > Connectors > + > Add custom connector, paste the URL ("No sign in" for the demo). Skill: zip `skills/ripple-impact` and upload it under Customize > Skills. |
+| Codex | `~/.codex/config.toml`: `[mcp_servers.ripple]` `url = "https://web-2fa0-3000.prg1.zerops.app/api/mcp"`; for org keys add `bearer_token_env_var = "RIPPLE_API_KEY"`. The skill is also in `.agents/skills/`. |
+| Cursor | One-click "Add to Cursor" on /integrations, or `~/.cursor/mcp.json`: `{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }` |
+| ChatGPT | Developer mode connector, no auth: demo graph only. |
+| Slack, GitHub | `/ripple` and @Ripple in Slack (#240), @ripple-company-brain on pull requests (#236). |
 
-```json
-{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }
-```
+**Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). An org admin creates a key on **/integrations** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: same teams and role, so restricted text is redacted exactly as in their session. Send it as `Authorization: Bearer rpl_<prefix>_<secret>` (`claude mcp add ... --header "Authorization: Bearer rpl_..."`), or export `RIPPLE_API_KEY` for the plugin, `.mcp.json` (`"headers": { "Authorization": "Bearer ${RIPPLE_API_KEY:-}" }`) and Codex. A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
 
-**Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). To query your org's graph, an org admin creates a key in **Settings > API keys** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: the same teams and role, so restricted text is redacted exactly as in their session. Add it as a bearer header:
-
-```bash
-# Claude Code
-claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp --header "Authorization: Bearer rpl_<prefix>_<secret>"
-```
-
-```json
-// Cursor (.cursor/mcp.json)
-{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp", "headers": { "Authorization": "Bearer rpl_<prefix>_<secret>" } } } }
-```
-
-A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
-
-**Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). Install by copying the folder into `~/.claude/skills/` (all projects) or `.claude/skills/` (one project):
-
-```bash
-cp -r skills/ripple-impact ~/.claude/skills/
-```
+**Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). The plugin bundles it; to install it by hand, `cp -r skills/ripple-impact ~/.claude/skills/`.
 
 **Demo.** Ask "what does sunsetting API v1 (d-1) hit?" and raise `depth`; measured live, 20 to 50 ms per tool call:
 

@@ -6,7 +6,7 @@ import { enqueue } from "@/lib/queue";
 import { redirectTo } from "@/lib/server/redirect";
 import { getContext } from "@/lib/server/context";
 
-const back = (_req: Request, q: string) => redirectTo(`/connectors/github?${q}`);
+const back = (_req: Request, q: string) => redirectTo(`/connections/github?${q}`);
 
 /** GET (the app's Setup URL): GitHub sends the admin back with ?installation_id&state. Stores the installation id, encrypted, for this org, then queues the first sync. */
 export async function GET(req: Request) {

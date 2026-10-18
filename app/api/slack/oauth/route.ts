@@ -9,7 +9,7 @@ import { getContext } from "@/lib/server/context";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const back = (q: string) => {
-    const res = new NextResponse(null, redirectTo(`/connectors/slack?${q}`));
+    const res = new NextResponse(null, redirectTo(`/connections/slack?${q}`));
     res.cookies.delete({ name: "slack_oauth_state", path: "/api/slack" }); // single use
     return res;
   };

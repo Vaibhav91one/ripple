@@ -1,0 +1,9 @@
+{
+  "name": "ripple",
+  "description": "Ripple company brain over MCP: find who a change affects, who was never told and which contracts conflict, with cited sources. Bundles the ripple-impact skill.",
+  "version": "0.2.0",
+  "author": { "name": "Vaibhav91one", "url": "https://github.com/Vaibhav91one" },
+  "homepage": "https://github.com/Vaibhav91one/ripple",
+  "repository": "https://github.com/Vaibhav91one/ripple",
+  "license": "MIT"
+}

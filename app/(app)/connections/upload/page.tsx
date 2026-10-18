@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/shell/PageHeader";
 import { PageLoading } from "@/components/states/States";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -15,12 +16,9 @@ async function Uploader() {
 
 export default function UploadPage() {
   return (
-    <div className="space-y-4 p-6">
-      <div>
-        <h1 className="text-lg font-medium text-strong">Upload documents</h1>
-        <p className="text-sm text-faint">RFCs, policies and contracts as PDF, DOCX, Markdown or text. Contracts also become structured clauses.</p>
-      </div>
+    <>
+      <PageHeader title="Upload documents" subtitle="RFCs, policies and contracts as PDF, DOCX, Markdown or text. Contracts also become structured clauses." crumbs={[{ label: "Connections", href: "/connections" }, { label: "Upload documents" }]} />
       <Suspense fallback={<PageLoading />}><Uploader /></Suspense>
-    </div>
+    </>
   );
 }

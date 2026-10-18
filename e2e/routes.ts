@@ -25,4 +25,11 @@ export const ROUTES: string[] = [
   "/teams/legal",
   // analytics (#234): the embedded graph explorer
   "/analytics#graph",
+  // #238: setup flows moved under /connections, old /connectors/* URLs redirect
+  "/connections/github",
+  "/connections/slack",
+  "/connections/csv",
+  "/connections/upload",
+  "/connectors/github",
+  "/connectors/csv",
 ];
