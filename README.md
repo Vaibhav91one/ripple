@@ -34,12 +34,12 @@ claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm -
 | Client | Setup |
 | --- | --- |
 | Claude Desktop, claude.ai | Customize > Connectors > + > Add custom connector, paste the URL ("No sign in" for the demo). Skill: zip `skills/ripple-impact` and upload it under Customize > Skills. |
-| Codex | `~/.codex/config.toml`: `[mcp_servers.ripple]` `url = "https://web-2fa0-3000.prg1.zerops.app/api/mcp"` `bearer_token_env_var = "RIPPLE_API_KEY"`. The skill is also in `.agents/skills/`. |
+| Codex | `~/.codex/config.toml`: `[mcp_servers.ripple]` `url = "https://web-2fa0-3000.prg1.zerops.app/api/mcp"`; for org keys add `bearer_token_env_var = "RIPPLE_API_KEY"`. The skill is also in `.agents/skills/`. |
 | Cursor | One-click "Add to Cursor" on /integrations, or `~/.cursor/mcp.json`: `{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }` |
 | ChatGPT | Developer mode connector, no auth: demo graph only. |
 | Slack, GitHub | `/ripple` and @Ripple in Slack (#240), @ripple-company-brain on pull requests (#236). |
 
-**Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). An org admin creates a key on **/integrations** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: same teams and role, so restricted text is redacted exactly as in their session. Send it as `Authorization: Bearer rpl_<prefix>_<secret>` (`claude mcp add ... --header "Authorization: Bearer rpl_..."`), or export `RIPPLE_API_KEY` for the plugin, `.mcp.json` (`"headers": { "Authorization": "Bearer ${RIPPLE_API_KEY}" }`) and Codex. A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
+**Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). An org admin creates a key on **/integrations** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: same teams and role, so restricted text is redacted exactly as in their session. Send it as `Authorization: Bearer rpl_<prefix>_<secret>` (`claude mcp add ... --header "Authorization: Bearer rpl_..."`), or export `RIPPLE_API_KEY` for the plugin, `.mcp.json` (`"headers": { "Authorization": "Bearer ${RIPPLE_API_KEY:-}" }`) and Codex. A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
 
 **Skill.** [`skills/ripple-impact/SKILL.md`](skills/ripple-impact/SKILL.md) tells Claude when and how to use the tools for a deprecation or breaking change (find the decision, ripple, who wasn't told, contract conflicts, cited PR description, one brief per team, never acks without a yes). The plugin bundles it; to install it by hand, `cp -r skills/ripple-impact ~/.claude/skills/`.
 

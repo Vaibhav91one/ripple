@@ -17,7 +17,7 @@ export type Snippet = { label: string; lang: string; code: string };
 
 export function snippets(origin: string) {
   const url = mcpUrl(origin);
-  const bearer = { Authorization: "Bearer ${RIPPLE_API_KEY}" };
+  const bearer = { Authorization: "Bearer ${RIPPLE_API_KEY:-}" };
   return {
     claudeCode: [
       { label: "Demo (no key)", lang: "shell", code: `claude mcp add --transport http ripple ${url}` },
@@ -30,7 +30,8 @@ export function snippets(origin: string) {
       { label: "Request header (your org)", lang: "header", code: `Authorization: Bearer ${KEY_PLACEHOLDER}` },
     ],
     codex: [
-      { label: "~/.codex/config.toml", lang: "toml", code: `[mcp_servers.ripple]\nurl = "${url}"\nbearer_token_env_var = "RIPPLE_API_KEY"` },
+      { label: "Demo ~/.codex/config.toml", lang: "toml", code: `[mcp_servers.ripple]\nurl = "${url}"` },
+      { label: "For org keys ~/.codex/config.toml", lang: "toml", code: `[mcp_servers.ripple]\nurl = "${url}"\nbearer_token_env_var = "RIPPLE_API_KEY"` },
       { label: "Skill (Codex reads .agents/skills in a repo)", lang: "shell", code: "cp -r ripple/.agents/skills/ripple-impact <your-repo>/.agents/skills/" },
     ],
     cursor: [

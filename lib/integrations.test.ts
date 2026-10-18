@@ -18,8 +18,15 @@ describe("integration snippets", () => {
   it("never embeds a real key: placeholders or the env var only", () => {
     for (const s of Object.values(snippets(ORIGIN)).flat()) expect(s.code).not.toMatch(/rpl_[a-z0-9]{6,}_/i);
     expect(JSON.parse(snippets(ORIGIN).claudeCode[2].code)).toEqual({
-      mcpServers: { ripple: { type: "http", url: "https://ripple.example.com/api/mcp", headers: { Authorization: "Bearer ${RIPPLE_API_KEY}" } } },
+      mcpServers: { ripple: { type: "http", url: "https://ripple.example.com/api/mcp", headers: { Authorization: "Bearer ${RIPPLE_API_KEY:-}" } } },
     });
+  });
+
+  it("Codex: demo snippet has only the url, the org snippet reads RIPPLE_API_KEY", () => {
+    const [demo, org] = snippets(ORIGIN).codex;
+    expect(demo.code).toBe('[mcp_servers.ripple]\nurl = "https://ripple.example.com/api/mcp"');
+    expect(org.label).toMatch(/org keys/);
+    expect(org.code).toContain('bearer_token_env_var = "RIPPLE_API_KEY"');
   });
 
   it("Cursor deeplink decodes to a URL-only config", () => {
@@ -46,7 +53,7 @@ describe("Claude Code plugin files", () => {
 
   it("plugin .mcp.json uses the hosted URL with the env-var bearer", () => {
     const { mcpServers } = JSON.parse(read("plugin/.mcp.json"));
-    expect(mcpServers.ripple).toMatchObject({ type: "http", url: expect.stringMatching(/^https:\/\/.+\/api\/mcp$/), headers: { Authorization: "Bearer ${RIPPLE_API_KEY}" } });
+    expect(mcpServers.ripple).toMatchObject({ type: "http", url: expect.stringMatching(/^https:\/\/.+\/api\/mcp$/), headers: { Authorization: "Bearer ${RIPPLE_API_KEY:-}" } });
   });
 
   it("skill copies match skills/ripple-impact", () => {

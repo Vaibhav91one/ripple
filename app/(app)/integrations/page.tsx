@@ -63,7 +63,7 @@ function clients(origin: string): Client[] {
       line: "Point Codex at the MCP server; the key comes from RIPPLE_API_KEY, never the file.",
       steps: [
         <>Add the server to <Code>~/.codex/config.toml</Code>.</>,
-        <>Export <Code>RIPPLE_API_KEY</Code> for your org, or leave it unset for the demo.</>,
+        <>For org keys, use the second snippet and export <Code>RIPPLE_API_KEY</Code>; the demo needs only the URL.</>,
         <>Codex picks up skills from <Code>.agents/skills/</Code>; this repo ships a copy of <Code>ripple-impact</Code> there.</>,
       ],
       snippets: s.codex,

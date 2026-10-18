@@ -3,7 +3,7 @@
     "ripple": {
       "type": "http",
       "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp",
-      "headers": { "Authorization": "Bearer ${RIPPLE_API_KEY}" }
+      "headers": { "Authorization": "Bearer ${RIPPLE_API_KEY:-}" }
     }
   }
 }
