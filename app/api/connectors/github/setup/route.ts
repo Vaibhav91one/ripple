@@ -1,12 +1,12 @@
 import { decrypt, encrypt } from "@/lib/crypto";
 import { GITHUB_SCOPES } from "@/lib/connectors/github";
 import { githubApp } from "@/lib/connectors/github/client";
-import { env } from "@/lib/env";
 import { safeMessage } from "@/lib/log";
 import { enqueue } from "@/lib/queue";
+import { redirectTo } from "@/lib/server/redirect";
 import { getContext } from "@/lib/server/context";
 
-const back = (req: Request, q: string) => Response.redirect(new URL(`/connectors/github?${q}`, env().APP_URL ?? req.url), 302);
+const back = (_req: Request, q: string) => redirectTo(`/connectors/github?${q}`);
 
 /** GET (the app's Setup URL): GitHub sends the admin back with ?installation_id&state. Stores the installation id, encrypted, for this org, then queues the first sync. */
 export async function GET(req: Request) {
