@@ -80,7 +80,7 @@ export function GraphPage() {
       <NodePanel info={info} onSelect={click} onClose={() => void setNode(null)} />
 
       {range && (
-        <div className="absolute bottom-3 left-1/2 z-10 origin-bottom -translate-x-1/2 scale-[0.8] rounded-xl bg-surface p-2 shadow-[var(--kit-shadow-overlay)]" data-ui>
+        <div className="absolute bottom-3 left-1/2 z-10 hidden origin-bottom -translate-x-1/2 scale-[0.8] sm:block rounded-xl bg-surface p-2 shadow-[var(--kit-shadow-overlay)]" data-ui>
           <p className="mb-1 flex items-center justify-between px-2 text-xs text-faint">
             <span>Replay how the ripple formed</span>
             {day !== null && <button onClick={() => setDay(null)} className="text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">Latest</button>}
