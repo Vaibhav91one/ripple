@@ -36,7 +36,7 @@ test.describe("no horizontal overflow", () => {
     const box = page.locator("textarea").first();
     await box.fill(url);
     await box.press("Enter");
-    await expect(page.getByText(url.slice(0, 40)).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("main p[dir=auto]").filter({ hasText: url.slice(0, 40) }).first()).toBeVisible({ timeout: 15_000 });
     const o = await overflow(page);
     expect(o.sw, `scrollWidth ${o.sw} > ${o.w} (${o.worst})`).toBeLessThanOrEqual(o.w);
   });
