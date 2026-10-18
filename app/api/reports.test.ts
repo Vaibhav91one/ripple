@@ -108,7 +108,9 @@ describe("GET /api/analytics", () => {
     expect(a.heatmap.cells.filter((c) => c.arrAtRisk !== null)).toHaveLength(1); // ARR sits on one cell only
     expect(a.coverage!.trend).toHaveLength(26);
     expect(a.waterfall!.takeaway).toBe("Legal and DevRel explain 67% of the 60 point gap.");
-    expect(a.forecast).toMatchObject({ currentPct: 40, withApprovalsPct: 40 }); // derived scenarios are not real actions
+    expect(a.forecast).toMatchObject({ currentPct: 40 });
+    // the current path plus pending actions only: derived scenarios are not real actions, and it never reads below the path
+    expect(a.forecast!.withApprovalsPct).toBe(a.forecast!.projectedPct);
     expect(a.forecast!.scenarios).toHaveLength(3);
     expect(a.timeToTell.rows.find((x) => x.teamId === "support")?.hours).toBe(24);
     expect(a.timeToTell.rows.find((x) => x.teamId === "legal")?.hours).toBeNull();

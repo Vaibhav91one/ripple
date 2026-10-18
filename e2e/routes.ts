@@ -23,4 +23,6 @@ export const ROUTES: string[] = [
   "/it",
   "/inbox",
   "/teams/legal",
+  // analytics (#234): the embedded graph explorer
+  "/analytics#graph",
 ];

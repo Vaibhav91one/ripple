@@ -91,7 +91,7 @@ export async function computeAnalytics(ctx: Context, caseId?: string | null): Pr
     add("overdue", overdue.get(t.teamId) ?? 0);
   }
 
-  // forecast: pace = teams told in the last 14 days; scenarios = pending agent actions that would tell a still-untold team
+  // forecast: pace = teams told in the last 14 days; with approvals = the current path plus every pending action (never below it); scenarios = pending agent actions that would tell a still-untold team
   const eff = head.effectiveAt;
   const daysLeft = eff ? Math.max(0, Math.ceil((eff - now) / DAY)) : null;
   const recent = [...toldAt.entries()].filter(([t, at]) => rip.teams.some((x) => x.teamId === t) && at >= now - 14 * DAY).length;
@@ -120,7 +120,7 @@ export async function computeAnalytics(ctx: Context, caseId?: string | null): Pr
     },
     waterfall: { targetPct: 100, steps, actualPct: pct, takeaway },
     heatmap: { overdueScope: "org", teams: rip.teams.map((t) => ({ teamId: t.teamId, name: teamName(t.teamId) })), columns, cells },
-    forecast: { effectiveAt: eff, daysLeft, currentPct: pct, projectedPct, withApprovalsPct: Math.min(100, pct + scenarios.filter((x) => x.source === "pending").reduce((s, x) => s + x.pts, 0)), scenarios },
+    forecast: { effectiveAt: eff, daysLeft, currentPct: pct, projectedPct, withApprovalsPct: Math.min(100, projectedPct + scenarios.filter((x) => x.source === "pending").reduce((s, x) => s + x.pts, 0)), scenarios },
     timeToTell: { rows: ttt, medianHours: median(ttt.flatMap((r) => (r.hours === null ? [] : [r.hours]))) },
     agents,
   };

@@ -35,6 +35,7 @@ const PAD_Y = 24;
 const ROW_GAP = 64;
 const PILL_OFFSET = 30; // kind pill + gap above a card
 const MIN_Z = 0.25;
+const MOBILE_MIN_Z = 0.55;
 const MAX_Z = 2;
 
 export type FlowNode = {
@@ -462,6 +463,9 @@ export default function Flowchart({
   };
 
   /* ── pan / zoom ── */
+  /* on a phone-width canvas, never shrink cards below a readable size: pan instead (a filled canvas is touch-action:
+     none, so a one-finger drag pans it; the page scrolls from outside the fixed-height canvas) */
+  const minZ = size.w && size.w < 640 ? MOBILE_MIN_Z : MIN_Z;
   const layoutSig = placed.map((p) => `${p.n.id}${p.cx}${p.top}${p.h}`).join();
   const fit = useCallback(() => {
     if (!size.w || !size.h || !placed.length) return;
@@ -470,10 +474,12 @@ export default function Flowchart({
     const y0 = Math.min(...placed.map((p) => p.top));
     const y1 = Math.max(...placed.map((p) => p.top + p.h));
     const top = insets?.top ?? 60, bottom = insets?.bottom ?? 60, right = insets?.right ?? 0;
-    const z = clamp(Math.min((size.w - right - 80) / (x1 - x0), (size.h - top - bottom) / (y1 - y0), 1), MIN_Z, MAX_Z);
-    setView({ z, x: (size.w - right) / 2 - ((x0 + x1) / 2) * z, y: top + (size.h - top - bottom) / 2 - ((y0 + y1) / 2) * z });
+    const z = clamp(Math.min((size.w - right - 80) / (x1 - x0), (size.h - top - bottom) / (y1 - y0), 1), minZ, MAX_Z);
+    /* too wide even at the minimum zoom: start at the left edge (the decision), the rest pans in */
+    const wide = (x1 - x0) * z > size.w - right - 32;
+    setView({ z, x: wide ? 16 - x0 * z : (size.w - right) / 2 - ((x0 + x1) / 2) * z, y: top + (size.h - top - bottom) / 2 - ((y0 + y1) / 2) * z });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size.w, size.h, layoutSig, insets?.top, insets?.bottom, insets?.right]);
+  }, [size.w, size.h, minZ, layoutSig, insets?.top, insets?.bottom, insets?.right]);
 
   useEffect(() => {
     autoFit.current = true;
@@ -485,7 +491,7 @@ export default function Flowchart({
   const zoomAt = (factor: number, px = size.w / 2, py = size.h / 2) => {
     autoFit.current = false;
     setView((v) => {
-      const z = clamp(v.z * factor, MIN_Z, MAX_Z);
+      const z = clamp(v.z * factor, minZ, MAX_Z);
       return { z, x: px - (px - v.x) * (z / v.z), y: py - (py - v.y) * (z / v.z) };
     });
   };
@@ -534,16 +540,18 @@ export default function Flowchart({
     setOffsets((current) => ({ ...current, [id]: { dx, dy } }));
   };
 
-  const onPointerUp = (id: string) => () => {
-    const d = drag.current;
-    if (d?.id === id) {
-      /* a real drag shouldn't also toggle selection */
-      if (d.moved) setTimeout(() => (drag.current = null), 0);
-      else drag.current = null;
-    }
+  /* The card holds pointer capture while pressed, so the browser retargets the click to the wrapper and the
+     button's onClick never fires for a mouse. Select here instead, unless the press turned into a drag. */
+  const select = (id: string) => {
+    if (selectedId === undefined) setOwn((cur) => (cur === id ? null : id));
+    onNodeClick?.(id);
   };
-
-  const wasDragged = () => drag.current?.moved === true;
+  const onPointerUp = (id: string) => (event: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d?.id !== id) return;
+    drag.current = null;
+    if (!d.moved && event.button === 0 && !(event.target as Element).closest("[data-ui]")) select(id);
+  };
   const lit = (edge: FlowEdge) => selected != null && (selected === edge.from || selected === edge.to);
 
   return (
@@ -553,7 +561,7 @@ export default function Flowchart({
       onPointerMove={onCanvasMove}
       onPointerUp={() => (pan.current = null)}
       onPointerCancel={() => (pan.current = null)}
-      className={`relative w-full select-none overflow-hidden rounded-xl bg-page shadow-[var(--kit-shadow-hairline)] ${fill ? "h-full cursor-grab active:cursor-grabbing" : ""} ${className}`}
+      className={`relative w-full select-none overflow-hidden rounded-xl bg-page shadow-[var(--kit-shadow-hairline)] ${fill ? "h-full touch-none cursor-grab active:cursor-grabbing" : ""} ${className}`}
       style={{
         height: fill ? undefined : canvasH,
         backgroundImage: "radial-gradient(color-mix(in oklab, var(--faint) 38%, transparent) 1px, transparent 1.25px)",
@@ -606,6 +614,7 @@ export default function Flowchart({
               onPointerDown={onPointerDown(n.id)}
               onPointerMove={onPointerMove(n.id)}
               onPointerUp={onPointerUp(n.id)}
+              onPointerCancel={() => (drag.current = null)}
               className="absolute flex touch-none flex-col items-start gap-1.5"
               style={{ left: cx, top, width: w, x: "-50%", zIndex: drag.current?.id === n.id ? 2 : 1 }}
               initial={{ opacity: 0, scale: 0.96 }}
@@ -625,10 +634,9 @@ export default function Flowchart({
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (wasDragged()) return;
-                    if (selectedId === undefined) setOwn(active ? null : n.id);
-                    onNodeClick?.(n.id);
+                  onClick={(e) => {
+                    /* keyboard (Enter / Space) only: pointer presses select on pointerup above */
+                    if (e.detail === 0) select(n.id);
                   }}
                   aria-pressed={active}
                   className={`w-full cursor-pointer rounded-[18px] bg-surface text-left outline-none transition-shadow duration-150

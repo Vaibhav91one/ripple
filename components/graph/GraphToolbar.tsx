@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { Code2, Search } from "lucide-react";
+import { useId, useState } from "react";
+import { Code2, Search, SlidersHorizontal } from "lucide-react";
 import { useDecisionId } from "@/components/ripple/useDecisionId";
 import { TEAM_TABS, useTeam } from "@/components/ripple/useTeam";
 import { getDecisions } from "@/lib/api";
@@ -20,6 +21,9 @@ export function GraphToolbar({ cypher, onCypher }: { cypher: boolean; onCypher: 
   const [team, setTeam] = useTeam();
   const [kinds, setKinds] = useKinds();
   const [q, setQ] = useSearch();
+  const [open, setOpen] = useState(false);
+  const panel = useId();
+  const active = kinds.length + (team ? 1 : 0) + (q ? 1 : 0);
   const { data: decisions = [] } = useQuery({ queryKey: ["decisions"], queryFn: getDecisions });
   const toggle = (k: EvidenceKind) => {
     const next = kinds.includes(k) ? kinds.filter((x) => x !== k) : [...kinds, k];
@@ -28,6 +32,11 @@ export function GraphToolbar({ cypher, onCypher }: { cypher: boolean; onCypher: 
 
   return (
     <div role="toolbar" aria-label="Graph filters" className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-surface px-3 py-2 shadow-[var(--kit-shadow-overlay)]">
+      {/* phones: one button, the filters open under it */}
+      <button aria-expanded={open} aria-controls={panel} onClick={() => setOpen(!open)} className={`${chip(open)} inline-flex items-center gap-1.5 sm:hidden`}>
+        <SlidersHorizontal className="size-3.5" /> Filters{active ? ` · ${active}` : ""}
+      </button>
+      <div id={panel} className={`${open ? "flex" : "hidden"} w-full flex-wrap items-center gap-x-3 gap-y-2 sm:contents`}>
       <select
         aria-label="Decision"
         value={d}
@@ -72,6 +81,7 @@ export function GraphToolbar({ cypher, onCypher }: { cypher: boolean; onCypher: 
       <button aria-pressed={cypher} onClick={onCypher} className={`${chip(cypher)} inline-flex items-center gap-1.5`}>
         <Code2 className="size-3.5" /> Cypher used
       </button>
+      </div>
     </div>
   );
 }

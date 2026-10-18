@@ -2,6 +2,7 @@
 
 import { AnimatePresence, m } from "motion/react";
 import Link from "next/link";
+import { useEffect } from "react";
 import { ExternalLink, X } from "lucide-react";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import { teamName } from "@/lib/permissions/classify";
@@ -13,6 +14,20 @@ const BADGE = { conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft te
 /** Side panel for the selected node: properties, neighbours and the sourced edges (chips open SourcePanel). */
 export function NodePanel({ info, onSelect, onClose }: { info: Inspected | null; onSelect: (id: string) => void; onClose: () => void }) {
   const source = useSourcePanel();
+  const open = info !== null;
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => {
+      // leave Escape to any open drawer or dialog (e.g. the source panel opened from here)
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector("[role=dialog]")) return;
+      e.preventDefault();
+      const node = document.querySelector<HTMLElement>("[data-node] button[aria-pressed=true]");
+      onClose();
+      node?.focus(); // back to the card that opened the panel
+    };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open, onClose]);
   return (
     <AnimatePresence>
       {info && (
