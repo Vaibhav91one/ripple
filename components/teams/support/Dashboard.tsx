@@ -15,7 +15,7 @@ import { useNames, useTeamDashboard } from "../useTeamDashboard";
 
 const VIEWS = ["all", "unassigned", "mine", "at_risk"] as const;
 const PRIORITY_TONE: Record<TicketRow["priority"], Tone> = { urgent: "conflict", high: "gap", normal: "neutral", low: "neutral" };
-const SLA_TONE = { breached: "text-conflict", risk: "text-gap", ok: "text-body", met: "text-covered" } as const;
+const SLA_TONE = { breached: "text-conflict-ink", risk: "text-gap-ink", ok: "text-body", met: "text-covered-ink" } as const;
 
 // Support workspace: a Zendesk-style queue, Gainsight-style account health, and the CSAT trend.
 export function SupportDashboard() {

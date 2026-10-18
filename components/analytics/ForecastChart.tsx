@@ -36,9 +36,9 @@ export function ForecastChart({ a, approvals, ifProposed }: { a: Analytics; appr
         {proj && dot(1, f.projectedPct / 100, "border-ripple", `Current path ${f.projectedPct}%`)}
         {proj && dot(1, approvals / 100, "border-covered", `With approvals ${approvals}%`)}
         {proj && ifProposed > approvals && dot(1, ifProposed / 100, "border-faint", `If proposed ${ifProposed}%`)}
-        {proj && <div className="absolute right-0 top-3 hidden rounded-full sm:block border border-hairline bg-surface px-3 py-1 text-xs shadow-sm">
+        {proj && <div className="absolute right-0 top-3 hidden rounded-full sm:block border border-hairline bg-surface px-3 py-1 text-xs shadow-card">
           <span className="text-faint">{fmtDay(pts.t1)}</span> <span className="ml-1 font-medium text-strong">{f.projectedPct}%</span> <span className="text-faint">on the current path</span>
-          <span className="ml-2 font-medium text-covered">{approvals}%</span> <span className="text-faint">with approvals</span>
+          <span className="ml-2 font-medium text-covered-ink">{approvals}%</span> <span className="text-faint">with approvals</span>
           {ifProposed > approvals && <><span className="ml-2 font-medium text-strong">{ifProposed}%</span> <span className="text-faint">if proposed</span></>}
         </div>}
       </div>

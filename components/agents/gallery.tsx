@@ -23,7 +23,7 @@ export const LOCK_REASON = { demo: "Read-only demo", db: "Needs a database", rol
 
 /** The Impact Analyst works for whoever owns a change, so it sits under Everyone. */
 const filterOf = (team: string) => (team === "change-owner" ? "everyone" : team);
-export const teamLabel = (team: string) => (team === "change-owner" ? "Change owners" : TEAM_FILTERS.find(([id]) => id === team)?.[1] ?? team);
+export const teamLabel = (team: string) => (!team ? "" : team === "change-owner" ? "Change owners" : TEAM_FILTERS.find(([id]) => id === team)?.[1] ?? team);
 
 /** Gallery order: the flagship first, then roughly the order a change travels through Ripple. */
 const ORDER = ["impact", "ask", "contract", "exposure", "advisor", "support", "docs", "security", "access", "digest"];
@@ -65,7 +65,7 @@ export function agentStatus(a: Pick<AgentInfo, "enabled" | "lastRun">, now: numb
 export function runWords(a: Pick<AgentInfo, "lastRun" | "runs24h">, now: number): string {
   const last = a.lastRun ? `Last ran ${ago(a.lastRun.startedAt, now)}` : "Hasn't run yet";
   const n = a.runs24h;
-  return `${last} · ${n === 0 ? "no runs" : n === 1 ? "1 run" : `${n} runs`} in the last day`;
+  return `${last} · ${n === 0 ? "no runs" : n === 1 ? "1 run" : `${n.toLocaleString("en-US")} runs`} in the last day`;
 }
 
 /** `lock` is the tooltip when editing is not allowed (a disabled button gets no hover events, so the title sits on the wrapper). */
@@ -77,7 +77,7 @@ export function Switch({ on, label, lock, busy, onChange }: { on: boolean; label
     <span title={lock ?? undefined} className="inline-flex">
       <button type="button" role="switch" aria-checked={on} aria-label={label} aria-busy={busy || undefined} disabled={!!lock} onClick={() => !busy && onChange(!on)}
         className={`relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70 ${on ? "bg-covered" : "bg-hairline"}`}>
-        <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-surface shadow-sm transition-transform ${on ? "translate-x-4" : ""}`} />
+        <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-surface shadow-card transition-transform ${on ? "translate-x-4" : ""}`} />
       </button>
     </span>
   );
@@ -100,7 +100,7 @@ export function AgentTile({ a, now, lock, busy, onOpen, onToggle }: { a: AgentIn
           </h3>
           <Switch on={a.enabled} label={`${a.displayName} on`} lock={lock} busy={busy} onChange={onToggle} />
         </div>
-        <p className="mt-1 text-sm leading-5 text-body">{a.tagline}</p>
+        <p className="mt-1 line-clamp-3 text-sm leading-5 text-body" title={a.tagline}>{a.tagline}</p>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <span className="inline-flex h-6 items-center rounded-full bg-raised px-2.5 text-xs font-medium text-body">{teamLabel(a.team)}</span>
           <StatusPill tone={st.tone}>{st.label}</StatusPill>

@@ -13,7 +13,7 @@ function Notice({ icon: Icon, title, body }: { icon: typeof Clock; title: string
         <Icon className="size-5 text-faint" aria-hidden />
         <h1 className="text-lg font-semibold text-strong">{title}</h1>
         <p className="text-body">{body}</p>
-        <Link href="/ripple" className="inline-block text-ripple underline underline-offset-4">Open Ripple</Link>
+        <Link href="/ripple" className="inline-block text-ripple-ink underline underline-offset-4">Open Ripple</Link>
       </div>
     </main>
   );

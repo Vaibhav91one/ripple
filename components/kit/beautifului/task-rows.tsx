@@ -47,7 +47,7 @@ function SpinnerRing({ active, children }: { active?: boolean; children?: React.
           />
         )}
       </svg>
-      <span className="relative text-[10.5px] font-semibold tabular-nums text-strong">{children}</span>
+      <span className="relative text-2xs font-semibold tabular-nums text-strong">{children}</span>
     </span>
   );
 }
@@ -94,9 +94,9 @@ function fromInput(r: TaskRowInput, i: number) {
     amount: r.meta,
     pill:
       r.status === "done" ? (
-        <span className="inline-flex h-5.5 items-center rounded-full bg-covered-soft px-2 text-[11.5px] font-medium text-covered">Completed</span>
+        <span className="inline-flex h-5.5 items-center rounded-full bg-covered-soft px-2 text-xs font-medium text-covered-ink">Completed</span>
       ) : r.status === "failed" ? (
-        <span className="inline-flex h-5.5 items-center rounded-full bg-conflict-soft px-2 text-[11.5px] font-medium text-conflict">Failed</span>
+        <span className="inline-flex h-5.5 items-center rounded-full bg-conflict-soft px-2 text-xs font-medium text-conflict-ink">Failed</span>
       ) : null,
     details: r.detail ? [{ label: r.detail, meta: "" }] : [],
   };
@@ -114,7 +114,7 @@ export default function TaskRows({ variant = "Capsules", rows: input }: { varian
       label: "Traced RFC-14 reach",
       amount: "12 people",
       pill: (
-        <span className="inline-flex h-5.5 items-center rounded-full bg-covered-soft px-2 text-[11.5px] font-medium text-covered">
+        <span className="inline-flex h-5.5 items-center rounded-full bg-covered-soft px-2 text-xs font-medium text-covered-ink">
           Completed
         </span>
       ),
@@ -148,11 +148,11 @@ export default function TaskRows({ variant = "Capsules", rows: input }: { varian
       amount: "2 messages",
       pill:
         row2 === "failed" ? (
-          <span className="inline-flex h-5.5 items-center gap-1.5 rounded-full bg-conflict-soft px-2 text-[11.5px] font-medium text-conflict" style={{ animation: "fade-in 200ms ease-out both" }}>
+          <span className="inline-flex h-5.5 items-center gap-1.5 rounded-full bg-conflict-soft px-2 text-xs font-medium text-conflict-ink" style={{ animation: "fade-in 200ms ease-out both" }}>
             Failed <span style={{ animation: "spin 1.2s linear infinite" }} className="flex">{RetryIcon}</span>
           </span>
         ) : row2 === "done" ? (
-          <span className="inline-flex h-5.5 items-center gap-1.5 rounded-full bg-covered-soft px-2 text-[11.5px] font-medium text-covered" style={{ animation: "fade-in 200ms ease-out both" }}>
+          <span className="inline-flex h-5.5 items-center gap-1.5 rounded-full bg-covered-soft px-2 text-xs font-medium text-covered-ink" style={{ animation: "fade-in 200ms ease-out both" }}>
             Completed
           </span>
         ) : null,
@@ -193,10 +193,10 @@ export default function TaskRows({ variant = "Capsules", rows: input }: { varian
               <span className="flex size-6 shrink-0 items-center justify-center">
                 {row.badge}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-strong">
                 {row.label}
               </span>
-              <span className="text-[12.5px] text-body tabular-nums">{row.amount}</span>
+              <span className="text-sm text-body tabular-nums">{row.amount}</span>
               {row.pill}
               <span
                 aria-hidden="true"
@@ -235,8 +235,8 @@ export default function TaskRows({ variant = "Capsules", rows: input }: { varian
                               : undefined
                           }
                         >
-                          <span className="text-[12px] text-body">{d.label}</span>
-                          <span className="font-mono text-[11.5px] text-faint tabular-nums">
+                          <span className="text-xs text-body">{d.label}</span>
+                          <span className="font-mono text-xs text-faint tabular-nums">
                             {d.meta}
                           </span>
                         </div>

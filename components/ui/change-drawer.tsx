@@ -21,7 +21,7 @@ const box = "rounded-card border border-hairline bg-surface";
 
 export function ChangeDrawer({ title, subtitle, versionsHeading, versions, changedHeading, affected, changes, rescored, trust, closeLabel, primaryLabel }: ChangeDrawerProps) {
   return (
-    <aside aria-label={title} className="w-full max-w-[390px] rounded-card border border-hairline bg-raised p-5 shadow-[0_8px_30px_var(--hairline)]">
+    <aside aria-label={title} className="w-full max-w-[390px] rounded-card border border-hairline bg-raised p-5 shadow-raised">
       <header className="flex items-start justify-between gap-3">
         <h4 className="text-lg font-medium leading-7 text-strong">{title}</h4>
         <button type="button" aria-label={closeLabel} className="grid size-8 place-items-center rounded-full border border-hairline bg-surface text-strong focus-visible:outline-2 focus-visible:outline-ripple">

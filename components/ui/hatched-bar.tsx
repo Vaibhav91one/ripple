@@ -16,7 +16,7 @@ export function HatchedBar({ plan, actual, max, tone = "ink", label }: { plan: n
 
 /** The legend that goes with HatchedBar. */
 export function PlanLegend({ plan = "Plan", actual = "Actual", over = "Over plan" }: { plan?: string; actual?: string; over?: string }) {
-  const sw = "inline-block h-2.5 w-4 rounded-[3px]";
+  const sw = "inline-block h-2.5 w-4 rounded-sm";
   return (
     <div className="flex flex-wrap gap-4 text-xs text-faint">
       <span className="flex items-center gap-1.5"><span className={sw} style={hatch("var(--faint)")} />{plan}</span>

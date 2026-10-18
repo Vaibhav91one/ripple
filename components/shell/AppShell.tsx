@@ -61,12 +61,13 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
         </button>
         </div>
       </div>
-      {open && <div aria-hidden onClick={close} className="fixed inset-0 z-40 bg-strong/20 lg:hidden" />}
+      {/* always mounted so the drawer and its scrim animate out too (transform + opacity, duration.drawer on ease.drawer) */}
+      <div aria-hidden onClick={close} className={`fixed inset-0 z-40 bg-strong/20 transition-opacity duration-240 ease-drawer lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} />
       <aside
         id="app-sidebar"
         role={open ? "dialog" : undefined}
         aria-modal={open || undefined}
-        className={`${open ? "flex" : "hidden"} fixed inset-y-0 left-0 z-50 w-[272px] flex-col bg-page px-4 pb-4 pt-5 shadow-xl lg:sticky lg:top-0 lg:z-auto lg:flex lg:h-dvh lg:shadow-none ${collapsed ? "lg:w-[76px] lg:px-3" : "lg:w-[248px]"}`}
+        className={`flex ${open ? "" : "max-lg:invisible max-lg:-translate-x-full"} transition-[translate,visibility] duration-240 ease-drawer fixed inset-y-0 left-0 z-50 w-[272px] flex-col bg-page px-4 pb-4 pt-5 shadow-overlay lg:sticky lg:top-0 lg:z-auto lg:flex lg:h-dvh lg:shadow-none ${collapsed ? "lg:w-[76px] lg:px-3" : "lg:w-[248px]"}`}
         aria-label="Sidebar"
       >
         <div className="flex items-center justify-between pl-1.5">
@@ -113,8 +114,8 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
               {!collapsed && (
                 <>
                   <span className="min-w-0 flex-1 leading-tight">
-                    <span className="block truncate text-sm font-medium text-strong">{user.name}</span>
-                    <span className="block truncate text-xs text-faint">{user.role} · {user.org}</span>
+                    <span className="block truncate text-sm font-medium text-strong" title={user.name}>{user.name}</span>
+                    <span className="block truncate text-xs text-faint" title={`${user.role} · ${user.org}`}>{user.role} · {user.org}</span>
                   </span>
                   <Ellipsis size={16} className="text-faint" aria-hidden />
                 </>
@@ -134,7 +135,7 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5" aria-label="Ripple home">
-      <span className="grid size-8 place-items-center rounded-control bg-surface shadow-[0_0_0_1px_var(--hairline)]">
+      <span className="grid size-8 place-items-center rounded-control bg-surface shadow-hairline">
         <Mark size={20} />
       </span>
       <span className="text-lg font-medium tracking-tight text-strong">ripple</span>
@@ -152,7 +153,7 @@ function NavLink({ item, pathname, collapsed, badge }: { item: NavItem; pathname
         aria-current={active ? "page" : undefined}
         title={collapsed ? item.label : undefined}
         aria-label={collapsed ? item.label : undefined}
-        className={`flex h-11 items-center gap-3 rounded-control px-3 text-md lg:h-10 transition-colors ${active ? "bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.12)]" : "text-body hover:bg-raised hover:text-strong"} ${collapsed ? "justify-center px-0" : ""}`}
+        className={`flex h-11 items-center gap-3 rounded-control px-3 text-md lg:h-10 transition-colors ${active ? "bg-strong text-ink-on-strong shadow-card" : "text-body hover:bg-raised hover:text-strong"} ${collapsed ? "justify-center px-0" : ""}`}
       >
         <Icon size={17} strokeWidth={1.6} aria-hidden className="shrink-0" />
         {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
@@ -168,5 +169,5 @@ function NotificationCount() {
   // Prerendered markup has no count; render it only after hydration so a warm query cache can't change the first client render.
   const hydrated = useHydrated();
   if (!hydrated || !data?.open || data.sample) return null;
-  return <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gap px-1.5 text-2xs font-medium text-ink-on-strong">{data.open}</span>;
+  return <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gap px-1.5 text-2xs font-medium text-strong">{data.open}</span>;
 }

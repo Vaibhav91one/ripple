@@ -29,8 +29,8 @@ export function BigFigure({ title, period, figure, delta, text, bar, rows, menuL
       </header>
       <p className="mt-3 text-4xl font-normal leading-none tracking-[-0.04em] text-strong">{figure}</p>
       <p className="mt-3 flex items-center gap-2 text-2xs text-faint">
-        <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface px-2 py-[3px] text-xs font-medium text-strong shadow-[0_1px_2px_var(--hairline)]">
-          <span className={`text-3xs ${delta.tone === "bad" ? "text-conflict" : "text-covered"}`}>{arrow(delta.dir)}</span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface px-2 py-[3px] text-xs font-medium text-strong shadow-card">
+          <span className={`text-3xs ${delta.tone === "bad" ? "text-conflict-ink" : "text-covered-ink"}`}>{arrow(delta.dir)}</span>
           {delta.value}
         </span>
         {delta.vs}
@@ -53,8 +53,8 @@ export function BigFigure({ title, period, figure, delta, text, bar, rows, menuL
             <dd className="flex items-center gap-2 text-sm font-medium text-strong">
               {r.value}
               {r.chip && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-hairline px-2 py-[3px] text-xs shadow-[0_1px_2px_var(--hairline)]">
-                  <span className={`text-3xs ${r.chip.dir === "up" ? "text-covered" : "text-conflict"}`}>{arrow(r.chip.dir)}</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-hairline px-2 py-[3px] text-xs shadow-card">
+                  <span className={`text-3xs ${r.chip.dir === "up" ? "text-covered-ink" : "text-conflict-ink"}`}>{arrow(r.chip.dir)}</span>
                   {r.chip.text}
                 </span>
               )}

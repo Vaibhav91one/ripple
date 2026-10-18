@@ -29,7 +29,7 @@ export function ConflictsTab({ data }: { data: RippleResult }) {
       {rows.map((c) => (
         <div key={c.id}>
           <ConflictDetail conflict={c} arrAtRisk={data.counts.arrAtRisk} onResolve={(ch) => setDone((d) => ({ ...d, [c.id]: ch }))} />
-          {done[c.id] && <p role="status" className="mt-3 rounded-md bg-covered-soft px-3 py-2 text-sm text-covered">{RESULT[done[c.id]]}</p>}
+          {done[c.id] && <p role="status" className="mt-3 rounded-md bg-covered-soft px-3 py-2 text-sm text-covered-ink">{RESULT[done[c.id]]}</p>}
         </div>
       ))}
     </div>
@@ -49,10 +49,10 @@ export function ActivityTab({ nodeIds }: { nodeIds: Set<string> }) {
   return (
     <section className="mx-auto w-full max-w-[880px] overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
       <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-4 py-3">
-        <span className="mr-1 text-[12.5px] font-medium text-strong">Edge type</span>
+        <span className="mr-1 text-sm font-medium text-strong">Edge type</span>
         {typeCounts(mine).map(([t, n]) => (
           <button key={t} type="button" aria-pressed={types.includes(t)} onClick={() => toggle(t)}
-            className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 font-mono text-[11px] transition-colors ${types.includes(t) ? "bg-ripple-soft text-ripple" : "bg-page text-body hover:bg-raised"}`}>
+            className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 font-mono text-2xs transition-colors ${types.includes(t) ? "bg-ripple-soft text-ripple-ink" : "bg-page text-body hover:bg-raised"}`}>
             {t}<span className="tabular-nums text-faint">{n}</span>
           </button>
         ))}

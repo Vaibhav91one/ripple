@@ -22,6 +22,7 @@ import { chatStream, getApprovals, getReports, getRipple, getSource, NotFoundErr
 import { AGENT_SAMPLES } from "@/lib/assistant/prompts";
 import { ONBOARD_CHIPS } from "@/lib/assistant/smalltalk";
 import { Onboarding, SampleNote, useStarters } from "./Onboarding";
+import { usd } from "@/lib/reports-ui";
 import { cardRuns, ResultCard } from "./cards";
 import {
   AGENTS, agentName, applyEvent, plainAnswer, resultNote, toolLabel, traceSummary, COMMANDS, expandCommand, loadThreads, newTurn, saveThreads, threadsKey, titleOf, toMessages, turnsFromMessages, upsertThread,
@@ -269,7 +270,7 @@ export function Assistant({ lens, readonly }: { lens?: string; readonly: boolean
     <Dialog.Root open={sheet} onOpenChange={setSheet}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-strong/20" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[24px] bg-surface p-4 pb-8 shadow-xl">
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[24px] bg-surface p-4 pb-8 shadow-overlay">
           <div className="mb-3 flex items-center justify-between">
             <Dialog.Title className="text-md font-medium text-strong">Chats</Dialog.Title>
             <Dialog.Close aria-label="Close" className="grid size-11 place-items-center rounded-control text-faint hover:bg-raised"><X size={17} aria-hidden /></Dialog.Close>
@@ -337,8 +338,8 @@ function Home({ hello, bar, agent, onAsk, recent, onOpen, onAll }: {
   return (
     <div className="mx-auto max-w-[1040px]">
       <section className="mx-auto flex max-w-[720px] flex-col items-center pt-[6vh] text-center lg:pt-[9vh]">
-        <span className="grid size-12 place-items-center rounded-[16px] bg-surface shadow-[0_0_0_1px_var(--hairline),0_8px_24px_-12px_oklch(0_0_0/0.18)]"><Mark size={28} /></span>
-        <h1 className="mt-6 text-3xl font-light tracking-[-0.035em] text-strong sm:text-[2.75rem] sm:leading-tight">{hello}.</h1>
+        <span className="grid size-12 place-items-center rounded-card bg-surface shadow-raised"><Mark size={28} /></span>
+        <h1 className="mt-6 text-3xl font-light tracking-[-0.035em] text-strong sm:text-3xl sm:leading-tight">{hello}.</h1>
         <p className={`mt-2 min-h-7 max-w-[34rem] text-balance text-md text-body sm:text-lg ${loading ? "opacity-0" : "opacity-100"} transition-opacity`}>{sentence}</p>
         <div className="relative z-20 mt-8 w-full text-left">{bar}</div>
         <ul className="mt-4 flex flex-wrap justify-center gap-2" aria-label="Starter prompts">
@@ -379,7 +380,7 @@ function Home({ hello, bar, agent, onAsk, recent, onOpen, onAll }: {
         <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-5 pb-4 md:grid-cols-2 lg:mt-16">
           <InsightCard
             tag="Pattern found"
-            figure={top.arrAtRisk ? `$${Math.round(top.arrAtRisk / 1000)}K` : `${top.coverage.pct}%`}
+            figure={top.arrAtRisk ? usd(top.arrAtRisk) : `${top.coverage.pct}%`}
             figureNote={top.arrAtRisk ? "of ARR rides on this change" : "of affected teams told"}
             headline={contracts && top.openConflicts ? `${contracts} signed contracts still promise what “${top.title}” takes away` : `${top.title}: ${top.coverage.affected - top.coverage.told} teams still to tell`}
             body={top.mainGap?.reason}
@@ -417,7 +418,7 @@ function TurnView({ turn: t, streaming, readonly, earlier, onRetry, onPick }: { 
   return (
     <li className="space-y-4">
       <div className="flex justify-end">
-        <p dir="auto" className="min-w-0 max-w-[85%] whitespace-pre-wrap [overflow-wrap:anywhere] rounded-[20px] rounded-br-[6px] bg-raised px-4 py-2.5 text-md leading-relaxed text-strong" style={{ animation: "fade-up 300ms cubic-bezier(0.23,1,0.32,1) both" }}>
+        <p dir="auto" className="min-w-0 max-w-[85%] whitespace-pre-wrap [overflow-wrap:anywhere] rounded-card rounded-br-chip bg-raised px-4 py-2.5 text-md leading-relaxed text-strong" style={{ animation: "fade-up 300ms cubic-bezier(0.23,1,0.32,1) both" }}>
           {t.agent && <span className="mr-1.5 font-medium text-faint">@{agentName(t.agent) ?? t.agent}</span>}
           {t.question}
         </p>
@@ -429,7 +430,7 @@ function TurnView({ turn: t, streaming, readonly, earlier, onRetry, onPick }: { 
           {t.cached && t.done && !t.suggestions && <span>· cached answer</span>}
         </p>
         {t.exhausted && (
-          <p className="rounded-[14px] border border-gap/30 bg-gap-soft px-3 py-2 text-sm text-strong">Live answers are paused for today. This is the cached tour of the demo company.</p>
+          <p className="rounded-inset border border-gap/30 bg-gap-soft px-3 py-2 text-sm text-strong">Live answers are paused for today. This is the cached tour of the demo company.</p>
         )}
         {t.tools.length > 0 && <ToolChips live collapsed rows={t.tools.map(toolRow)} diffs={[]} summary={traceSummary(t.tools.length)} />}
         {running && t.tokens.length === 0 && <div aria-hidden><ThinkingLive label={t.tools.some((x) => x.rows === undefined) ? "Looking it up…" : t.tools.length ? "Checking the answer…" : "Thinking…"} /></div>}
@@ -439,7 +440,7 @@ function TurnView({ turn: t, streaming, readonly, earlier, onRetry, onPick }: { 
             sources={refs}
             followUps={[]}
             streaming={running}
-            textClassName="text-[15.5px] leading-[1.7]"
+            textClassName="text-md leading-[1.7]"
             onCopy={copy}
             onRetry={onRetry}
           />
@@ -458,7 +459,7 @@ function TurnView({ turn: t, streaming, readonly, earlier, onRetry, onPick }: { 
         {t.done && !t.suggestions && t.outcome && OUTCOME_NOTE[t.outcome] && !/hasn.t learned/.test(plainAnswer(t)) && (
           <p className="text-xs leading-normal text-faint">{OUTCOME_NOTE[t.outcome]}</p>
         )}
-        {t.error && <p role="alert" className="text-sm text-conflict">{t.error}</p>}
+        {t.error && <p role="alert" className="text-sm text-conflict-ink">{t.error}</p>}
       </div>
     </li>
   );
@@ -498,7 +499,7 @@ function HistoryList({ items, currentId, onOpen, onNew, onRename, onDelete }: {
                 <button type="button" onClick={() => onOpen(it)} aria-current={it.id === currentId || undefined} className="min-w-0 flex-1 truncate px-3 py-2 text-left text-sm text-body">{it.title}</button>
                 <span className="flex shrink-0 pr-1 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100 xl:group-focus-within:opacity-100">
                   <button type="button" aria-label={`Rename ${it.title}`} onClick={() => setEditing(it.id)} className="grid size-8 place-items-center rounded-inset text-faint hover:text-strong"><Pencil size={13} aria-hidden /></button>
-                  <button type="button" aria-label={`Delete ${it.title}`} onClick={() => onDelete(it)} className="grid size-8 place-items-center rounded-inset text-faint hover:text-conflict"><Trash2 size={13} aria-hidden /></button>
+                  <button type="button" aria-label={`Delete ${it.title}`} onClick={() => onDelete(it)} className="grid size-8 place-items-center rounded-inset text-faint hover:text-conflict-ink"><Trash2 size={13} aria-hidden /></button>
                 </span>
               </>
             )}

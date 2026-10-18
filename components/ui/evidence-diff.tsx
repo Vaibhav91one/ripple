@@ -5,8 +5,8 @@ export type ChipGroup = { label: string; chips: Chip[]; caption: string };
 
 const CHIP = {
   none: "border-hairline bg-raised text-strong",
-  conflict: "border-conflict/30 bg-conflict-soft text-conflict",
-  covered: "border-covered/30 bg-covered-soft text-covered",
+  conflict: "border-conflict/30 bg-conflict-soft text-conflict-ink",
+  covered: "border-covered/30 bg-covered-soft text-covered-ink",
 } as const;
 
 export function EvidenceDiff({ title, found, action, onAction, docLine, groups }: {
@@ -32,13 +32,13 @@ export function EvidenceDiff({ title, found, action, onAction, docLine, groups }
         </header>
         <div className="mt-5 flex gap-5">
           <div aria-hidden className="hidden h-[138px] w-[180px] shrink-0 sm:block rounded-control border border-hairline bg-raised px-3 pt-3">
-            <div className="h-full space-y-2.5 rounded-t-control border border-b-0 border-hairline bg-surface px-3 pt-3 shadow-sm">
+            <div className="h-full space-y-2.5 rounded-t-control border border-b-0 border-hairline bg-surface px-3 pt-3 shadow-card">
               <div className="space-y-1.5">
                 <div className={`${bar} w-1/2 bg-faint/40`} />
                 <div className={`${bar} ml-auto w-1/4`} />
                 <div className={`${bar} ml-auto w-1/4`} />
               </div>
-              <div className="rounded-control border border-conflict/30 bg-conflict-soft whitespace-nowrap px-1.5 py-1 font-mono text-3xs text-conflict">{docLine}</div>
+              <div className="rounded-control border border-conflict/30 bg-conflict-soft whitespace-nowrap px-1.5 py-1 font-mono text-3xs text-conflict-ink">{docLine}</div>
               <div className="space-y-2 pt-1">
                 <div className={bar} /><div className={`${bar} w-5/6`} /><div className={bar} />
               </div>

@@ -148,7 +148,7 @@ function AiStatus({
             data-state={state}
             data-active={active || undefined}
             role="status"
-            className={cn('flex h-8 w-fit items-center gap-2 font-runde text-[14px] text-strong', className)}
+            className={cn('flex h-8 w-fit items-center gap-2 font-runde text-sm text-strong', className)}
             {...props}
         >
             <span data-slot="ai-status-icon" className="relative flex size-5 shrink-0 items-center justify-center">
@@ -213,7 +213,7 @@ function AiStatus({
                                         onError={(event) => {
                                             event.currentTarget.style.display = 'none'
                                         }}
-                                        className="size-3.5 shrink-0 rounded-[3px] object-contain"
+                                        className="size-3.5 shrink-0 rounded-sm object-contain"
                                     />
                                 ) : (
                                     favicon && <span className="flex size-3.5 shrink-0 items-center justify-center">{favicon}</span>
@@ -333,7 +333,7 @@ function AiStatusIcon({ state }: AiStatusIconProps) {
             )
         case 'error':
             return (
-                <svg viewBox="0 0 24 24" width={18} height={18} className="text-conflict">
+                <svg viewBox="0 0 24 24" width={18} height={18} className="text-conflict-ink">
                     <m.path
                         {...STROKE}
                         d="M7 7L17 17M17 7L7 17"

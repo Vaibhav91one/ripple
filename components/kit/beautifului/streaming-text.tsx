@@ -47,7 +47,7 @@ function SourceChip({ source }: { source: SourceRef }) {
         title={source.title ?? source.name}
         aria-label={`Source ${source.n}: ${source.title ?? source.name}`}
         onClick={source.onClick}
-        className="mr-1 inline-grid h-[18px] min-w-[18px] translate-y-[-2px] place-items-center rounded-full bg-raised px-1 align-middle font-mono text-[10.5px] font-medium text-body shadow-[var(--kit-shadow-hairline)] transition-colors duration-150 hover:bg-ripple-soft hover:text-ripple"
+        className="mr-1 inline-grid h-[18px] min-w-[18px] translate-y-[-2px] place-items-center rounded-full bg-raised px-1 align-middle font-mono text-2xs font-medium text-body shadow-[var(--kit-shadow-hairline)] transition-colors duration-150 hover:bg-ripple-soft hover:text-ripple-ink"
         style={{ animation: "pop-in 250ms cubic-bezier(0.23,1,0.32,1) both" }}
       >
         {source.n}
@@ -66,12 +66,12 @@ function SourceChip({ source }: { source: SourceRef }) {
           source.onClick();
         }
       }}
-      className="ml-0 mr-1 inline-flex h-4.5 translate-y-[-1px] items-center gap-1 rounded-[5px]
-        bg-page pr-[3px] pl-[3px] align-middle font-mono text-[10.5px] text-body shadow-[var(--kit-shadow-hairline)]
+      className="ml-0 mr-1 inline-flex h-4.5 translate-y-[-1px] items-center gap-1 rounded-md
+        bg-page pr-[3px] pl-[3px] align-middle font-mono text-2xs text-body shadow-[var(--kit-shadow-hairline)]
         transition-colors duration-150 hover:bg-raised hover:text-strong"
       style={{ animation: "pop-in 250ms cubic-bezier(0.23,1,0.32,1) both" }}
     >
-      <span aria-hidden className="grid size-3 place-items-center rounded-[3px] bg-ripple-soft text-[8px] font-bold text-ripple">{source.name[0]}</span>
+      <span aria-hidden className="grid size-3 place-items-center rounded-sm bg-ripple-soft text-[8px] font-bold text-ripple-ink">{source.name[0]}</span>
       <span className="max-w-48 truncate">{source.domain}</span>
     </a>
   );
@@ -92,7 +92,7 @@ export default function StreamingText({
   showActions = true,
   onCopy,
   onRetry,
-  textClassName = "text-[13px] leading-relaxed",
+  textClassName = "text-sm leading-relaxed",
 }: {
   tokens?: Token[];
   sources?: SourceRef[];
@@ -129,8 +129,8 @@ export default function StreamingText({
           ) : (
             <span
               key={i}
-              className="inline [will-change:filter,opacity]"
-              style={{ animation: "stream-in 420ms cubic-bezier(0.22,0.61,0.25,1) both" }}
+              className="inline"
+              style={{ animation: "stream-in 240ms cubic-bezier(0.22,0.61,0.25,1) backwards" }}
             >
               {token.text}{" "}
             </span>
@@ -159,7 +159,7 @@ export default function StreamingText({
             aria-label={label}
             title={label === "Action" ? undefined : label}
             onClick={act}
-            className="flex size-6 items-center justify-center rounded-[6px] text-faint
+            className="flex size-6 items-center justify-center rounded-chip text-faint
               transition-colors duration-100 hover:bg-overlay hover:text-body"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -171,14 +171,15 @@ export default function StreamingText({
           type="button"
           aria-expanded={sourcesOpen}
           onClick={() => setSourcesOpen((current) => !current)}
-          className="ml-1.5 flex items-center gap-1.5 rounded-[6px] px-1 py-0.5 text-left transition-colors duration-150 hover:bg-raised"
+          className="ml-1.5 flex items-center gap-1.5 rounded-chip px-1 py-0.5 text-left transition-colors duration-150 hover:bg-raised"
         >
           <span className="flex -space-x-1">
-            {sources.map((source) => (
-              <span key={source.domain} aria-hidden className="grid size-3.5 place-items-center rounded-full bg-ripple-soft text-[8px] font-bold text-ripple shadow-[0_0_0_1.5px_var(--page)]">{source.n ?? source.name[0]}</span>
+            {sources.slice(0, 5).map((source) => (
+              <span key={source.domain} aria-hidden className="grid size-3.5 place-items-center rounded-full bg-ripple-soft text-[8px] font-bold text-ripple-ink shadow-[0_0_0_1.5px_var(--page)]">{source.n ?? source.name[0]}</span>
             ))}
+            {sources.length > 5 && <span aria-hidden className="grid h-3.5 place-items-center rounded-full bg-raised px-1 text-[8px] font-bold text-body shadow-[0_0_0_1.5px_var(--page)]">+{sources.length - 5}</span>}
           </span>
-          <span className="text-[12px] text-body">Sources ({sources.length})</span>
+          <span className="whitespace-nowrap text-xs text-body">Sources ({sources.length})</span>
         </button>}
       </div>
 
@@ -191,18 +192,18 @@ export default function StreamingText({
         }}
       >
         <div className="overflow-hidden">
-          <div className="mt-1.5 flex flex-col rounded-[10px] bg-page p-1 shadow-[var(--kit-shadow-hairline)]">
+          <div className="mt-1.5 flex flex-col rounded-control bg-page p-1 shadow-[var(--kit-shadow-hairline)]">
             {sources.map((source) => {
               const Row = source.onClick ? "button" : "a";
               return (
               <Row
                 key={source.domain}
                 {...(source.onClick ? { type: "button" as const, onClick: source.onClick } : { href: source.href ?? "#", target: "_blank", rel: "noreferrer" })}
-                className="flex w-full items-center gap-2 rounded-[6px] px-1.5 py-1 text-left text-[12px] text-body transition-colors duration-150 hover:bg-raised hover:text-strong"
+                className="flex w-full items-center gap-2 rounded-chip px-1.5 py-1 text-left text-xs text-body transition-colors duration-150 hover:bg-raised hover:text-strong"
               >
-                <span aria-hidden className="grid size-4 place-items-center rounded-[4px] bg-ripple-soft text-[9px] font-bold text-ripple">{source.n ?? source.name[0]}</span>
-                <span className="animated-underline">{source.name}</span>
-                <span className="ml-auto font-mono text-[10.5px] text-faint">{source.domain}</span>
+                <span aria-hidden className="grid size-4 shrink-0 place-items-center rounded-md bg-ripple-soft text-[9px] font-bold text-ripple-ink">{source.n ?? source.name[0]}</span>
+                <span className="animated-underline min-w-0 truncate" title={source.name}>{source.name}</span>
+                <span className="ml-auto shrink-0 whitespace-nowrap font-mono text-2xs text-faint">{source.domain}</span>
               </Row>
               );
             })}
@@ -220,13 +221,13 @@ export default function StreamingText({
         className="mt-2.5 transition-opacity duration-400"
         style={{ opacity: done ? 1 : 0, pointerEvents: done ? "auto" : "none" }}
       >
-        <p className="text-[12px] font-medium text-body">Follow-ups</p>
+        <p className="text-xs font-medium text-body">Follow-ups</p>
         <div className="mt-0.5 flex flex-col">
           {followUps.map((text, i) => (
             <button
               key={text}
-              className="-mx-1.5 flex items-center gap-2 rounded-[7px] border-b border-hairline
-                px-1.5 py-1.5 text-left text-[12.5px] text-strong transition-colors
+              className="-mx-1.5 flex items-center gap-2 rounded-chip border-b border-hairline
+                px-1.5 py-1.5 text-left text-sm text-strong transition-colors
                 duration-100 hover:bg-overlay"
               style={
                 done

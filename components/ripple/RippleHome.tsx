@@ -102,9 +102,9 @@ export function RippleHome() {
           <p className="text-sm text-body">
             <AnimatedCount value={teamsAffected} /> affected
             <span className="text-faint"> · </span>
-            <span className="text-gap"><AnimatedCount value={notTold} /> not told</span>
+            <span className="text-gap-ink"><AnimatedCount value={notTold} /> not told</span>
             <span className="text-faint"> · </span>
-            <span className="text-conflict"><AnimatedCount value={conflicts} /> conflict{conflicts === 1 ? "" : "s"}</span>
+            <span className="text-conflict-ink"><AnimatedCount value={conflicts} /> conflict{conflicts === 1 ? "" : "s"}</span>
           </p>
           <div className="flex flex-col gap-2.5">
             <CardEnter>
@@ -124,13 +124,13 @@ export function RippleHome() {
         <span className="text-sm text-faint">Not told yet</span>
         <GapChips
           chips={data.gap.map((id) => ({ id, label: name(id) }))}
-          renderChip={(c) => <span className="inline-flex h-6 items-center rounded-full bg-gap-soft px-2.5 text-sm font-medium text-gap">{c.label}</span>}
+          renderChip={(c) => <span className="inline-flex h-6 items-center rounded-full bg-gap-soft px-2.5 text-sm font-medium text-gap-ink">{c.label}</span>}
         />
         <div className="ml-auto flex items-center gap-3">
           <button
             onClick={notify}
             disabled={busy}
-            className="h-8 rounded-lg bg-gap px-3 text-sm font-medium text-page transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="h-8 rounded-lg bg-gap px-3 text-sm font-medium text-strong transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Notifying..." : "Notify gaps"}
           </button>

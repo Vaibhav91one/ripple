@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence } from "motion/react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, Bot, ChevronRight, CircleCheck, ExternalLink, FileText, Lock, Megaphone, Share2, ShieldAlert, Sparkles, UserX, X } from "lucide-react";
@@ -15,6 +16,7 @@ import { hatch } from "@/components/ui/hatch";
 import { HatchedBar } from "@/components/ui/hatched-bar";
 import { HeroNumber } from "@/components/ui/hero-number";
 import { NeedsYou } from "@/components/ui/needs-you";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { TargetBar } from "@/components/ui/target-bar";
@@ -25,7 +27,7 @@ import { DemoTag, KIND_ICON, Segmented, TabPanel } from "./shared";
 
 const TABS = ["overview", "timeline", "artifacts", "runs"] as const;
 const pill = "inline-flex h-10 items-center gap-2 rounded-control px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50";
-const primary = `${pill} bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.15)] hover:bg-body`;
+const primary = `${pill} bg-strong text-ink-on-strong shadow-card hover:bg-body h-auto min-h-10 max-w-full whitespace-normal py-2 text-left`;
 const DOT = { conflict: "bg-conflict", gap: "bg-gap", ink: "bg-strong" } as const;
 
 type Toast = { title: string; body: string };
@@ -42,15 +44,18 @@ export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly
   const [refused, setRefused] = useState(false); // a 403 demo_readonly from the server
   const readOnly = ro || refused;
   const [open, setOpen] = useState<Gap | null>(null);
-  const [toast, setToast] = useState<Toast | null>(null);
+  const [toast, setToast] = useState<(Toast & { n: number }) | null>(null);
   const { data, error, refetch } = useQuery({ queryKey: ["report", id], queryFn: () => getReport(id) });
   const approvals = useQuery({ queryKey: ["approvals", "open", id], queryFn: () => getApprovals("open", id) });
+  // the tab shows the full title the header clamps
+  const docTitle = data?.report.title;
+  useEffect(() => { if (docTitle) document.title = `${docTitle} · Ripple`; }, [docTitle]);
 
   const act = useMutation({
     mutationFn: async (g: Gap) => ({ g, res: await runChase(() => chaseTeam(id, g.teamId), async (a) => (await decideApproval(a, "approve")).results.some((x) => x.changed), canDecide) }),
     onSuccess: ({ g, res }) => {
       setOpen(null);
-      setToast(TOAST[res](g.name));
+      setToast((t) => ({ ...TOAST[res](g.name), n: (t?.n ?? 0) + 1 }));
       void qc.invalidateQueries({ queryKey: ["report", id] });
       void qc.invalidateQueries({ queryKey: ["approvals"] });
     },
@@ -72,7 +77,7 @@ export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly
     <>
       <PageHeader
         crumbs={[{ label: "Reports", href: "/reports" }, { label: r.id.toUpperCase() }]}
-        title={<span className="inline-flex flex-wrap items-center gap-x-4 gap-y-2 whitespace-normal">{r.title}<StatusPill tone={st.tone}>{st.label}</StatusPill></span>}
+        title={<span className="inline-flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 whitespace-normal"><span className="line-clamp-3 min-w-0 [overflow-wrap:anywhere]" title={r.title}>{r.title}</span><StatusPill tone={st.tone}>{st.label}</StatusPill></span>}
         subtitle={sub}
       >
         <ShareButton />
@@ -91,19 +96,22 @@ export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly
       </TabPanel>
 
       {open && <ApproveModal d={data} gap={open} readOnly={readOnly} canDecide={canDecide} busy={act.isPending} error={act.error && !isReadOnlyError(act.error) ? act.error.message : null} onClose={() => { setOpen(null); act.reset(); }} onConfirm={() => act.mutate(open)} />}
-      {toast && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-          <ActionToast
-            title={toast.title}
-            body={toast.body}
-            time="Just now"
-            action="See case file"
-            dismiss="Close"
-            onAction={() => { setToast(null); void setTab("timeline"); window.scrollTo({ top: 0 }); }}
-            onDismiss={() => setToast(null)}
-          />
-        </div>
-      )}
+      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 *:pointer-events-auto">
+        <AnimatePresence>
+          {toast && (
+            <ActionToast
+              key={toast.n}
+              title={toast.title}
+              body={toast.body}
+              time="Just now"
+              action="See case file"
+              dismiss="Close"
+              onAction={() => { setToast(null); void setTab("timeline"); window.scrollTo({ top: 0 }); }}
+              onDismiss={() => setToast(null)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </>
   );
 }
@@ -149,8 +157,8 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               sub="Who needed to act, and what they did"
               action={
                 <div className="flex shrink-0 gap-4 text-xs text-faint">
-                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-[3px]" style={hatch("var(--faint)")} />Expected</span>
-                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-[3px] bg-strong" />Done</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm" style={hatch("var(--faint)")} />Expected</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm bg-strong" />Done</span>
                 </div>
               }
             />
@@ -160,24 +168,25 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
                 return (
                   <li key={t.teamId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 py-3 sm:grid-cols-[11rem_minmax(0,1fr)_9rem_6rem]">
                     <div className="min-w-0">
-                      <p className="text-md font-medium text-strong">{t.name}</p>
-                      <p className="truncate text-sm text-faint">{t.expected}</p>
+                      <p className="truncate text-md font-medium text-strong" title={t.name}>{t.name}</p>
+                      <p className="line-clamp-2 text-sm text-faint [overflow-wrap:anywhere]" title={t.expected}>{t.expected}</p>
                     </div>
                     <div className="order-last col-span-2 sm:order-none sm:col-span-1"><HatchedBar plan={100} actual={s.actual} max={100} label={`${t.name}: ${s.note(t)}`} /></div>
                     <p className="hidden text-sm text-body sm:block">{s.note(t)}</p>
-                    <p className={`text-right text-sm font-medium ${t.status === "acked" ? "text-faint" : "text-gap"}`}>{t.status === "not_told" ? "Not told" : teamDelta(t)}</p>
+                    <p className={`text-right text-sm font-medium ${t.status === "acked" ? "text-faint" : "text-gap-ink"}`}>{t.status === "not_told" ? "Not told" : teamDelta(t)}</p>
                   </li>
                 );
               })}
             </ul>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-inset bg-raised/60 px-4 py-3.5 text-md">
               <span className="font-medium text-strong">Teams told {d.result.teamsTold} of {c.affected} · acked {d.result.teamsAcked} of {c.affected}</span>
-              <span className={c.pct < 100 ? "font-medium text-conflict" : "text-faint"}>{c.pct}% coverage</span>
+              <span className={c.pct < 100 ? "font-medium text-conflict-ink" : "text-faint"}>{c.pct}% coverage</span>
             </div>
           </Card>
 
           <Card>
-            <CardHeader title="What happened" sub={events.length > 5 ? "The latest 5 events" : undefined} action={<button type="button" onClick={onTimeline} className="inline-flex items-center gap-1 text-sm text-faint hover:text-strong">View all {d.timeline.length} events<ChevronRight size={14} aria-hidden /></button>} />
+            <CardHeader title="What happened" sub={events.length > 5 ? "The latest 5 events" : undefined} action={d.timeline.length > 0 ? <button type="button" onClick={onTimeline} className="inline-flex items-center gap-1 text-sm text-faint hover:text-strong">View all {d.timeline.length} events<ChevronRight size={14} aria-hidden /></button> : undefined} />
+            {d.timeline.length === 0 ? <EmptyState icon={FileText} title="Nothing has happened yet">Events show up here as teams are told and ack.</EmptyState> : <>
             <div className={`mt-6 grid gap-6 ${noticed ? "xl:grid-cols-[minmax(0,1fr)_280px]" : ""}`}>
               <div className="-mx-1 relative overflow-x-auto px-1 pb-1">
                 <ol className="grid min-w-[520px] grid-flow-col auto-cols-fr">
@@ -194,13 +203,14 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               </div>
               {noticed && (
                 <aside className="rounded-inset bg-gap-soft p-4">
-                  <p className="flex items-center gap-1.5 text-xs font-medium text-gap"><Sparkles size={12} aria-hidden />Ripple noticed</p>
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-gap-ink"><Sparkles size={12} aria-hidden />Ripple noticed</p>
                   <p className="mt-2 text-sm leading-relaxed text-strong">{noticed}</p>
-                  <a href="#evidence" className={`${pill} mt-3 h-9 bg-surface text-strong shadow-[0_1px_2px_oklch(0_0_0/0.08)] hover:bg-raised`}>See both quotes</a>
+                  <a href="#evidence" className={`${pill} mt-3 h-9 bg-surface text-strong shadow-card hover:bg-raised`}>See both quotes</a>
                 </aside>
               )}
             </div>
             <p className="mt-4 text-xs text-faint">{d.timeline.length} events{demo ? `, ${demo} of them seeded demo history` : ""}.</p>
+            </>}
           </Card>
         </div>
 
@@ -269,12 +279,12 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
 
       {g.length > 0 && (
         <section aria-label="Gaps" className={`grid gap-4 sm:grid-cols-2 ${g.length === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
-          {g.map((x) => (
+          {g.slice(0, 4).map((x) => (
             <Card key={x.teamId} className="flex flex-col">
-              <span className={`grid size-9 place-items-center rounded-full ${x.arr ? "bg-conflict-soft text-conflict" : "bg-gap-soft text-gap"}`}>{x.arr ? <ShieldAlert size={16} aria-hidden /> : <UserX size={16} aria-hidden />}</span>
-              <p className={`mt-4 text-3xl font-light tracking-[-0.04em] ${x.arr ? "text-conflict" : x.status === "told" ? "text-gap" : "text-covered-ink"}`}>{x.figure}</p>
+              <span className={`grid size-9 place-items-center rounded-full ${x.arr ? "bg-conflict-soft text-conflict-ink" : "bg-gap-soft text-gap-ink"}`}>{x.arr ? <ShieldAlert size={16} aria-hidden /> : <UserX size={16} aria-hidden />}</span>
+              <p className={`mt-4 text-3xl font-light tracking-[-0.04em] ${x.arr ? "text-conflict-ink" : x.status === "told" ? "text-gap-ink" : "text-covered-ink"}`}>{x.figure}</p>
               <p className="text-xs text-faint">{x.figureNote}</p>
-              <h3 className="mt-3 text-md font-medium text-strong">{x.name} {x.status === "told" ? "has not acked" : "not told"}</h3>
+              <h3 className="mt-3 text-md font-medium text-strong [overflow-wrap:anywhere]">{x.name} {x.status === "told" ? "has not acked" : "not told"}</h3>
               <p className="mt-1 mb-4 text-sm leading-relaxed text-faint">{x.body}</p>
               <div className="mt-auto">
                 <ActButton readOnly={readOnly} className="inline-flex items-center gap-1 text-sm font-medium text-strong hover:underline disabled:cursor-not-allowed disabled:opacity-50" onClick={() => onAct(x)}>
@@ -283,6 +293,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               </div>
             </Card>
           ))}
+          {g.length > 4 && <p className="text-sm text-faint sm:col-span-full">+{g.length - 4} more {g.length - 4 === 1 ? "team" : "teams"} with a gap, listed under Teams above.</p>}
         </section>
       )}
     </div>
@@ -297,7 +308,7 @@ function EventList({ events }: { events: TimelineEvent[] }) {
         const Icon = KIND_ICON[e.kind];
         return (
           <li key={`${e.id}-${i}`} className="flex items-start gap-3 py-3">
-            <span className={`grid size-9 shrink-0 place-items-center rounded-full ${e.kind === "conflict" ? "bg-conflict-soft text-conflict" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
+            <span className={`grid size-9 shrink-0 place-items-center rounded-full ${e.kind === "conflict" ? "bg-conflict-soft text-conflict-ink" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
             <div className="min-w-0 flex-1">
               <p className="text-md text-strong [overflow-wrap:anywhere]">{e.text} {e.demo && <DemoTag />}</p>
               <p className="text-sm text-faint [overflow-wrap:anywhere]">{dayTime(e.at)} · {KIND_LABEL[e.kind]} by {e.actor.name}</p>
@@ -354,9 +365,9 @@ function ApproveModal({ d, gap, readOnly, canDecide, busy, error, onClose, onCon
   const c = d.report.coverage;
   const ifAck = gap.status === "told" ? c.pct : gap.after;
   return (
-    <dialog ref={ref} onClose={onClose} aria-labelledby="approve-title" className="m-auto w-[min(520px,calc(100vw-32px))] rounded-card border border-hairline bg-surface p-6 text-strong shadow-xl backdrop:bg-strong/30">
+    <dialog ref={ref} onClose={onClose} aria-labelledby="approve-title" className="m-auto w-[min(520px,calc(100vw-32px))] rounded-card border border-hairline bg-surface p-6 text-strong shadow-overlay backdrop:bg-strong/30">
       <header className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gap-soft text-gap"><Megaphone size={17} aria-hidden /></span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gap-soft text-gap-ink"><Megaphone size={17} aria-hidden /></span>
         <div className="min-w-0 flex-1">
           <h2 id="approve-title" className="text-lg font-medium">{gap.action}</h2>
           <p className="text-sm text-faint">{d.report.title} · {gap.name}</p>
@@ -374,7 +385,7 @@ function ApproveModal({ d, gap, readOnly, canDecide, busy, error, onClose, onCon
         <p className="mt-2 text-sm text-faint">If {gap.name} acknowledges, coverage would be {ifAck}%. Sending the reminder alone does not change it.</p>
       </div>
       {!canDecide && !readOnly && <p className="mt-4 text-sm text-faint">Approving reminders needs the admin or lead role, so this one will wait in Approvals.</p>}
-      {error && <p role="alert" className="mt-3 text-sm text-conflict">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-conflict-ink">{error}</p>}
       <footer className="mt-6 flex items-center justify-end gap-2">
         {readOnly && <span className="mr-auto inline-flex items-center gap-1 text-xs text-faint"><Lock size={11} aria-hidden />Read-only demo: run Ripple locally to send</span>}
         <button type="button" onClick={() => ref.current?.close()} className={`${pill} bg-raised text-strong hover:bg-hairline`}>Cancel</button>

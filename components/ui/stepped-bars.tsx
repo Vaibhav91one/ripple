@@ -32,8 +32,8 @@ export function SteppedBars({ title, figure, chip, text, kv, columns, min, max, 
         <div className="w-[190px] shrink-0 pb-5">
           <p className="text-4xl font-normal leading-none tracking-[-0.04em] text-strong">{figure}</p>
           <p className="mt-3">
-            <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface px-2 py-[3px] text-xs font-medium text-strong shadow-[0_1px_2px_var(--hairline)]">
-              <span className="text-3xs text-covered">▲</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface px-2 py-[3px] text-xs font-medium text-strong shadow-card">
+              <span className="text-3xs text-covered-ink">▲</span>
               {chip}
             </span>
           </p>
@@ -60,7 +60,7 @@ export function SteppedBars({ title, figure, chip, text, kv, columns, min, max, 
                   <div className="size-full rounded-t-chip" style={last ? { background: "var(--chart)" } : hatch("var(--chart)")} />
                 </div>
                 {i === tooltip.at && (
-                  <p className="absolute right-0 z-10 whitespace-nowrap rounded-control border border-hairline bg-surface px-2 py-1 text-2xs text-strong shadow-[0_2px_8px_var(--hairline)]" style={{ bottom: h + 18 }}>
+                  <p className="absolute right-0 z-10 whitespace-nowrap rounded-control border border-hairline bg-surface px-2 py-1 text-2xs text-strong shadow-raised" style={{ bottom: h + 18 }}>
                     {tooltip.text[0]} <span className="mx-1 text-faint">|</span> {tooltip.text[1]}
                   </p>
                 )}

@@ -59,7 +59,7 @@ function Entity({ name, tone }: { name: string; tone: string }) {
 
 function Mono({ children, tone }: { children: React.ReactNode; tone: "red" | "green" }) {
   return (
-    <code className={`font-mono text-[11.5px] ${tone === "red" ? "text-conflict" : "text-covered"}`}>
+    <code className={`font-mono text-xs ${tone === "red" ? "text-conflict-ink" : "text-covered-ink"}`}>
       {children}
     </code>
   );
@@ -138,11 +138,11 @@ function CompareCard() {
           },
         ].map((s) => (
           <div key={s.name} className="flex-1">
-            <span className="flex items-center gap-1.5 text-[11.5px] text-body">
+            <span className="flex items-center gap-1.5 text-xs text-body">
               <span className={`size-2 rounded-full ${s.dot}`} />
               {s.name}
             </span>
-            <span className={`block text-[17px] font-semibold tracking-[-0.01em] tabular-nums ${s.tone === "red" ? "text-conflict" : "text-covered"}`}>
+            <span className={`block text-lg font-semibold tracking-[-0.01em] tabular-nums ${s.tone === "red" ? "text-conflict-ink" : "text-covered-ink"}`}>
               {s.delta}
             </span>
             <Mono tone={s.tone as "red" | "green"}>{s.sub}</Mono>
@@ -151,10 +151,10 @@ function CompareCard() {
       </div>
       <div className="mt-2 overflow-hidden rounded-lg bg-page shadow-[var(--kit-shadow-hairline)]">
         <div className="flex items-center justify-between border-b border-hairline px-2.5 py-1.5">
-          <span className="text-[11px] text-faint tabular-nums">
+          <span className="text-2xs text-faint tabular-nums">
             Trend snapshot
           </span>
-          <span className="rounded-full bg-raised px-2 py-0.5 text-[10.5px] font-medium text-body">
+          <span className="rounded-full bg-raised px-2 py-0.5 text-2xs font-medium text-body">
             Snapshot
           </span>
         </div>
@@ -199,17 +199,17 @@ function AnomalyCard() {
   return (
     <div className="min-h-[278px] rounded-xl bg-surface p-3 shadow-[var(--kit-shadow-hairline)]">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-[12px] font-medium text-strong">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-strong">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--conflict)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
           Unusual change volume
         </span>
-        <span className="rounded-full bg-raised px-2 py-0.5 text-[10.5px] font-medium text-body">
+        <span className="rounded-full bg-raised px-2 py-0.5 text-2xs font-medium text-body">
           Snapshot
         </span>
       </div>
       <div className="mt-2 overflow-hidden rounded-lg bg-page shadow-[var(--kit-shadow-hairline)]">
         <div className="flex items-center justify-between border-b border-hairline px-2.5 py-1.5">
-          <span className="text-[11px] text-faint tabular-nums">
+          <span className="text-2xs text-faint tabular-nums">
             {hoverIndex !== null
               ? metric === "spend"
                 ? formatMoney(data[hoverIndex].value)
@@ -223,7 +223,7 @@ function AnomalyCard() {
                 type="button"
                 aria-pressed={metric === item}
                 onClick={() => setMetric(item)}
-                className={`rounded-full px-2 py-0.5 text-[10.5px] font-medium transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.96] ${
+                className={`rounded-full px-2 py-0.5 text-2xs font-medium transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.96] ${
                   metric === item ? "bg-surface text-strong shadow-[var(--kit-shadow-btn)]" : "text-faint hover:text-body"
                 }`}
               >
@@ -250,11 +250,11 @@ function AnomalyCard() {
         </div>
       </div>
       <div className="mt-1.5 flex items-baseline gap-2">
-        <span className="text-[17px] font-semibold tracking-[-0.01em] text-strong tabular-nums">
+        <span className="text-lg font-semibold tracking-[-0.01em] text-strong tabular-nums">
           {moneyLabel} this week
         </span>
         <Mono tone="red">+1,834 changes</Mono>
-        <span className="text-[11px] text-faint">vs 3 weeks</span>
+        <span className="text-2xs text-faint">vs 3 weeks</span>
       </div>
     </div>
   );
@@ -263,7 +263,7 @@ function AnomalyCard() {
 /* 3 — allocation: hero number + segmented bar + legend */
 function AllocationCard() {
   const segments = [
-    { name: "ENG", label: "Engineering", pct: 72.5, amount: "31 people", cls: "bg-gap", tone: "text-gap" },
+    { name: "ENG", label: "Engineering", pct: 72.5, amount: "31 people", cls: "bg-gap", tone: "text-gap-ink" },
     { name: "LGL", label: "Legal", pct: 22.8, amount: "10 people", cls: "bg-ripple", tone: "text-body" },
     { name: "SLS", label: "Sales", pct: 4.7, amount: "2 people", cls: "bg-covered", tone: "text-faint" },
   ];
@@ -272,13 +272,13 @@ function AllocationCard() {
 
   return (
     <div className="min-h-[278px] rounded-xl bg-surface p-3 shadow-[var(--kit-shadow-hairline)]">
-      <span className="flex items-center gap-1.5 text-[12px] font-medium text-strong">
-        <span className="flex size-3.5 items-center justify-center rounded-full bg-gap text-[8px] font-bold text-page">
+      <span className="flex items-center gap-1.5 text-xs font-medium text-strong">
+        <span className="flex size-3.5 items-center justify-center rounded-full bg-gap text-[8px] font-bold text-strong">
           E
         </span>
         Who the change touches
       </span>
-      <span className="mt-1 block text-[20px] font-semibold tracking-[-0.01em] text-strong tabular-nums">
+      <span className="mt-1 block text-lg font-semibold tracking-[-0.01em] text-strong tabular-nums">
         {active.amount}
       </span>
       <div
@@ -319,7 +319,7 @@ function AllocationCard() {
             type="button"
             aria-pressed={selected === s.name}
             onClick={() => setSelected(s.name)}
-            className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] transition-[background-color,color,transform] duration-150 active:scale-[0.96] ${
+            className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-2xs transition-[background-color,color,transform] duration-150 active:scale-[0.96] ${
               selected === s.name ? "bg-raised text-strong" : "text-body hover:bg-raised hover:text-strong"
             }`}
           >
@@ -329,8 +329,8 @@ function AllocationCard() {
         ))}
       </div>
       <div className="mt-3 min-h-16 rounded-lg bg-page px-2.5 py-2 shadow-[var(--kit-shadow-hairline)]">
-        <span className={`block text-[11.5px] font-medium ${active.tone}`}>{active.label}</span>
-        <span className="mt-1 block text-[11px] leading-relaxed text-faint">
+        <span className={`block text-xs font-medium ${active.tone}`}>{active.label}</span>
+        <span className="mt-1 block text-2xs leading-relaxed text-faint">
           Share of the people reached by RFC-14. Selecting a segment changes the inspected team without moving the card.
         </span>
       </div>
@@ -388,8 +388,8 @@ export default function InsightCards() {
       {/* pager header */}
       <div className="flex items-center justify-between">
         <span className="flex items-baseline gap-1.5">
-          <span className="text-[13px] font-semibold text-strong">Insights</span>
-          <span className="text-[13px] text-faint tabular-nums">{PAGES.length}</span>
+          <span className="text-sm font-semibold text-strong">Insights</span>
+          <span className="text-sm text-faint tabular-nums">{PAGES.length}</span>
         </span>
         <span className="flex items-center gap-0.5">
           {(["M15 18l-6-6 6-6", "M9 6l6 6-6 6"] as const).map((d, i) => (
@@ -397,7 +397,7 @@ export default function InsightCards() {
               key={i}
               aria-label={i === 0 ? "Previous insight" : "Next insight"}
               onClick={() => move(i === 0 ? -1 : 1)}
-              className="flex size-6 items-center justify-center rounded-[6px] text-faint
+              className="flex size-6 items-center justify-center rounded-chip text-faint
                 transition-[background-color,color,transform] duration-100 hover:bg-raised
                 hover:text-strong active:scale-[0.96]"
             >
@@ -414,12 +414,12 @@ export default function InsightCards() {
         className="transition-[opacity,filter] duration-250"
         style={{ opacity: 1, filter: "blur(0)" }}
       >
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-body">{prose}</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-body">{prose}</p>
         <div className="mt-2">
           <Card />
         </div>
         <button
-          className="mt-2 rounded-full bg-surface px-3 py-1.5 text-left text-[12px] text-strong
+          className="mt-2 rounded-full bg-surface px-3 py-1.5 text-left text-xs text-strong
             shadow-[var(--kit-shadow-btn)] transition-colors duration-100 hover:bg-raised"
         >
           {pill}

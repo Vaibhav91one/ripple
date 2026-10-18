@@ -24,7 +24,7 @@ const ASSESS: Record<Vendor["assessmentStatus"], { label: string; tone: Tone }> 
   due: { label: "Review due", tone: "gap" },
   overdue: { label: "Overdue", tone: "conflict" },
 };
-const th = "px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-faint";
+const th = "px-2 py-1.5 text-left text-2xs font-medium uppercase tracking-wide text-faint";
 const td = "px-2 py-2 align-middle";
 
 const days = (n: number) => `${Math.max(1, Math.round(Math.abs(n) / DAY))}d`;

@@ -57,7 +57,7 @@ function Inner({ view, height = 360, selected = null, focus = null, onPick, clas
   const g: CanvasGraph = useMemo(() => toCanvas(view), [view]);
 
   // everything the draw callbacks read lives in refs, so a hover never re-renders React
-  const live = useRef({ g, hover: null as number | null, focus: null as number | null, selected: null as number | null, lit: null as Set<number> | null, pick: onPick, fitted: false });
+  const live = useRef({ g, hover: null as number | null, focus: null as number | null, selected: null as number | null, lit: null as Set<number> | null, pick: onPick, fitted: false, placed: [] as [number, number, number, number][] });
   useEffect(() => {
     live.current.g = g;
     live.current.pick = onPick;
@@ -117,18 +117,28 @@ function Inner({ view, height = 360, selected = null, focus = null, onPick, clas
             ctx.arc(n.x, n.y, r + 2.5 / k, 0, 2 * Math.PI);
             ctx.stroke();
           }
-          // labels fade in with zoom, like Obsidian; hubs, status nodes and the lit neighbourhood always show theirs
-          const always = d.degree >= 4 || d.role !== "neutral" || (s.lit?.has(n.id) ?? false) || s.selected === n.id;
-          const a = always ? 1 : Math.max(0, Math.min(1, (k - 1.1) / 0.6));
+          // Labels: the hovered/selected node and its lit neighbourhood always show theirs. Hubs and status nodes show
+          // theirs, others fade in with zoom (like Obsidian), and both are skipped when they would overlap a label
+          // already drawn this frame, so dense clusters stay readable. Nodes draw in data order; the first one starts a frame.
+          if (n.id === s.g.nodes[0]?.id) s.placed.length = 0;
+          const hot = s.hover === n.id || s.focus === n.id || s.selected === n.id;
+          const must = hot || (s.lit?.has(n.id) ?? false);
+          const hub = d.degree >= 4 || d.role !== "neutral";
+          const a = must || hub ? 1 : Math.max(0, Math.min(1, (k - 1.1) / 0.6));
           if (a > 0 && on) {
-            ctx.globalAlpha = a;
-            const hot = s.hover === n.id || s.focus === n.id || s.selected === n.id;
             ctx.font = `${hot ? 500 : 400} ${LABEL_PX / k}px ${p.font}`;
-            ctx.textAlign = "left";
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = hot ? p.strong : p.faint;
             const t = d.title.length > 32 ? `${d.title.slice(0, 31)}…` : d.title;
-            ctx.fillText(t, n.x + r + 4 / k, n.y);
+            const x = n.x + r + 4 / k, h = LABEL_PX / k, w = ctx.measureText(t).width;
+            const box: [number, number, number, number] = [x, n.y - h / 2, x + w, n.y + h / 2];
+            const hit = !must && s.placed.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
+            if (!hit) {
+              s.placed.push(box);
+              ctx.globalAlpha = a;
+              ctx.textAlign = "left";
+              ctx.textBaseline = "middle";
+              ctx.fillStyle = hot ? p.strong : p.faint;
+              ctx.fillText(t, x, n.y);
+            }
           }
           ctx.globalAlpha = 1;
         },

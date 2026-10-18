@@ -1,6 +1,6 @@
 export type Delta = { value: string; dir: "up" | "down"; tone: "good" | "bad" | "neutral"; vs?: string };
 
-const TONE = { good: "text-covered", bad: "text-conflict", neutral: "text-faint" } as const;
+const TONE = { good: "text-covered-ink", bad: "text-conflict-ink", neutral: "text-faint" } as const;
 
 /** White pill with a triangle and a value, then the grey qualifier ("vs yesterday"). A bare number never ships without one. */
 export function DeltaChip({ value, dir, tone, vs }: Delta) {

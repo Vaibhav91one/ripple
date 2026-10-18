@@ -41,7 +41,7 @@ export function MotionDemo() {
         <div className="space-y-2 rounded-lg border border-hairline bg-surface p-3">
           <p className="text-xs text-faint">GapChips · exit 200ms + layout slide</p>
           <GapChips chips={chips} renderChip={(c) => (
-            <span className="inline-flex items-center gap-1 rounded-full bg-gap-soft px-2 py-0.5 text-xs text-gap">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gap-soft px-2 py-0.5 text-xs text-gap-ink">
               {c.label}
               <button aria-label={`Remove ${c.label}`} onClick={() => setChips((cs) => cs.filter((x) => x.id !== c.id))}>×</button>
             </span>

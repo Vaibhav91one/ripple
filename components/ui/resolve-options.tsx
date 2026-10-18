@@ -30,7 +30,7 @@ export function ResolveOptions({ heading, options, value, onChange }: {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 text-xs font-medium text-strong">
                   {o.title}
-                  {o.tag && <span className="text-3xs font-medium text-ripple">{o.tag}</span>}
+                  {o.tag && <span className="text-3xs font-medium text-ripple-ink">{o.tag}</span>}
                 </span>
                 <span className="mt-0.5 block text-2xs text-faint">{o.sub}</span>
               </span>

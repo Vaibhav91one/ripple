@@ -74,7 +74,7 @@ export function GraphPage() {
 
       <section aria-label="The company graph" className="relative overflow-hidden rounded-card border border-hairline bg-page">
         {error ? (
-          <div className="p-6">{isGraphDown(error) ? <GraphDownBanner onRetry={() => void refetch()} /> : <p className="text-sm text-conflict">Could not load the graph: {error.message}</p>}</div>
+          <div className="p-6">{isGraphDown(error) ? <GraphDownBanner onRetry={() => void refetch()} /> : <p className="text-sm text-conflict-ink">Could not load the graph: {error.message}</p>}</div>
         ) : data ? (
           <RippleGraph view={data} height="max(480px, calc(100dvh - 300px))" selected={node} focus={hit?.key ?? null} onPick={(id) => void setNode(id)} label="The company graph" />
         ) : (

@@ -17,7 +17,7 @@ const STATUS: Record<Goal["status"], { label: string; tone: Tone; bar: string }>
   off_track: { label: "Off track", tone: "conflict", bar: "bg-conflict" },
 };
 const score = (r: { likelihood: number; impact: number }) => r.likelihood * r.impact;
-const th = "px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-faint";
+const th = "px-2 py-1.5 text-left text-2xs font-medium uppercase tracking-wide text-faint";
 const td = "px-2 py-2 align-middle";
 
 // Leadership workspace: an Asana Goals-style grid, cross-team blockers, the risk register and open decisions.
@@ -60,7 +60,7 @@ export function LeadershipDashboard() {
                   <span className="text-xs tabular-nums text-body">{g.progress}%</span>
                 </div>
                 {b && (
-                  <p className="text-xs text-conflict">
+                  <p className="text-xs text-conflict-ink">
                     Blocked by{" "}
                     {b.toId.startsWith("d-")
                       ? <Link href={`/changes/${b.toId}`} className="underline underline-offset-2">{target(b.toId)}</Link>

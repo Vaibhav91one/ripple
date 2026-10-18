@@ -28,13 +28,13 @@ const tone = (s: string): Tone =>
   : /open|pending|draft|review|medium|in.?progress/i.test(s) ? "gap" : "ripple";
 
 const focus = "focus-visible:outline-2 focus-visible:outline-ripple transition-colors";
-const linkCls = `text-ripple hover:underline ${focus}`;
+const linkCls = `text-ripple-ink hover:underline ${focus}`;
 
 /** Link to a neighbour's own page; labels without a page stay plain text. */
 function ItemLink({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {
   const kind = KIND_OF_LABEL.get(label.toLowerCase());
   if (!kind) return <>{children}</>;
-  return <Link href={`/items/${kind}/${encodeURIComponent(id)}`} className={`text-strong hover:text-ripple hover:underline ${focus}`}>{children}</Link>;
+  return <Link href={`/items/${kind}/${encodeURIComponent(id)}`} className={`text-strong hover:text-ripple-ink hover:underline ${focus}`}>{children}</Link>;
 }
 
 function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
@@ -74,7 +74,7 @@ export function ItemPage({ kind, id }: { kind: string; id: string }) {
   });
   if (q.error instanceof NotFoundError) return <NotFoundBlock title="Item not found">There is no {kind} with the id &ldquo;{id}&rdquo; in the graph.</NotFoundBlock>;
   if (isGraphDown(q.error)) return <div className="p-6"><GraphDownBanner onRetry={() => q.refetch()} /></div>;
-  if (q.error) return <p className="p-6 text-sm text-conflict">Could not load this item.</p>;
+  if (q.error) return <p className="p-6 text-sm text-conflict-ink">Could not load this item.</p>;
   if (!q.data) return <div className="p-6"><LoadingBlock label="Loading the item" /></div>;
   return <Item v={q.data} />;
 }
@@ -208,7 +208,7 @@ function Item({ v }: { v: ItemView }) {
                         <span className="min-w-0 truncate"><ItemLink label={n.label} id={n.id}>{titleOf(n.id, n.title)}</ItemLink></span>
                         <span className="flex shrink-0 items-center gap-2">
                           <span className="font-mono text-2xs text-faint">{n.type.toLowerCase().replaceAll("_", " ")}</span>
-                          <Link href={`/graph?node=${encodeURIComponent(n.id)}`} aria-label={`View ${n.title} in graph`} className={`text-faint hover:text-ripple ${focus}`}>
+                          <Link href={`/graph?node=${encodeURIComponent(n.id)}`} aria-label={`View ${n.title} in graph`} className={`text-faint hover:text-ripple-ink ${focus}`}>
                             <Network className="size-3.5" aria-hidden />
                           </Link>
                         </span>
@@ -226,7 +226,7 @@ function Item({ v }: { v: ItemView }) {
             <Capped rows={v.whoKnows} n={5} noun="people">
               {(w) => (
                 <li key={w.personId} className="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
-                  <Link href={`/items/person/${w.personId}`} className={`text-strong hover:text-ripple hover:underline ${focus}`}>{name(w.personId)}</Link>
+                  <Link href={`/items/person/${w.personId}`} className={`text-strong hover:text-ripple-ink hover:underline ${focus}`}>{name(w.personId)}</Link>
                   <span className="font-mono text-2xs text-faint">
                     {[w.authored && `${w.authored} authored`, w.reviewed && `${w.reviewed} reviewed`, w.handled && `${w.handled} handled`].filter(Boolean).join(" · ")}
                   </span>

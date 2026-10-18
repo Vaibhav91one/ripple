@@ -24,7 +24,7 @@ export function AckConfirm({ token, reply }: { token: string; reply?: string }) 
   const [confirmed, setConfirmed] = useState(false);
   if (confirmed)
     return (
-      <div role="status" className="flex items-center gap-3 rounded-lg border border-hairline bg-covered-soft p-4 text-covered">
+      <div role="status" className="flex items-center gap-3 rounded-lg border border-hairline bg-covered-soft p-4 text-covered-ink">
         <Check className="size-5" aria-hidden />
         <div>
           <p className="font-medium">Confirmed</p>
@@ -34,7 +34,7 @@ export function AckConfirm({ token, reply }: { token: string; reply?: string }) 
     );
   return (
     <>
-    {error && <p role="alert" className="text-sm text-conflict">Could not acknowledge: {error}</p>}
+    {error && <p role="alert" className="text-sm text-conflict-ink">Could not acknowledge: {error}</p>}
     <SlideConfirm
       width={340}
       label="Slide to acknowledge"

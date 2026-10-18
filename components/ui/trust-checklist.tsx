@@ -12,7 +12,7 @@ export function TrustChecklist({ heading, items }: TrustChecklistProps) {
       <ul className="mt-3 space-y-3">
         {items.map((it) => (
           <li key={it.title} className="flex items-start gap-2.5">
-            <CircleCheck size={15} className="mt-px shrink-0 text-covered" aria-hidden />
+            <CircleCheck size={15} className="mt-px shrink-0 text-covered-ink" aria-hidden />
             <div>
               <p className="text-xs font-medium leading-4 text-strong">{it.title}</p>
               <p className="mt-0.5 text-2xs leading-4 text-faint">{it.sub}</p>

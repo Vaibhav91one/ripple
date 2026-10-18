@@ -14,9 +14,9 @@ import { parseAsString, useQueryState } from "nuqs";
 export type TeamStatus = "conflict" | "gap" | "covered";
 
 const BADGE: Record<TeamStatus, { label: string; cls: string }> = {
-  conflict: { label: "Conflict", cls: "bg-conflict-soft text-conflict" },
-  gap: { label: "Not told", cls: "bg-gap-soft text-gap" },
-  covered: { label: "Covered", cls: "bg-covered-soft text-covered" },
+  conflict: { label: "Conflict", cls: "bg-conflict-soft text-conflict-ink" },
+  gap: { label: "Not told", cls: "bg-gap-soft text-gap-ink" },
+  covered: { label: "Covered", cls: "bg-covered-soft text-covered-ink" },
 };
 
 const KIND = { doc: "DOC", ticket: "TKT", message: "MSG", pr: "PR" } as const;
@@ -44,7 +44,7 @@ export function TeamCard({ name, status, team, cypher, restricted = [] }: { name
   const [, setConflict] = useQueryState("conflict", parseAsString);
   const badge = BADGE[status];
   return (
-    <ContextCard title={name} meta={<span className={`inline-flex h-5 items-center rounded-md px-1.5 text-[11.5px] font-medium ${badge.cls}`}>{badge.label}</span>}>
+    <ContextCard title={name} meta={<span className={`inline-flex h-5 items-center rounded-md px-1.5 text-xs font-medium ${badge.cls}`}>{badge.label}</span>}>
       <ul className="px-3 py-2.5">
         {team.why.map((w) => (
           <li key={w.ref + w.reason} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-body">
@@ -58,7 +58,7 @@ export function TeamCard({ name, status, team, cypher, restricted = [] }: { name
       </ul>
       {status === "conflict" && (
         <div className="border-t border-hairline px-3 py-2">
-          <button type="button" onClick={() => setConflict("open")} className="rounded-md bg-conflict-soft px-2.5 py-1 text-xs font-medium text-conflict hover:opacity-90 transition-opacity">
+          <button type="button" onClick={() => setConflict("open")} className="rounded-md bg-conflict-soft px-2.5 py-1 text-xs font-medium text-conflict-ink hover:opacity-90 transition-opacity">
             Resolve conflict
           </button>
         </div>
@@ -68,14 +68,14 @@ export function TeamCard({ name, status, team, cypher, restricted = [] }: { name
           <button
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            className="text-[11.5px] font-medium text-faint transition-colors hover:text-strong"
+            className="text-xs font-medium text-faint transition-colors hover:text-strong"
           >
             {open ? "Hide" : "Show"} Cypher used
           </button>
           {open && (
             <div className="mt-1.5 overflow-hidden rounded-lg bg-page">
-              <div className="primitive-card-bar border-b border-hairline font-mono text-[12px] font-medium text-strong">{cypher.name}</div>
-              <pre className="relative overflow-x-auto px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-body">{cypher.text}</pre>
+              <div className="primitive-card-bar border-b border-hairline font-mono text-xs font-medium text-strong">{cypher.name}</div>
+              <pre className="relative overflow-x-auto px-3 py-2.5 font-mono text-xs leading-[1.7] text-body">{cypher.text}</pre>
             </div>
           )}
         </div>

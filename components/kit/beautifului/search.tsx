@@ -45,7 +45,7 @@ export function SearchField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className="min-w-0 flex-1 bg-transparent text-[13px] text-strong outline-none placeholder:text-faint"
+        className="min-w-0 flex-1 bg-transparent text-sm text-strong outline-none placeholder:text-faint"
       />
       {value && (
         <button
@@ -86,8 +86,8 @@ export default function SearchList({ items = ITEMS }: { items?: string[] } = {})
                 <path d="M21 21l-4.3-4.3" />
               </svg>
             </span>
-            <span className="text-[13px] font-medium text-strong">No results found</span>
-            <span className="text-[12px] text-faint">Adjust your search to try again</span>
+            <span className="text-sm font-medium text-strong">No results found</span>
+            <span className="text-xs text-faint">Adjust your search to try again</span>
           </div>
         ) : (
           <div className="p-1">
@@ -96,7 +96,7 @@ export default function SearchList({ items = ITEMS }: { items?: string[] } = {})
                 key={item}
                 type="button"
                 onClick={() => setQuery(item)}
-                className="flex h-8 w-full items-center rounded-[6px] px-2 text-left text-[13px]
+                className="flex h-8 w-full items-center rounded-chip px-2 text-left text-sm
                   text-strong transition-colors duration-100 hover:bg-raised"
                 style={{ animation: "fade-in 200ms ease-out both" }}
               >

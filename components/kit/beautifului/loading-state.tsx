@@ -74,7 +74,7 @@ export default function LoadingState({
         ))}
       </span>
       <span
-        className="bg-clip-text text-[13px] font-medium text-transparent"
+        className="bg-clip-text text-sm font-medium text-transparent"
         style={{
           backgroundImage:
             "linear-gradient(90deg, var(--faint) 35%, var(--strong) 50%, var(--faint) 65%)",
@@ -84,7 +84,7 @@ export default function LoadingState({
       >
         {label}
       </span>
-      <span className="font-mono text-[12px] text-faint tabular-nums">
+      <span className="font-mono text-xs text-faint tabular-nums">
         {elapsed}
       </span>
     </div>

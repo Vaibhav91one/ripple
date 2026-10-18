@@ -9,7 +9,7 @@ import { teamName } from "@/lib/permissions/classify";
 import { duration, ease, sec } from "@/lib/motion";
 import { STATUS_LABEL, type Inspected } from "./model";
 
-const BADGE = { conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft text-gap", covered: "bg-covered-soft text-covered", neutral: "bg-raised text-faint" } as const;
+const BADGE = { conflict: "bg-conflict-soft text-conflict-ink", gap: "bg-gap-soft text-gap-ink", covered: "bg-covered-soft text-covered-ink", neutral: "bg-raised text-faint" } as const;
 
 /** Side panel for the selected node: properties, neighbours and the sourced edges (chips open SourcePanel). */
 export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { info: Inspected | null; onSelect: (id: string) => void; onClose: () => void; top?: string }) {
@@ -53,7 +53,7 @@ export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { inf
 
           <div className="flex-1 space-y-5 overflow-y-auto p-4">
             {info.href && (
-              <Link href={info.href} className="inline-flex items-center gap-1.5 text-sm text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
+              <Link href={info.href} className="inline-flex items-center gap-1.5 text-sm text-ripple-ink hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
                 Open full page <ExternalLink className="size-3.5" aria-hidden />
               </Link>
             )}
@@ -98,7 +98,7 @@ export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { inf
                         onClick={() => source.open(src.artifactId, src.quote)}
                         className="block w-full rounded-md border border-hairline bg-page p-2 text-left hover:border-ripple focus-visible:outline-2 focus-visible:outline-ripple transition-colors"
                       >
-                        <span className="font-mono text-xs text-ripple">{src.artifactId}</span>
+                        <span className="font-mono text-xs text-ripple-ink">{src.artifactId}</span>
                         <span className="mt-0.5 line-clamp-2 block text-xs text-body">{src.restricted ? `Restricted to ${teamName(src.restricted)}` : `“${src.quote}”`}</span>
                       </button>
                     ))}

@@ -6,7 +6,7 @@ export type SupplierRow = { label: string; value: string; pill?: Tone };
 
 function SignalBars() {
   return (
-    <svg aria-hidden viewBox="0 0 14 12" className="size-3.5 text-conflict">
+    <svg aria-hidden viewBox="0 0 14 12" className="size-3.5 text-conflict-ink">
       {[0, 1, 2, 3].map((i) => (
         <rect key={i} x={i * 3.6} y={9 - i * 3} width="2.4" height={3 + i * 3} rx="0.6" fill="currentColor" opacity={i < 3 ? 1 : 0.35} />
       ))}
@@ -25,7 +25,7 @@ export function SeverityPanel({ heading, level, rows, supplier, note }: {
       <section className="rounded-[var(--ref-radius)] border border-hairline bg-surface p-4">
         <header className="flex items-center justify-between">
           <h3 className="text-sm font-medium text-strong">{heading}</h3>
-          <span className="flex items-center gap-1.5 text-2xs font-medium text-conflict"><SignalBars />{level}</span>
+          <span className="flex items-center gap-1.5 text-2xs font-medium text-conflict-ink"><SignalBars />{level}</span>
         </header>
         <ul className="mt-4 space-y-3.5">
           {rows.map((r) => (
@@ -58,9 +58,9 @@ export function SeverityPanel({ heading, level, rows, supplier, note }: {
         </button>
       </section>
       <aside className="flex gap-2 rounded-control border border-ripple/20 bg-ripple-soft px-3 py-2.5">
-        <Mail aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ripple" />
+        <Mail aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ripple-ink" />
         <div className="space-y-1">
-          <h3 className="text-2xs font-medium text-ripple">{note.title}</h3>
+          <h3 className="text-2xs font-medium text-ripple-ink">{note.title}</h3>
           <p className="text-2xs leading-4 text-strong">{note.body}</p>
         </div>
       </aside>

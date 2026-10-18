@@ -16,7 +16,7 @@ const swatch: Record<string, string> = {
   conflict: "bg-conflict", gap: "bg-gap", covered: "bg-covered", ripple: "bg-ripple",
 };
 const soft: Record<string, string> = {
-  conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft text-gap", covered: "bg-covered-soft text-covered", ripple: "bg-ripple-soft text-ripple",
+  conflict: "bg-conflict-soft text-conflict-ink", gap: "bg-gap-soft text-gap-ink", covered: "bg-covered-soft text-covered-ink", ripple: "bg-ripple-soft text-ripple-ink",
 };
 const size: Record<string, string> = { xs: "text-xs", sm: "text-sm", md: "text-md", lg: "text-lg", xl: "text-xl", "2xl": "text-2xl" };
 
@@ -27,8 +27,8 @@ export default function Styleguide() {
         <h1 className="text-xl">Ripple styleguide</h1>
         <p className="text-faint">Dark first · Geist · 13px base · 8px grid · 6px radius · hairline borders</p>
         <p className="text-faint">
-          More: <a href="/styleguide/kit" className="text-ripple hover:underline transition-colors">kit components</a> ·{" "}
-          <a href="/styleguide/refs" className="text-ripple hover:underline transition-colors">reference components</a>
+          More: <a href="/styleguide/kit" className="text-ripple-ink hover:underline transition-colors">kit components</a> ·{" "}
+          <a href="/styleguide/refs" className="text-ripple-ink hover:underline transition-colors">reference components</a>
         </p>
       </header>
 
@@ -75,11 +75,11 @@ export default function Styleguide() {
         <h2 className="text-md">Signature pieces</h2>
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1 rounded-full border border-hairline bg-raised px-2 py-0.5 font-mono text-xs text-body">RFC-14 §2</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-gap-soft px-2 py-0.5 text-xs text-gap">Legal · not told</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-conflict-soft px-2 py-0.5 text-xs text-conflict">1 conflict</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-covered-soft px-2 py-0.5 text-xs text-covered">Support · told</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-gap-soft px-2 py-0.5 text-xs text-gap-ink">Legal · not told</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-conflict-soft px-2 py-0.5 text-xs text-conflict-ink">1 conflict</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-covered-soft px-2 py-0.5 text-xs text-covered-ink">Support · told</span>
         </div>
-        <p className="text-lg text-strong">5 affected · <span className="text-gap">3 not told</span> · <span className="text-conflict">1 conflict</span></p>
+        <p className="text-lg text-strong">5 affected · <span className="text-gap-ink">3 not told</span> · <span className="text-conflict-ink">1 conflict</span></p>
       </section>
 
       <MotionDemo />

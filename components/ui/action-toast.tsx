@@ -11,11 +11,12 @@ export function ActionToast({ title, body, time, action, dismiss, onAction, onDi
       role="status"
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8, transition: { duration: sec(duration.exit), ease: ease.exit } }}
       transition={{ duration: sec(duration.enter), ease: ease.enter }}
-      className="w-[295px] rounded-card border border-hairline bg-surface p-4 shadow-lg"
+      className="w-[295px] rounded-card border border-hairline bg-surface p-4 shadow-raised"
     >
       <div className="flex gap-3">
-        <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-covered-soft text-covered"><Check aria-hidden className="size-3.5" /></span>
+        <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-covered-soft text-covered-ink"><Check aria-hidden className="size-3.5" /></span>
         <div className="min-w-0 space-y-0.5">
           <p className="text-xs font-medium text-strong">{title}</p>
           <p className="text-2xs leading-[17px] text-body">{body}</p>

@@ -37,12 +37,12 @@ function Section({
         animation: "fade-up 400ms cubic-bezier(0.23,1,0.32,1) both",
       }}
     >
-      <div className="flex items-center gap-1 text-[12px] leading-[1.3]">
+      <div className="flex items-center gap-1 text-xs leading-[1.3]">
         <span className="font-medium text-strong">{label}</span>
         <span className="text-body">{sub}</span>
         <span className="text-strong">for {time}</span>
       </div>
-      <p className="text-[13px] leading-normal text-strong">{body}</p>
+      <p className="text-sm leading-normal text-strong">{body}</p>
     </div>
   );
 }
@@ -74,7 +74,7 @@ export default function ChatComposer() {
   };
 
   return (
-    <div className="flex h-[288px] w-full max-w-95 flex-col self-start overflow-hidden rounded-[14px] bg-surface shadow-[var(--kit-shadow-card)]">
+    <div className="flex h-[288px] w-full max-w-95 flex-col self-start overflow-hidden rounded-inset bg-surface shadow-[var(--kit-shadow-card)]">
       {/* header — tabs + actions */}
       <div className="flex shrink-0 items-center justify-between border-b border-hairline p-1.5">
         <div className="flex items-center">
@@ -84,7 +84,7 @@ export default function ChatComposer() {
               type="button"
               aria-pressed={tab === item}
               onClick={() => setTab(item)}
-              className={`rounded-[6px] px-2 py-[3px] text-[13px] text-strong transition-[background-color,opacity] duration-100 ${tab === item ? "bg-raised" : "opacity-50 hover:opacity-75"}`}
+              className={`rounded-chip px-2 py-[3px] text-sm text-strong transition-[background-color,opacity] duration-100 ${tab === item ? "bg-raised" : "opacity-50 hover:opacity-75"}`}
             >
               {item}
             </button>
@@ -100,7 +100,7 @@ export default function ChatComposer() {
               key={i}
               type="button"
               aria-label="Action"
-              className="flex size-6 items-center justify-center rounded-[6px] text-faint
+              className="flex size-6 items-center justify-center rounded-chip text-faint
                 transition-colors duration-100 hover:bg-raised hover:text-body"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -116,7 +116,7 @@ export default function ChatComposer() {
         {/* user bubble — right aligned, soft block */}
         <div className="flex justify-end pl-14">
           <div
-            className="rounded-xl bg-raised px-3 py-1.5 text-[13px] leading-[1.4] text-strong
+            className="rounded-xl bg-raised px-3 py-1.5 text-sm leading-[1.4] text-strong
               transition-[opacity,transform] duration-300"
             style={{
               opacity: sent ? 1 : 0,
@@ -152,7 +152,7 @@ export default function ChatComposer() {
         <div
           role="presentation"
           onClick={() => inputRef.current?.focus()}
-          className="flex cursor-text flex-col gap-2 rounded-lg border border-hairline bg-raised p-2.5 shadow-[var(--kit-shadow-hairline)] transition-[border-color,box-shadow] duration-150 focus-within:border-hairline focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.025)]"
+          className="flex cursor-text flex-col gap-2 rounded-lg border border-hairline bg-raised p-2.5 shadow-[var(--kit-shadow-hairline)] transition-[border-color,box-shadow] duration-150 focus-within:border-hairline focus-within:shadow-card"
         >
           <input
             ref={inputRef}
@@ -163,7 +163,7 @@ export default function ChatComposer() {
             }}
             placeholder="Ask about a change, or tag a decision with @"
             aria-label="Chat prompt"
-            className="min-h-4.5 bg-transparent text-[13px] leading-[1.4] text-strong outline-none placeholder:text-faint"
+            className="min-h-4.5 bg-transparent text-sm leading-[1.4] text-strong outline-none placeholder:text-faint"
           />
           <div className="flex items-center justify-end">
             <button
@@ -171,7 +171,7 @@ export default function ChatComposer() {
               aria-label="Send"
               disabled={!canSend}
               onClick={send}
-              className="flex size-7 items-center justify-center rounded-[8px]
+              className="flex size-7 items-center justify-center rounded-xl
                 transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
               style={{
                 background: canSend ? "var(--strong)" : "var(--hairline)",

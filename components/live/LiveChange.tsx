@@ -87,7 +87,7 @@ export function LiveChange({
           type="button"
           onClick={simulate}
           disabled={running}
-          className="h-9 rounded-full bg-ripple px-4 text-sm font-medium text-page transition-opacity disabled:opacity-50"
+          className="h-9 rounded-full bg-ripple-ink px-4 text-sm font-medium text-ink-on-strong transition-opacity disabled:opacity-50"
         >
           Simulate change
         </button>
@@ -121,11 +121,11 @@ function Stat({ label, before, after }: { label: string; before: string | number
     <div className="rounded-xl bg-surface p-4 shadow-[var(--kit-shadow-card)]">
       <dt className="text-xs text-faint">{label}</dt>
       <dd className="mt-1 flex items-baseline gap-2 text-2xl font-semibold tabular-nums">
-        <span className={done ? "text-faint line-through" : "text-conflict"}>{before}</span>
+        <span className={done ? "text-faint line-through" : "text-conflict-ink"}>{before}</span>
         {done && (
           <>
             <span className="text-faint" aria-hidden>→</span>
-            <span className="text-covered">{after}</span>
+            <span className="text-covered-ink">{after}</span>
           </>
         )}
       </dd>

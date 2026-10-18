@@ -63,13 +63,13 @@ export function ReviewTable({ d }: D) {
               <tr key={p.id} className="border-b border-hairline last:border-0">
                 <td className="max-w-[320px] py-2.5 pr-3">
                   <div className="flex items-center gap-2">
-                    <GitPullRequest className={`size-4 shrink-0 ${p.state === "merged" ? "text-gap" : "text-covered"}`} aria-hidden />
+                    <GitPullRequest className={`size-4 shrink-0 ${p.state === "merged" ? "text-gap-ink" : "text-covered-ink"}`} aria-hidden />
                     <span className="truncate text-strong" title={p.title}>{p.title}</span>
                     {p.v1Related && <StatusPill tone="ripple" label="v1" />}
                   </div>
                   <div className="mt-0.5 pl-6 font-mono text-xs text-faint">
                     {name(p.repo)}
-                    {mergedUnreviewed(p) && <span className="ml-2 text-conflict">merged without review</span>}
+                    {mergedUnreviewed(p) && <span className="ml-2 text-conflict-ink">merged without review</span>}
                   </div>
                 </td>
                 <td className="px-3 py-2.5">
@@ -88,7 +88,7 @@ export function ReviewTable({ d }: D) {
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono text-xs">
-                  <span className="text-covered">+{num(p.additions)}</span> <span className="text-conflict">-{num(p.deletions)}</span>
+                  <span className="text-covered-ink">+{num(p.additions)}</span> <span className="text-conflict-ink">-{num(p.deletions)}</span>
                 </td>
                 <td className="whitespace-nowrap py-2.5 pl-3 text-right text-xs text-faint">{dur(d.now - p.createdAt)}</td>
               </tr>

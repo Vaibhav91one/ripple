@@ -38,10 +38,10 @@ export default function SakaniSection() {
           ]}
           groupTitle="Pipelines"
           group={[
-            { id: "ent", label: "Enterprise", icon: Building2, color: "text-ripple" },
+            { id: "ent", label: "Enterprise", icon: Building2, color: "text-ripple-ink" },
             { id: "mid", label: "Mid-market", icon: Briefcase, color: "text-[var(--chart-2)]" },
-            { id: "par", label: "Partnerships", icon: HeartHandshake, color: "text-covered" },
-            { id: "ren", label: "Renewals", icon: RefreshCw, color: "text-gap" },
+            { id: "par", label: "Partnerships", icon: HeartHandshake, color: "text-covered-ink" },
+            { id: "ren", label: "Renewals", icon: RefreshCw, color: "text-gap-ink" },
           ]}
           recentsTitle="Recents" recents={["Acme renewal — call notes", "Q3 forecast review"]} />}
         ripple={<SideNav brand="Ripple" active="overview"
@@ -52,12 +52,12 @@ export default function SakaniSection() {
           ]}
           groupTitle="Teams"
           group={[
-            { id: "eng", label: "Eng/Platform", icon: Code2, color: "text-ripple" },
-            { id: "support", label: "Support", icon: LifeBuoy, color: "text-covered" },
+            { id: "eng", label: "Eng/Platform", icon: Code2, color: "text-ripple-ink" },
+            { id: "support", label: "Support", icon: LifeBuoy, color: "text-covered-ink" },
             { id: "sales", label: "Sales", icon: Briefcase, color: "text-[var(--chart-2)]" },
-            { id: "legal", label: "Legal", icon: Scale, color: "text-conflict" },
-            { id: "security", label: "Security", icon: ShieldCheck, color: "text-conflict" },
-            { id: "devrel", label: "DevRel", icon: HeartHandshake, color: "text-gap" },
+            { id: "legal", label: "Legal", icon: Scale, color: "text-conflict-ink" },
+            { id: "security", label: "Security", icon: ShieldCheck, color: "text-conflict-ink" },
+            { id: "devrel", label: "DevRel", icon: HeartHandshake, color: "text-gap-ink" },
             { id: "data", label: "Data", icon: Database, color: "text-faint" },
           ]}
           recentsTitle="Recents" recents={["d-1 Sunset API v1 on Jan 31", "Brief: Legal on the v1 sunset"]} />} />

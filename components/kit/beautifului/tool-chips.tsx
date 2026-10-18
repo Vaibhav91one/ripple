@@ -117,7 +117,7 @@ export default function ToolChips({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="-mx-1.5 flex w-fit items-center gap-1.5 rounded-lg px-1.5 py-1 text-[12.5px] text-body transition-colors duration-100 hover:bg-overlay"
+        className="-mx-1.5 flex w-fit items-center gap-1.5 rounded-lg px-1.5 py-1 text-sm text-body transition-colors duration-100 hover:bg-overlay"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-200" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}>
           <path d="M6 9l6 6 6-6" />
@@ -156,16 +156,16 @@ export default function ToolChips({
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </span>
-                <span className="shrink-0 text-[12.5px] font-medium text-strong">{row.label}</span>
+                <span className="shrink-0 text-sm font-medium text-strong">{row.label}</span>
                 <span
                   className={`inline-flex h-5.5 min-w-0 flex-1 cursor-pointer items-center truncate rounded-md bg-overlay px-1.5
-                    text-[11.5px] text-body shadow-[var(--kit-shadow-hairline)] transition-colors duration-100 hover:bg-overlay
-                    dark:bg-raised dark:text-body dark:hover:bg-raised
+                    text-xs text-body shadow-[var(--kit-shadow-hairline)] transition-colors duration-100 hover:bg-overlay
+
                     ${row.mono ? "font-mono" : ""}`}
                 >
                   {row.chip}
                 </span>
-                {row.meta && <span className="ml-auto shrink-0 text-[11.5px] tabular-nums text-faint">{row.meta}</span>}
+                {row.meta && <span className="ml-auto shrink-0 text-xs tabular-nums text-faint">{row.meta}</span>}
               </button>
 
               {/* expanded detail */}
@@ -178,7 +178,7 @@ export default function ToolChips({
                     {row.body ?? row.detail.map((line) => (
                       <span
                         key={line.text}
-                        className={`truncate text-[11.5px] leading-[1.6] ${row.detailMono ? "font-mono" : ""} ${line.tone === "add" ? "text-covered" : "text-body"}`}
+                        className={`truncate text-xs leading-[1.6] ${row.detailMono ? "font-mono" : ""} ${line.tone === "add" ? "text-covered-ink" : "text-body"}`}
                       >
                         {line.text}
                       </span>
@@ -198,18 +198,18 @@ export default function ToolChips({
             <span
               key={d.file}
               className="inline-flex h-7 max-w-full cursor-pointer items-center gap-1.5 rounded-md
-                bg-surface px-2 font-mono text-[11.5px] text-strong shadow-[var(--kit-shadow-btn)]
+                bg-surface px-2 font-mono text-xs text-strong shadow-[var(--kit-shadow-btn)]
                 transition-colors duration-100 hover:bg-raised"
               style={{ animation: `pop-in 250ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both` }}
             >
               <span className="min-w-0 truncate">{d.file}</span>
-              <span className="shrink-0 text-covered tabular-nums">+{d.add}</span>
-              {d.del > 0 && <span className="shrink-0 text-conflict tabular-nums">−{d.del}</span>}
+              <span className="shrink-0 text-covered-ink tabular-nums">+{d.add}</span>
+              {d.del > 0 && <span className="shrink-0 text-conflict-ink tabular-nums">−{d.del}</span>}
             </span>
           ))}
           {!live && <button
             type="button"
-            className="inline-flex h-7 items-center rounded-md px-1.5 font-mono text-[11.5px] text-faint
+            className="inline-flex h-7 items-center rounded-md px-1.5 font-mono text-xs text-faint
               underline decoration-transparent underline-offset-2 transition-colors duration-100
               hover:text-body hover:decoration-current"
             style={{ animation: `fade-in 300ms ease-out ${diffs.length * 80}ms both` }}

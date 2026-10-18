@@ -1,13 +1,12 @@
 "use client";
 
 import { Check, RotateCcw, X } from "lucide-react";
-import { m } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { Drawer, DrawerClose } from "@/components/ui/drawer";
 import { EvidenceDiff } from "@/components/ui/evidence-diff";
 import { ExplainBox } from "@/components/ui/explain-box";
 import { ResolveOptions } from "@/components/ui/resolve-options";
 import { Pill } from "@/components/ui/tone";
-import { duration, ease, sec } from "@/lib/motion";
 import type { ApprovalRow } from "@/lib/schemas";
 import { ago, btn, btnPrimary, kindLabel, STATUS_TONE, useNames } from "./shared";
 
@@ -26,7 +25,9 @@ function why(r: ApprovalRow, name: (id: string) => string): { title: string; bod
   };
 }
 
-export function ApprovalDrawer({ row, now, siblings, busy, error, readOnly, onDecide, onClose }: {
+export function ApprovalDrawer({ open, row, now, siblings, busy, error, readOnly, onDecide, onClose }: {
+  /** False while the drawer animates out (the parent keeps passing the last row). */
+  open: boolean;
   row: ApprovalRow; now: number;
   /** Other pending actions of the same kind and change that "approve all" would also decide. */
   siblings: number;
@@ -37,13 +38,6 @@ export function ApprovalDrawer({ row, now, siblings, busy, error, readOnly, onDe
 }) {
   const [note, setNote] = useState("");
   const [same, setSame] = useState("same");
-  const closeRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    closeRef.current?.focus();
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [onClose]);
 
   const failed = row.status === "failed";
   const q = row.question;
@@ -54,14 +48,7 @@ export function ApprovalDrawer({ row, now, siblings, busy, error, readOnly, onDe
   const heading = title(row);
 
   return (
-    <>
-      <m.div aria-hidden onClick={onClose} className="fixed inset-0 z-30 bg-page/60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: sec(duration.fast) }} />
-      <m.aside
-        role="dialog" aria-label={heading}
-        initial={{ x: 32, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 32, opacity: 0 }}
-        transition={{ duration: sec(duration.drawer), ease: ease.enter }}
-        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[600px] flex-col border-l border-hairline bg-raised shadow-lg"
-      >
+    <Drawer open={open} onOpenChange={(o) => !o && onClose()} title={heading} className="max-w-[600px] bg-raised">
         <header className="flex items-start gap-3 border-b border-hairline px-5 py-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-xs text-faint">
@@ -71,15 +58,15 @@ export function ApprovalDrawer({ row, now, siblings, busy, error, readOnly, onDe
             </div>
             <h2 className="mt-1.5 text-md font-medium leading-6 text-strong [overflow-wrap:anywhere]">{heading}</h2>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close" className="grid size-8 shrink-0 place-items-center rounded-full border border-hairline bg-surface text-strong outline-none focus-visible:outline-2 focus-visible:outline-ripple">
+          <DrawerClose aria-label="Close" className="grid size-8 shrink-0 place-items-center rounded-full border border-hairline bg-surface text-strong outline-none focus-visible:outline-2 focus-visible:outline-ripple">
             <X size={14} aria-hidden />
-          </button>
+          </DrawerClose>
         </header>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
           {failed && row.error && (
             <div role="alert" className="rounded-control border border-conflict/30 bg-conflict-soft px-3 py-2.5">
-              <p className="text-xs font-medium text-conflict">It failed when it ran</p>
+              <p className="text-xs font-medium text-conflict-ink">It failed when it ran</p>
               <p className="mt-0.5 text-xs text-strong [overflow-wrap:anywhere]">{row.error}</p>
               <p className="mt-1 text-2xs text-faint">Approving again retries it.</p>
             </div>
@@ -148,7 +135,7 @@ export function ApprovalDrawer({ row, now, siblings, busy, error, readOnly, onDe
         </div>
 
         <footer className="space-y-2 border-t border-hairline px-5 py-4">
-          {error && <p role="alert" className="text-xs text-conflict">{error}</p>}
+          {error && <p role="alert" className="text-xs text-conflict-ink">{error}</p>}
           {readOnly ? (
             <p className="text-xs text-faint">{readOnly}</p>
           ) : (
@@ -166,7 +153,6 @@ export function ApprovalDrawer({ row, now, siblings, busy, error, readOnly, onDe
             </div>
           )}
         </footer>
-      </m.aside>
-    </>
+    </Drawer>
   );
 }

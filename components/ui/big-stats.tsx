@@ -23,7 +23,7 @@ export function BigStats({ groups }: { groups: StatGroup[] }) {
           <dl className={`mt-2 flex ${g.spread ? "" : "gap-x-10"}`}>
             {g.stats.map((s) => (
               <div key={s.label} className={g.spread ? "w-[135px]" : ""}>
-                <dd className={`text-4xl ${g.mono ? "font-mono font-normal" : "font-light"} leading-[1.05] tracking-[-0.04em] ${g.accent ? "text-ripple" : "text-strong"}`}>{s.value}</dd>
+                <dd className={`text-4xl ${g.mono ? "font-mono font-normal" : "font-light"} leading-[1.05] tracking-[-0.04em] ${g.accent ? "text-ripple-ink" : "text-strong"}`}>{s.value}</dd>
                 <dt className="text-lg leading-6 text-faint">{s.label}</dt>
               </div>
             ))}

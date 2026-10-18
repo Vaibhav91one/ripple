@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Dialog } from "radix-ui";
+import { Drawer, DrawerClose, DrawerTitle } from "@/components/ui/drawer";
 import { parseAsString, useQueryStates } from "nuqs";
 import Link from "next/link";
 import { ExternalLink, Maximize2, X } from "lucide-react";
@@ -43,17 +43,11 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
   );
 
   return (
-    <Dialog.Root open={!!src} onOpenChange={(o) => !o && close()}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-page/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 motion-reduce:animate-none" />
-        <Dialog.Content
-          aria-describedby={undefined}
-          className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col border-l border-hairline bg-surface text-body outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right motion-reduce:animate-none"
-        >
+    <Drawer open={!!src} onOpenChange={(o) => !o && close()} className="max-w-[520px] bg-surface">
           <header className="flex items-start justify-between gap-4 border-b border-hairline p-5">
             <div className="min-w-0 space-y-2">
               {a && <span className="inline-block rounded-sm bg-raised px-2 py-0.5 font-mono text-xs uppercase text-faint">{a.docKind ?? a.kind}</span>}
-              <Dialog.Title className="text-lg text-strong">{a?.title ?? "Loading source…"}</Dialog.Title>
+              <DrawerTitle className="text-lg text-strong">{a?.title ?? "Loading source…"}</DrawerTitle>
               {a && (
                 <p className="text-sm text-faint">
                   {people.data?.find((p) => p.id === a.authorId)?.name ?? a.authorId} · {fmtDate(a.ts)}
@@ -62,9 +56,9 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
             </div>
             <div className="flex shrink-0 items-center gap-1">
             {a && <Link href={`/items/${a.kind}/${encodeURIComponent(a.id)}`} onClick={close} aria-label="Open full page" title="Open full page" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors"><Maximize2 className="size-4" /></Link>}
-            <Dialog.Close aria-label="Close" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
+            <DrawerClose aria-label="Close" className="rounded-sm p-1 text-faint hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
               <X className="size-4" />
-            </Dialog.Close>
+            </DrawerClose>
             </div>
           </header>
 
@@ -77,7 +71,7 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
                     s.hit ? <mark key={i} className="rounded-sm bg-ripple-soft px-0.5 text-strong">{s.text}</mark> : <span key={i}>{s.text}</span>,
                   )}
                 </p>
-                <a href={a.uri} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-ripple hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
+                <a href={a.uri} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-ripple-ink hover:underline focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
                   Open in source <ExternalLink className="size-3.5" />
                 </a>
               </>
@@ -92,8 +86,6 @@ export function SourcePanel({ decisionId = "d-1" }: { decisionId?: string }) {
               )}
             </section>
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    </Drawer>
   );
 }

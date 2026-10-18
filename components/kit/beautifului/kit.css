@@ -2,11 +2,11 @@
 :root {
   --kit-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --kit-ease-link: cubic-bezier(0.16, 1, 0.3, 1);
-  --kit-shadow-hairline: 0 0 0 1px var(--hairline);
-  --kit-shadow-btn: 0 0 0 1px var(--hairline), 0 1px 2px color-mix(in oklab, var(--page) 30%, transparent);
-  --kit-shadow-card: 0 0 0 1px var(--hairline), 0 1px 2px color-mix(in oklab, var(--page) 20%, transparent), 0 2px 6px color-mix(in oklab, var(--page) 20%, transparent);
-  --kit-shadow-raised: 0 0 0 1px var(--hairline), 0 2px 10px color-mix(in oklab, var(--page) 22%, transparent);
-  --kit-shadow-overlay: 0 0 0 1px var(--hairline), 0 8px 28px color-mix(in oklab, var(--page) 34%, transparent);
+  --kit-shadow-hairline: var(--shadow-hairline);
+  --kit-shadow-btn: var(--shadow-card);
+  --kit-shadow-card: var(--shadow-card);
+  --kit-shadow-raised: var(--shadow-raised);
+  --kit-shadow-overlay: var(--shadow-overlay);
   --kit-shadow-inset-field: inset 0 1px 2px color-mix(in oklab, var(--page) 40%, transparent);
 }
 
@@ -15,7 +15,7 @@
 @keyframes fade-up{0%{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fade-in{0%{opacity:0}to{opacity:1}}
 @keyframes eq-bounce{0%,to{transform:scaleY(.35)}50%{transform:scaleY(1)}}
-@keyframes stream-in{0%{opacity:0;filter:blur(4px)}to{opacity:1;filter:blur()}}
+@keyframes stream-in{0%{opacity:0;filter:blur(2px)}to{opacity:1;filter:blur()}}
 @keyframes caret-blink{0%,to{opacity:1}50%{opacity:0}}
 @keyframes pop-in{0%{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{to{transform:rotate(1turn)}}
@@ -40,7 +40,7 @@ a:focus-visible .animated-underline:after,a:hover .animated-underline:after{tran
 .records-select-button{color:var(--strong);border:1px solid var(--hairline);background:var(--surface);gap:8px}
 .records-quiet-button:hover,.records-secondary-button:hover,.records-select-button:hover{background:var(--raised);color:var(--strong)}
 .records-quiet-button{color:var(--body)}
-.records-quiet-button.is-active{background:var(--ripple-soft);color:var(--ripple)}
+.records-quiet-button.is-active{background:var(--ripple-soft);color:var(--ripple-ink)}
 .records-secondary-button{border:1px solid var(--hairline);color:var(--body);box-shadow:none}
 .records-primary-button{background:var(--ripple);color:var(--page);box-shadow:none;margin-left:3px}
 .records-primary-button:hover{filter:saturate(.9)brightness(1.04)}
@@ -97,7 +97,7 @@ a:focus-visible .animated-underline:after,a:hover .animated-underline:after{tran
 .records-row.is-selected>.records-cell{background:var(--ripple)}
 .records-company-mark{width:20px;height:20px;color:var(--body);background:var(--raised);border:0;border-radius:6px;flex:0 0 20px;justify-content:center;align-items:center;font-size:10px;font-weight:650;display:inline-flex}
 .records-company-name{min-width:0;color:var(--strong);text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:500;overflow:hidden}
-.records-company-name.has-link:focus-visible,.records-company-name.has-link:hover{color:var(--ripple);text-underline-offset:3px;text-decoration:underline}
+.records-company-name.has-link:focus-visible,.records-company-name.has-link:hover{color:var(--ripple-ink);text-underline-offset:3px;text-decoration:underline}
 .records-tags{gap:4px;min-width:0;display:flex}
 .records-tag,.records-tags{align-items:center;overflow:hidden}
 .records-tag{cursor:pointer;border:1px solid var(--tag-color);flex-shrink:0;max-width:115px;height:23px;display:inline-flex}
@@ -110,7 +110,7 @@ a:focus-visible .animated-underline:after,a:hover .animated-underline:after{tran
 .records-more-tag,.records-muted{color:var(--faint)}
 .records-strength{color:var(--body);gap:8px}
 .records-strength-dot{border-radius:50%;flex:0 0 8px;width:8px;height:8px;display:inline-block}
-.records-link{max-width:100%;color:var(--ripple);text-overflow:ellipsis;gap:5px;text-decoration:underline;overflow:hidden}
+.records-link{max-width:100%;color:var(--ripple-ink);text-overflow:ellipsis;gap:5px;text-decoration:underline;overflow:hidden}
 .records-link{text-underline-offset:3px;transition:color .12s ease-out,text-decoration-color .12s ease-out}
 .records-link:focus-visible,.records-link:hover{color:var(--strong);text-decoration-color:currentColor}
 .records-table tfoot td{z-index:4;background:var(--page);height:38px;color:var(--body);font-size:11.5px;position:sticky;bottom:0}

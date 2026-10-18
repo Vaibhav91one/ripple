@@ -187,7 +187,7 @@ export function Timeline(p: TimelineProps) {
                 {dayCells.map((d) => {
                   const show = p.zoom === "weeks" || d.i % 7 === 0;
                   return (
-                    <span key={d.i} className={`absolute top-0 flex h-full items-center justify-center text-2xs ${d.i === todayIdx ? "font-semibold text-ripple" : "text-faint"}`}
+                    <span key={d.i} className={`absolute top-0 flex h-full items-center justify-center text-2xs ${d.i === todayIdx ? "font-semibold text-ripple-ink" : "text-faint"}`}
                       style={{ left: d.i * dw, width: p.zoom === "weeks" ? dw : 7 * dw, justifyContent: p.zoom === "weeks" ? "center" : "flex-start" }}>
                       {show && d.num}
                     </span>
