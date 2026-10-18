@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import Link from "next/link";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { buildManifest } from "@/lib/connectors/github/manifest";
@@ -34,7 +35,7 @@ async function Setup({ searchParams }: { searchParams: Promise<{ error?: string 
       <h1 className="text-xl font-semibold text-strong">Set up the GitHub App</h1>
       {error && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body">{ERRORS[error] ?? "Setup failed."}</p>}
       {status !== "open" ? (
-        <p className="text-sm text-body">A GitHub App is already configured on this server{status === "env" ? " through environment variables" : ""}. Use <a className="underline" href="/connectors/github">Connect GitHub</a> to install it on an org.</p>
+        <p className="text-sm text-body">A GitHub App is already configured on this server{status === "env" ? " through environment variables" : ""}. Use <Link className="underline" href="/connections/github">Connect GitHub</Link> to install it on an org.</p>
       ) : !admin || v.kind !== "user" ? (
         <p className="text-sm text-body">Only an admin can create the GitHub App. Sign in as an admin, or run Ripple with <code>RIPPLE_MODE=local</code>.</p>
       ) : (
