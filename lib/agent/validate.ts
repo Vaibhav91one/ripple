@@ -32,7 +32,7 @@ function namedIn(text: string, name: string): boolean {
   }
   return false;
 }
-export type Context = { /** The person's question: a single word they used themselves is not an entity claim. */ question?: string; /** Ids of the viewer's own teams: never counted. */ viewerTeamIds?: readonly string[] };
+export type Context = { /** The person's question: a single word they used themselves is not an entity claim. */ question?: string; /** Earlier turns of the chat: a follow-up may name what an earlier answer already showed. */ history?: string; /** Ids of the viewer's own teams: never counted. */ viewerTeamIds?: readonly string[] };
 
 /** Rows that carry information. found:false and error rows count 0; a ripple row counts its teams and conflicts. */
 export function countRows(rows: Row[]): number {
@@ -43,13 +43,28 @@ export function countRows(rows: Row[]): number {
 }
 
 export const ASK_WHICH = "Which change do you mean?";
-export const NOTHING_CONNECTED = "Nothing Ripple knows is connected to that yet. That doesn't mean it has no impact, only that it hasn't been recorded.";
+export const NOTHING_CONNECTED = "Ripple hasn't learned about that yet. Connect the repo or Slack channel where it lives, or import a CSV, and ask again.";
 export const NO_SOURCE = "I couldn't find a source for that in what Ripple knows, so treat it as a guess.";
 
 /** The no-source notice is for factual claims only: a greeting, a question back or a clarification is not one. ponytail: a tool call or a digit counts as a claim; swap for a classifier if it misfires. */
 export function needsSource(answer: string, calls: Call[]): boolean {
   const t = answer.replace(/\[\[[^\]]*\]\]/g, "").trim();
-  return !!t && !/\?\s*$/.test(t) && (calls.length > 0 || /\d/.test(t));
+  return !!t && !/\?\s*$/.test(t) && !NOT_FOUND.test(t) && (calls.length > 0 || /\d/.test(t));
+}
+/** An answer that already says it found nothing: a "treat it as a guess" notice after it would contradict it. */
+const NOT_FOUND = /\b(?:couldn'?t|could not|can'?t|cannot|didn'?t|did not) (?:find|see|open)\b|\bhasn'?t learned\b|\bno record\b|\bnothing (?:is )?recorded\b/i;
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const RAW_ID = /\b(?:d|art|ctr|conf|tkt|msg|pr)-[a-z0-9]+(?:-[a-z0-9]+)*\b/g;
+/**
+ * The answer as a person reads it (#274): ISO dates in words ("30 Jun 2027"), raw ids swapped for their names (or dropped when
+ * in brackets and unknown). [[citation]] markers are left alone for the stream to turn into sources.
+ */
+export function plainText(answer: string, names: Names = new Map()): string {
+  return answer.split(/(\[\[[^\]]*\]\])/).map((part, i) => i % 2 ? part : part
+    .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y, mo, d) => (MONTHS[Number(mo) - 1] ? `${Number(d)} ${MONTHS[Number(mo) - 1]} ${y}` : m))
+    .replace(/\s*\((?:d|art|ctr|conf|tkt|msg|pr)-[a-z0-9-]+\)/g, (m) => { const id = m.trim().slice(1, -1); const n = names.get(id)?.name; return n ? ` (${n})` : ""; })
+    .replace(RAW_ID, (id) => names.get(id)?.name ?? id)).join("");
 }
 
 /** The changes the person could mean: a failed change lookup's `knownDecisions`, or a list_decisions result. Each becomes a chip that re-asks the question about that change. */
@@ -127,7 +142,7 @@ export function validateAnswer(answer: string, calls: Call[], names: Names, cx: 
   const reasons: string[] = [];
   const text = answer.replace(/\[\[[^\]]*\]\]/g, "");
 
-  const seen = evidence(calls);
+  const seen = `${evidence(calls)}\n${cx.history ?? ""}`;
   const own = new Set(cx.viewerTeamIds);
   const mentioned = [...names].filter(([id, e]) => e.name.length >= 3 && !own.has(id) && namedIn(text, e.name) && !(cx.question && !/\s/.test(e.name) && mentions(cx.question.toLowerCase(), e.name.toLowerCase()) && !new RegExp(`\\b${esc(e.name)}\\b`).test(cx.question)));
   for (const [id, e] of mentioned) if (!mentions(seen, id) && !mentions(seen, e.name)) reasons.push(`names ${e.kind.toLowerCase()} "${e.name}" which no tool result contains`);

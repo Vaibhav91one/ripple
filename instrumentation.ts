@@ -11,7 +11,9 @@ export async function register() {
     const { org } = await getContext();
     const graphName = org.graphName;
     // only the shared demo is rebuilt on a seed-version change; a custom RIPPLE_GRAPH is only seeded when empty
-    console.log(`[ripple] demo graph: ${await (org.isDemo && !process.env.RIPPLE_GRAPH ? syncSeed : seedIfEmpty)(graphName)}`);
+    // an org graph (t_<orgId>) never gets demo data at boot: an empty org sees onboarding and may load the sample itself (#274)
+    if (graphName.startsWith("t_")) console.log(`[ripple] org graph ${graphName}: not seeded`);
+    else console.log(`[ripple] demo graph: ${await (org.isDemo && !process.env.RIPPLE_GRAPH ? syncSeed : seedIfEmpty)(graphName)}`);
     console.log(`[ripple] migrations applied: ${(await migrateGraph(await graphFor(graphName))).join(", ") || "none"}`);
   } catch (e) {
     // never crash the server because FalkorDB is down; /api/health reports it

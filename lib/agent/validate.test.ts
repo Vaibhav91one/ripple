@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ASK_WHICH, changeChoices, countRows, invalidIds, needsSource, NOTHING_CONNECTED, validateAnswer, type Names } from "./validate";
+import { ASK_WHICH, changeChoices, countRows, invalidIds, needsSource, NOTHING_CONNECTED, plainText, validateAnswer, type Names } from "./validate";
 
 const names: Names = new Map([
   ["legal", { name: "Legal", kind: "Team" }],
@@ -93,5 +93,23 @@ describe("plain-language outcomes (#268)", () => {
   it("words an unknown system without internals", () => {
     const unknown = { tool: "who_knows", args: { systemId: "fax" }, rows: [{ found: false, knownSystems: [{ id: "api-v1" }] }] };
     expect(validateAnswer("Fax is hit.", [unknown], names).answer).toBe('I don\'t recognise "fax", so I haven\'t looked anything up. Check the name and ask again.');
+  });
+});
+
+describe("#274: plain answers and follow-ups", () => {
+  const names: Names = new Map([["northwind", { name: "Northwind Capital", kind: "Customer" }], ["d-1", { name: "Sunset API v1 on Jan 31", kind: "Decision" }]]);
+  it("writes dates in words and swaps raw ids for names, leaving citation markers alone", () => {
+    expect(plainText("Guaranteed until 2027-06-30 by the MSA (art-msa-northwind). [[art-msa-northwind]]", names)).toBe("Guaranteed until 30 Jun 2027 by the MSA. [[art-msa-northwind]]");
+    expect(plainText("The change d-1 is open.", names)).toBe("The change Sunset API v1 on Jan 31 is open.");
+  });
+  it("a nothing-found answer gets no 'treat it as a guess' notice, and the fallback says what to do next", () => {
+    expect(needsSource("I couldn't find anything about the auth flow.", [{ tool: "search", args: {}, rows: [] }])).toBe(false);
+    expect(NOTHING_CONNECTED).toMatch(/hasn't learned/);
+    expect(NOTHING_CONNECTED).not.toMatch(/no impact/);
+  });
+  it("a follow-up may name what an earlier answer showed", () => {
+    const calls = [{ tool: "customers_at_risk", args: { decisionId: "d-1" }, rows: [{ id: "x", arr: 1 }] }];
+    expect(validateAnswer("Northwind Capital pays the most.", calls, names).ok).toBe(false);
+    expect(validateAnswer("Northwind Capital pays the most.", calls, names, { history: "…two contracts: Northwind Capital and Halden Bank, about $180K…" }).ok).toBe(true);
   });
 });

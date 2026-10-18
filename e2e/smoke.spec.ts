@@ -39,7 +39,7 @@ test("the Assistant answers a starter prompt with sources and an inline card", a
   await page.getByRole("button", { name: STARTER_PROMPTS[3] }).click();
   await expect(page.getByText(/Sources \(\d+\)/)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Contract conflict" })).toBeVisible();
-  await expect(page.getByText("Cypher used · 1 query")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Checked 1 source/ })).toBeVisible(); // #274: plain words, folded by default
 });
 
 // #268: small talk is answered without a model, so it needs no LLM key either.
@@ -50,8 +50,9 @@ test("saying hi gets a friendly reply and chips, with no warning", async ({ page
   await box.press("Enter");
   await expect(page.getByText(/I'm Ripple|Good to see you|Where shall we start/)).toBeVisible({ timeout: 15_000 });
   const chips = page.getByRole("list", { name: "Suggestions" });
-  await expect(chips.getByRole("button", { name: "Any contract conflicts?" })).toBeVisible();
-  await expect(chips.getByRole("button", { name: "Show the graph" })).toBeVisible();
+  // #274: the same chip set as the home screen
+  await expect(chips.getByRole("button", { name: STARTER_PROMPTS[3] })).toBeVisible();
+  await expect(chips.getByRole("button", { name: STARTER_PROMPTS[0] })).toBeVisible();
   await expect(page.getByText(/unverified|decision id|Not in the graph|Cypher used/i)).toHaveCount(0);
 });
 

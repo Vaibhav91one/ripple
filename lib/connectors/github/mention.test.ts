@@ -2,7 +2,7 @@ import { createHmac, generateKeyPairSync } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildManifest } from "./manifest";
 import manifestFile from "../../../github-app-manifest.json";
-import { answerFor, handleCheck, handleMention, impactSummary, neutralize, parseMention, replyAllowed, resetLimiter, retrying, type MentionJob } from "./mention";
+import { answerFor, handleCheck, handleMention, impactSummary, neutralize, publicReply, parseMention, replyAllowed, resetLimiter, retrying, type MentionJob } from "./mention";
 import { bindInstallation, checkState, makeState, verifyInstaller } from "./setup";
 import { saveApp, setupStatus, clearStoredApp } from "./app-creds";
 import { encrypt } from "../../crypto";
@@ -282,5 +282,20 @@ describe("manifest flow", () => {
   it("the file manifest is the hosted build of buildManifest", () => {
     expect(buildManifest("https://ripple.vaibhav.quest")).toEqual(manifestFile);
     expect(buildManifest("http://x/").default_events).toEqual(expect.arrayContaining(["issue_comment", "pull_request_review_comment"]));
+  });
+});
+
+describe("#274: reply wording", () => {
+  it("on a public repo says what it can't share, answers with repo facts, and links the private app", async () => {
+    const text = publicReply("acme/shop", { systems: [{ id: "gh:acme/shop", name: "acme/shop" }], teams: ["Eng"] }, "who owns this?");
+    expect(text).toMatch(/^I can't answer that fully here, because this repository is public: customers, contracts, deals and who has been told stay in the private Ripple app\./);
+    expect(text).toMatch(/Owned by: Eng\./);
+    const { calls, octo } = recorder();
+    await handleMention({ ...job, publicRepo: true }, octo, async () => ({ text, decisionId: "d-1" }), "https://ripple.test/");
+    expect(String(calls[1].params.body)).toMatch(/\[Ask the full question in Ripple\]\(https:\/\/ripple\.test\/\)$/);
+    expect(String(calls[1].params.body)).not.toMatch(/reports\/d-1/); // no case-file link (or its title) in public
+  });
+  it("a repo Ripple has not synced yet gets the next step, not a dead end", () => {
+    expect(publicReply("acme/new", { systems: [], teams: [] })).toMatch(/Ripple hasn't learned about `acme\/new` yet/);
   });
 });

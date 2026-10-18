@@ -1,6 +1,7 @@
 // @Ripple mentions in channels and DMs: ask the agent as the Slack user's viewer, reply in the thread.
 // Pure over `Deps` (interactive.ts), so tests inject mocks. Safety: replies only for the connected workspace, rate limited
 // per workspace, the viewer is redacted when the Slack user is unknown, and model output cannot ping anyone.
+import { roQuery } from "../../graph/client";
 import type { Deps, InboundJob } from "./interactive";
 
 type Ev = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -49,6 +50,22 @@ export function isAskable(ev: Ev, job: Pick<InboundJob, "teamId">, botUserId: st
   return ev.type === "message" && ev.channel_type === "im";
 }
 
+export const NOTHING_YET = "Ripple hasn't learned about that yet. Connect the repo or Slack channel where it lives and ask me again.";
+
+/** The thread reply (#274): the Assistant's tone, sources by title (never a raw id), a next step when nothing was found. */
+export function slackReply(answer: string, sources: Map<string, string>, titles: Map<string, string> = new Map()): string {
+  const cites = slackCites(sources, titles);
+  return toMrkdwn(answer.trim() || NOTHING_YET) + (cites ? `\n\n*Sources*\n${cites}` : "");
+}
+
+export const slackCites = (sources: Map<string, string>, titles: Map<string, string>) =>
+  [...sources].slice(0, 8).map(([id, q]) => `• *${titles.get(id) ?? "Source"}*: "${q.replace(/\s+/g, " ").slice(0, 160)}"`).join("\n");
+
+export async function sourceTitles(g: Awaited<ReturnType<Deps["graph"]>>, ids: string[]): Promise<Map<string, string>> {
+  const rows = await roQuery<{ id: string; title: string | null }>(g, "MATCH (a:Artifact) WHERE a.id IN $ids RETURN a.id AS id, a.title AS title", { ids });
+  return new Map(rows.flatMap((r) => (r.title ? [[r.id, r.title] as const] : [])));
+}
+
 /** Reply to an app_mention or a DM in the thread. Returns true when the event was ours to handle. */
 export async function handleMention(job: InboundJob, d: Deps): Promise<boolean> {
   const ev = job.data;
@@ -66,7 +83,7 @@ export async function handleMention(job: InboundJob, d: Deps): Promise<boolean> 
   if (gate !== "ok") { if (gate === "limited-first") await say("This workspace has reached Ripple's hourly reply limit. Try again in a little while."); return true; }
 
   const status = (s: string) => d.slack.call("assistant.threads.setStatus", { channel_id: ev.channel, thread_ts: thread, status: s }).catch(() => undefined); // best effort: only works in assistant threads
-  await status("is checking the graph...");
+  await status("is looking it up...");
   try {
     // Channels are visible to everyone in them, so they get the redacted no-team viewer; the mapped viewer only answers in a DM.
     const viewer = ev.channel_type === "im" ? (await d.asker(ev.user)).viewer : { teamIds: [] as string[] };
@@ -76,8 +93,8 @@ export async function handleMention(job: InboundJob, d: Deps): Promise<boolean> 
       if (e.type === "text_delta") answer += e.text;
       else if (e.type === "citation") for (const s of e.sources) sources.set(s.artifactId, s.quote);
     }
-    const cites = [...sources].slice(0, 8).map(([id, q]) => `• \`${id}\` ${q.replace(/\s+/g, " ").slice(0, 160)}`).join("\n");
-    const body = toMrkdwn(answer.trim() || "I could not find that in the graph.") + (cites ? `\n\n*Sources*\n${cites}` : "");
+    const titles = sources.size ? await sourceTitles(await d.graph(), [...sources.keys()]).catch(() => new Map<string, string>()) : new Map<string, string>();
+    const body = slackReply(answer, sources, titles);
     await say(neutralizeSlack(body).slice(0, 3900));
   } catch {
     await say("Sorry, I could not answer that right now.");

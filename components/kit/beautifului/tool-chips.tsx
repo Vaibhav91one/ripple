@@ -80,6 +80,7 @@ export default function ToolChips({
   live = false,
   summary,
   defaultOpen = false,
+  collapsed = false,
 }: {
   rows?: ToolRowData[];
   diffs?: DiffChip[];
@@ -88,9 +89,11 @@ export default function ToolChips({
   summary?: string;
   /** Start with every row expanded. */
   defaultOpen?: boolean;
+  /** Start with the whole trace folded to its summary line. */
+  collapsed?: boolean;
 }) {
   const [step, setStep] = useState(0);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!collapsed);
   const [openRows, setOpenRows] = useState<Set<string>>(() => new Set(defaultOpen ? rows.map((_, i) => String(i)) : []));
   const total = rows.length + 1; // rows, then diff chips
 

@@ -137,7 +137,7 @@ describe("/ripple", () => {
     const body = eng.responses[0].body;
     expect(body.text).toContain("Legal is affected");
     expect(JSON.stringify(body.blocks)).toContain("Sources");
-    expect(JSON.stringify(body.blocks)).toContain("art-rfc14");
+    expect(JSON.stringify(body.blocks)).not.toContain("art-rfc14"); // #274: sources by title, never a raw id
     expect(eng.toolOut).not.toContain("SENTINEL_CONTRACT");
     expect(eng.toolOut).toContain('"restricted":[{'); // the sales-owned quote was redacted for eng
     expect((await run(["sales", "legal"])).toolOut).not.toContain('"restricted":[{');

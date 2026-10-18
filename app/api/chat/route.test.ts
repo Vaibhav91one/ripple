@@ -52,13 +52,13 @@ describe("POST /api/chat", () => {
   });
 
   it("answers small talk with a reply and suggestions: no model, tools, citations or warning", async () => {
-    for (const hi of ["hi", "Thanks!", "what can you do?"]) {
+    for (const hi of ["hi", "Thanks!", "what can you do?", "what's the weather in Paris tomorrow?", "https://example.com/post"]) { // #274: off-topic and a pasted link too
       const ev = await events(await post({ messages: [user(hi)] }));
       expect(meta(ev)).toMatchObject({ cached: true, exhausted: false });
       expect(text(ev).length).toBeGreaterThan(10);
-      expect(ev.find((e) => e.type === "suggestions")).toMatchObject({ kind: "help", items: expect.arrayContaining([expect.objectContaining({ href: "/graph" })]) });
+      expect(ev.find((e) => e.type === "suggestions")).toMatchObject({ kind: "help", items: expect.arrayContaining([expect.objectContaining({ prompt: STARTER_PROMPTS[0] })]) }); // #274: the home chip set
       expect(ev.some((e) => e.type === "citation" || e.type === "tool_call")).toBe(false);
-      expect(text(ev)).not.toMatch(/unverified|decision id|graph/i);
+      expect(text(ev)).not.toMatch(/unverified|decision id|graph|no impact|rewrote/i);
       expect(ev.at(-1)).toEqual({ type: "done" });
     }
     expect(seen).toHaveLength(0);
