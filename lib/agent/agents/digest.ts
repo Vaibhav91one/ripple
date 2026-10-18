@@ -19,6 +19,8 @@ export const DigestReport = z.object({
 
 export const digest = defineAgent({
   name: "digest",
+  displayName: "Daily Digest",
+  tagline: "One calm summary of what changed and what is waiting for you.",
   group: "understand",
   team: "everyone",
   model: "reasoning",

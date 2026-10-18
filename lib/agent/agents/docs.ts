@@ -16,6 +16,8 @@ export const DocsReport = z.object({
 
 export const docs = defineAgent({
   name: "docs",
+  displayName: "Docs Steward",
+  tagline: "Finds the docs pages a change makes wrong and drafts the fix.",
   group: "act",
   team: "devrel",
   model: "reasoning",

@@ -25,6 +25,8 @@ export const DecisionOptions = z.object({
 
 export const advisor = defineAgent({
   name: "advisor",
+  displayName: "Decision Advisor",
+  tagline: "Lays out the ways out of a conflict, with what each one costs.",
   group: "understand",
   team: "leadership",
   model: "reasoning",

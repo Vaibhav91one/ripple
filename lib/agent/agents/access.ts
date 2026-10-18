@@ -20,6 +20,8 @@ export const AccessReport = z.object({
 
 export const access = defineAgent({
   name: "access",
+  displayName: "Access Planner",
+  tagline: "Makes sure everyone a change affects has the access to do their part.",
   group: "act",
   team: "it",
   model: "reasoning",

@@ -25,6 +25,8 @@ export const ContractReport = z.object({
 
 export const contract = defineAgent({
   name: "contract",
+  displayName: "Contract Sentinel",
+  tagline: "Spots contract promises a change would break and drafts the notice.",
   group: "understand",
   team: "legal",
   model: "reasoning",

@@ -57,6 +57,8 @@ export type DecideResult = z.infer<typeof DecideResult>;
 
 export const AgentInfo = z.object({
   name: z.string(),
+  displayName: z.string(),
+  tagline: z.string(),
   group: z.string(),
   job: z.string(),
   team: z.string(),
@@ -70,7 +72,7 @@ export const AgentInfo = z.object({
   runs24h: z.number(),
 });
 export type AgentInfo = z.infer<typeof AgentInfo>;
-export const AgentList = z.object({ agents: z.array(AgentInfo), canEdit: z.boolean(), sample: z.boolean().optional(), note: z.string().optional() });
+export const AgentList = z.object({ agents: z.array(AgentInfo), canEdit: z.boolean(), /** Why canEdit is false: the public demo, no Postgres, or not an admin. */ editBlock: z.enum(["demo", "db", "role"]).nullable().optional(), sample: z.boolean().optional(), note: z.string().optional() });
 export type AgentList = z.infer<typeof AgentList>;
 
 export const RunSummary = z.object({

@@ -2,131 +2,167 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
-import { ClipboardCheck } from "lucide-react";
-import { ago, btn, kindLabel, STATUS_TONE } from "@/components/approvals/shared";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { Bot, ChevronRight, ClipboardCheck, MessageCircle, Search, X } from "lucide-react";
+import { ago, kindLabel } from "@/components/approvals/shared";
+import { SAMPLE_RUN } from "@/lib/approvals/sample";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
-import { AgentCard } from "@/components/ui/agent-card";
-import { Pill } from "@/components/ui/tone";
+import { GraphDownBanner } from "@/components/states/States";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusPill } from "@/components/ui/status-pill";
 import { getAgents, getApprovals, getRuns, isGraphDown, patchAgentSettings } from "@/lib/api";
 import type { AgentInfo, RunSummary } from "@/lib/schemas";
+import { AGENT_ART } from "./art";
+import { AgentGrid, agentStatus, chatBtn, filterAgents, LOCK_REASON, type Lock, parseTeam, runTone, runWords, Switch, TEAM_FILTERS, teamLabel, type TeamFilter } from "./gallery";
 
-const dur = (ms: number | null) => (ms === null ? "running" : ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`);
-const tok = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const pill = "inline-flex h-10 items-center gap-2 rounded-control px-3.5 text-sm font-medium";
+const chip = "inline-flex h-8 items-center rounded-full px-3 text-sm outline-none focus-visible:outline-2 focus-visible:outline-ripple";
 
-function Switch({ on, label, disabled, onChange }: { on: boolean; label: string; disabled?: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)}
-      className={`relative h-5 w-9 shrink-0 rounded-full border border-hairline outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50 ${on ? "bg-covered" : "bg-raised"}`}>
-      <span className={`absolute left-0.5 top-0.5 size-3.5 rounded-full bg-strong transition-transform ${on ? "translate-x-4" : ""}`} />
-    </button>
+const RUN_WORD: Record<string, string> = { done: "Done", running: "Running", failed: "Failed", queued: "Queued", budget: "Over budget" };
+const howItRuns = (t: string[]) => (t.some((x) => x.startsWith("cron ")) ? "Runs on a schedule" : t.length ? "Runs on its own when something changes" : "Runs when you ask");
+
+function RunRow({ r, now, href }: { r: RunSummary; now: number; href: string | null }) {
+  const body = (
+    <>
+      <StatusPill tone={runTone(r.status, r.startedAt, now)}>{RUN_WORD[r.status] ?? r.status}</StatusPill>
+      <span className="min-w-0 flex-1 truncate text-body">{r.proposals ? `${r.proposals} ${r.proposals === 1 ? "proposal" : "proposals"}` : "Nothing proposed"}</span>
+      <span className="text-xs text-faint">{ago(r.startedAt, now)}</span>
+    </>
   );
-}
-
-function Roster({ a, canEdit, now, onPatch }: { a: AgentInfo; canEdit: boolean; now: number; onPatch: (p: { enabled?: boolean; autoApprove?: Record<string, boolean> }) => void }) {
-  const last = a.lastRun;
-  const tone = !a.enabled || !last || last.status === "running" ? "gap" : last.status === "done" ? "covered" : "conflict";
-  return (
-    <li className="min-w-0">
-      <AgentCard
-        size="sm"
-        title={a.name} pill={!a.enabled ? "off" : last?.status ?? "idle"} pillTone={tone}
-        folder={a.team === "everyone" ? "Everyone" : a.team} folderNote={`${a.runs24h} runs · 24h`}
-        progress={0} agent={a.group} task={a.job || a.tools.slice(0, 4).join(", ") || "No tools"}
-        glyph={a.enabled ? "●" : "○"} status={last ? `Last run ${ago(last.startedAt, now)}` : "Never run"}
-        statusTone={a.enabled ? "body" : "gap"}
-        footer={
-          <details className="text-xs">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 outline-none focus-visible:outline-2 focus-visible:outline-ripple">
-              <span className="text-strong">Enabled for this org</span>
-              <Switch on={a.enabled} label={`${a.name} enabled`} disabled={!canEdit} onChange={(enabled) => onPatch({ enabled })} />
-            </summary>
-            <div className="mt-3 space-y-2">
-              <p className="text-faint"><span className="text-body">Triggers</span> {a.triggers.length ? a.triggers.join(", ") : "on demand"}</p>
-              {a.writes.length === 0 ? (
-                <p className="text-faint">Read-only: it proposes nothing.</p>
-              ) : (
-                a.writes.map((k) => (
-                  <label key={k} className="flex items-center justify-between gap-3">
-                    <span className="text-body">Auto-approve <span className="text-strong">{kindLabel(k).toLowerCase()}</span></span>
-                    <Switch on={a.autoApprove[k] ?? false} label={`Auto-approve ${kindLabel(k)}`} disabled={!canEdit} onChange={(v) => onPatch({ autoApprove: { [k]: v } })} />
-                  </label>
-                ))
-              )}
-              {!canEdit && <p className="text-faint">Only admins change these.</p>}
-            </div>
-          </details>
-        }
-      />
-    </li>
-  );
-}
-
-function RunRow({ r, now }: { r: RunSummary; now: number }) {
   return (
     <li>
-      <Link href={`/agents/runs/${r.id}`} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 outline-none hover:bg-raised focus-visible:bg-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ripple sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_72px_64px_56px_80px]">
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-strong">{r.agent}</span>
-          <span className="block truncate text-xs text-faint">{r.trigger}</span>
-        </span>
-        <span className="justify-self-end sm:order-3 sm:justify-self-start"><Pill tone={STATUS_TONE[r.status] ?? "gap"} dot>{r.status}</Pill></span>
-        <span className="col-span-2 flex gap-3 text-xs tabular-nums text-faint sm:contents">
-          <span className="sm:order-2 sm:truncate">{r.error ?? `${r.proposals} ${r.proposals === 1 ? "proposal" : "proposals"}`}</span>
-          <span className="sm:order-4 sm:text-right">{tok(r.tokens)} tok</span>
-          <span className="sm:order-5 sm:text-right">{dur(r.durationMs)}</span>
-          <span className="ml-auto sm:order-6 sm:text-right">{ago(r.startedAt, now)}</span>
-        </span>
-      </Link>
+      {href ? (
+        <Link href={href} className="flex items-center gap-3 px-3 py-2.5 text-sm outline-none hover:bg-raised focus-visible:bg-raised">{body}<ChevronRight size={14} aria-hidden className="text-faint" /></Link>
+      ) : <div className="flex items-center gap-3 px-3 py-2.5 text-sm">{body}</div>}
     </li>
+  );
+}
+
+function Drawer({ a, now, lock, busy, onClose, onPatch }: { a: AgentInfo; now: number; lock: Lock; busy: boolean; onClose: () => void; onPatch: (p: { enabled?: boolean; autoApprove?: Record<string, boolean> }) => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  const runs = useQuery({ queryKey: ["runs", a.name], queryFn: () => getRuns(a.name) });
+  const sample = !!runs.data?.sample;
+  // Sample runs belong to a demo agent, not this one; only the sample run that /api/agents/runs/[id] serves gets a link.
+  const list = runs.data?.runs.slice(0, 8) ?? [];
+  const Art = AGENT_ART[a.name];
+  const st = agentStatus(a, now);
+  return (
+    <dialog ref={ref} onClose={onClose} aria-label={a.displayName} onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }}
+      className="m-0 ml-auto h-dvh max-h-dvh w-full max-w-[440px] overflow-y-auto border-l border-hairline bg-surface p-0 text-body backdrop:bg-strong/20">
+      <div className="min-h-full p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-medium text-strong">{a.displayName}</h2>
+          <p className="mt-1 text-md text-faint">{a.tagline}</p>
+        </div>
+        <button type="button" onClick={() => ref.current?.close()} aria-label="Close" className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline text-body hover:bg-raised"><X size={16} aria-hidden /></button>
+      </div>
+      {Art && <Art className="mt-5 w-full" />}
+      <dl className="mt-5 divide-y divide-hairline text-sm">
+        <div className="flex items-center justify-between py-2.5"><dt className="text-faint">Works for</dt><dd className="text-strong">{teamLabel(a.team)}</dd></div>
+        <div className="flex items-center justify-between py-2.5"><dt className="text-faint">Status</dt><dd><StatusPill tone={st.tone}>{st.label}</StatusPill></dd></div>
+        <div className="flex items-center justify-between py-2.5"><dt className="text-faint">How it runs</dt><dd className="text-strong">{howItRuns(a.triggers)}</dd></div>
+        <div className="flex items-center justify-between gap-4 py-2.5"><dt className="text-faint">On for this org</dt><dd><Switch on={a.enabled} label={`${a.displayName} on`} lock={lock} busy={busy} onChange={(enabled) => onPatch({ enabled })} /></dd></div>
+        {a.writes.length === 0 ? (
+          <p className="py-2.5 text-faint">Read-only: it never proposes an action.</p>
+        ) : a.writes.map((k) => (
+          <div key={k} className="flex items-center justify-between gap-4 py-2.5">
+            <dt className="text-faint">Auto-approve {kindLabel(k).toLowerCase()}</dt>
+            <dd><Switch on={a.autoApprove[k] ?? false} label={`Auto-approve ${kindLabel(k)}`} lock={lock} busy={busy} onChange={(v) => onPatch({ autoApprove: { [k]: v } })} /></dd>
+          </div>
+        ))}
+      </dl>
+      <Link href={`/?agent=${encodeURIComponent(a.name)}`} className={`${chatBtn} mt-4 w-full`}><MessageCircle size={14} aria-hidden />Chat with this agent</Link>
+
+      <h3 className="mt-8 text-md font-medium text-strong">Recent runs</h3>
+      <p className="mt-0.5 text-sm text-faint">{runWords(a, now)}</p>
+      {runs.isPending ? <Skeleton className="mt-3 h-24" /> : !list.length ? (
+        <p className="mt-3 rounded-inset bg-raised px-4 py-3 text-sm text-faint">No runs yet. A run shows up here the moment it starts.</p>
+      ) : (
+        <>
+          {sample && <p className="mt-3 text-xs font-medium text-faint">Sample runs (not this agent)</p>}
+          <ul className={`${sample ? "mt-1.5" : "mt-3"} divide-y divide-hairline rounded-inset border border-hairline`}>
+            {list.map((r) => <RunRow key={r.id} r={r} now={now} href={!sample || r.id === SAMPLE_RUN.run.id ? `/agents/runs/${r.id}` : null} />)}
+          </ul>
+        </>
+      )}
+      </div>
+    </dialog>
   );
 }
 
 export function AgentsScreen() {
   const qc = useQueryClient();
+  const router = useRouter();
+  const path = usePathname();
+  const params = useSearchParams();
+  const { team, unknown } = parseTeam(params.get("team"));
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
+  const [denied, setDenied] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const agents = useQuery({ queryKey: ["agents"], queryFn: getAgents });
-  const runs = useQuery({ queryKey: ["runs"], queryFn: () => getRuns() });
-  const open = useQuery({ queryKey: ["approvals", "open"], queryFn: () => getApprovals("open"), retry: false });
+  const approvals = useQuery({ queryKey: ["approvals", "open"], queryFn: () => getApprovals("open"), retry: false });
   const patch = useMutation({
     mutationFn: ({ name, ...p }: { name: string; enabled?: boolean; autoApprove?: Record<string, boolean> }) => patchAgentSettings(name, p),
-    onSettled: () => void qc.invalidateQueries({ queryKey: ["agents"] }),
+    onMutate: ({ name }) => setBusy(name),
+    onError: (e) => { if (/forbidden/i.test(e.message)) setDenied(true); },
+    onSettled: () => { setBusy(null); void qc.invalidateQueries({ queryKey: ["agents"] }); },
   });
-  const canEdit = agents.data?.canEdit ?? false;
-  const pending = open.data && !open.data.sample ? open.data.open : 0;
-  const err = agents.error ?? runs.error;
+  const list = agents.data?.agents ?? [];
+  const block = agents.data && !agents.data.canEdit ? agents.data.editBlock ?? "role" : denied ? "role" : null;
+  const lock: Lock = agents.isPending ? LOCK_REASON.role : block ? LOCK_REASON[block] : null;
+  const shown = filterAgents(list, q, team);
+  const inTeam = filterAgents(list, "", team).length;
+  const on = list.filter((a) => a.enabled).length;
+  const ran = list.filter((a) => a.runs24h > 0).length;
+  const pending = approvals.data && !approvals.data.sample ? approvals.data.open : 0;
+  const setTeam = (id: TeamFilter | null) => router.replace(id ? `${path}?team=${id}` : path, { scroll: false });
+  const current = list.find((a) => a.name === open);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-8 px-4 py-6 sm:px-8 sm:py-8">
-      {isGraphDown(err) && <GraphDownBanner onRetry={() => { void agents.refetch(); void runs.refetch(); }} />}
-      <PageHeader title="Agents" subtitle="Who works for your org, what they did, and what they are allowed to do on their own.">
-        <Link href="/reports" className={btn}><ClipboardCheck size={14} aria-hidden />Approvals{pending ? <span className="rounded-full bg-gap-soft px-1.5 text-2xs text-gap">{pending}</span> : null}</Link>
+    <div className="mx-auto w-full max-w-[1280px]">
+      {isGraphDown(agents.error) && <GraphDownBanner onRetry={() => void agents.refetch()} />}
+      <PageHeader title="Agents" subtitle={!agents.data ? "Who works for your org, and what they do." : team
+          ? `${inTeam} ${inTeam === 1 ? "agent works" : "agents work"} for ${teamLabel(team)}, out of ${list.length} in your org.`
+          : `${list.length} agents work for your org. ${on} are on and ${ran === 0 ? "none" : ran} ran in the last day.`}>
+        <label className={`${pill} w-full border border-hairline bg-surface text-faint focus-within:outline-2 focus-within:outline-ripple sm:w-64`}>
+          <Search size={15} aria-hidden />
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search agents" aria-label="Search agents by name, team or job"
+            className="min-w-0 flex-1 bg-transparent text-strong outline-none placeholder:text-faint" />
+        </label>
+        <Link href="/reports" className={`${pill} bg-raised text-strong hover:bg-hairline`}>
+          <ClipboardCheck size={15} aria-hidden className="text-body" />Approvals
+          {pending ? <span className="rounded-full bg-gap-soft px-1.5 text-xs text-strong">{pending}</span> : null}
+        </Link>
       </PageHeader>
-      {(agents.data?.note || runs.data?.note) && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body">{agents.data?.note ?? runs.data?.note}</p>}
-      {patch.error && <p role="alert" className="text-sm text-conflict">{patch.error.message}</p>}
 
-      <section aria-labelledby="roster" className="space-y-3">
-        <h2 id="roster" className="text-sm font-medium text-strong">Roster</h2>
-        {agents.isPending ? <LoadingBlock label="Loading agents" /> : (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {agents.data?.agents.map((a) => (
-              <Roster key={a.name} a={a} canEdit={canEdit && !patch.isPending} now={now} onPatch={(p) => patch.mutate({ name: a.name, ...p })} />
-            ))}
-          </ul>
-        )}
-      </section>
+      <div role="group" aria-label="Filter by team" className="-mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        {[[null, "All"] as const, ...TEAM_FILTERS].map(([id, label]) => (
+          <button key={label} type="button" aria-pressed={team === id} onClick={() => setTeam(id)}
+            className={`${chip} shrink-0 ${team === id ? "bg-strong font-medium text-ink-on-strong" : "bg-raised text-body hover:bg-hairline"}`}>{label}</button>
+        ))}
+      </div>
 
-      <section aria-labelledby="runs" className="space-y-3">
-        <h2 id="runs" className="text-sm font-medium text-strong">Recent runs</h2>
-        {runs.isPending ? <LoadingBlock label="Loading runs" /> : !runs.data?.runs.length ? (
-          <p className="rounded-card border border-dashed border-hairline p-6 text-sm text-faint">No runs yet. An agent run shows up here the moment it starts.</p>
-        ) : (
-          <ul className="divide-y divide-hairline overflow-hidden rounded-card border border-hairline bg-surface">
-            {runs.data.runs.map((r) => <RunRow key={r.id} r={r} now={now} />)}
-          </ul>
-        )}
-      </section>
+      {unknown && <p role="status" className="mb-4 text-sm text-faint">Unknown team, showing all.</p>}
+      {agents.data?.note && <p role="status" className="mb-4 rounded-inset bg-raised px-4 py-3 text-sm text-body">{agents.data.note}</p>}
+      {patch.error && !denied && <p role="alert" className="mb-4 text-sm text-conflict">{patch.error.message}</p>}
+
+      {agents.isPending ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-80 rounded-card" />)}</div>
+      ) : shown.length === 0 ? (
+        <EmptyState icon={Bot} title="No agent matches">
+          {q ? `Nothing matches "${q}"${team ? ` for ${teamLabel(team)}` : ""}.` : `No agent works for ${teamLabel(team ?? "")} yet.`} Try another word or team.
+        </EmptyState>
+      ) : (
+        <AgentGrid agents={shown} now={now} lock={lock} busy={busy} onOpen={setOpen} onToggle={(name, enabled) => patch.mutate({ name, enabled })} />
+      )}
+
+      {current && <Drawer key={current.name} a={current} now={now} lock={lock} busy={busy === current.name} onClose={() => setOpen(null)} onPatch={(p) => patch.mutate({ name: current.name, ...p })} />}
     </div>
   );
 }

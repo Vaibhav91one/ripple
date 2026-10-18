@@ -8,8 +8,10 @@ export function GET() {
   return handle(AgentList, async (ctx) => {
     const live = !!env().DATABASE_URL;
     void ctx.audit({ action: "agents.list", resourceType: "agent", read: true });
+    const admin = ctx.viewer.kind === "user" && ctx.viewer.role === "admin";
     return {
-      canEdit: live && ctx.viewer.kind === "user" && ctx.viewer.role === "admin",
+      canEdit: live && admin,
+      editBlock: ctx.org.isDemo || ctx.viewer.kind === "anon" ? "demo" : !live ? "db" : !admin ? "role" : null,
       agents: await listAgents(live ? ctx.org.id : null),
       ...(live ? {} : { note: "Postgres isn't configured, so runs and settings aren't available." }),
     };

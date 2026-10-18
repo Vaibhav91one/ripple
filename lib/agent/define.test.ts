@@ -6,7 +6,7 @@ import { ask } from "./agents/ask";
 import { READ_TOOLS, TOOLS } from "./tools";
 
 const base: AgentDef = {
-  name: "t", group: "ask", team: "eng", model: "reasoning", tools: ["search"], writes: [],
+  name: "t", displayName: "T", tagline: "t", group: "ask", team: "eng", model: "reasoning", tools: ["search"], writes: [],
   budget: { maxSteps: 1, maxTokens: 1 }, trigger: {}, input: z.object({}), output: z.object({}), system: () => "",
 };
 

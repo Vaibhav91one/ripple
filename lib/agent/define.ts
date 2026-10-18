@@ -9,8 +9,11 @@ export type AgentCtx = { now: number };
 
 export type AgentDef<I extends z.ZodType = z.ZodType, O extends z.ZodType = z.ZodType> = {
   name: string;
+  /** Human title for the UI ("Contract Sentinel"); never show `name` or the system prompt instead. */
+  displayName: string;
+  /** One plain sentence for the gallery card. */
+  tagline: string;
   group: AgentGroup;
-  /** Team id this agent serves. */
   /** Who the agent works for: a team id, "change-owner", or "everyone". */
   team: string;
   /** 'reasoning' -> MODEL_AGENT, 'extract' -> MODEL_EXTRACT (see roleFor in lib/llm.ts). */

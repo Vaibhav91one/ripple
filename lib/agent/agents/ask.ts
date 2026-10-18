@@ -6,6 +6,8 @@ import { READ_TOOLS } from "../tools";
 
 export const ask = defineAgent({
   name: "ask",
+  displayName: "Ask Ripple",
+  tagline: "Answers questions about your company from the graph, with sources.",
   group: "ask",
   team: "everyone",
   model: "reasoning",
