@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // query wrappers read these files from process.cwd() at runtime; the tracer cannot see that
   outputFileTracingIncludes: {
-    "/*": ["./lib/graph/queries/**/*.cypher", "./lib/db/migrations/**/*", "./scripts/migrate.mjs", "./node_modules/drizzle-orm/**/*", "./node_modules/postgres/**/*", "./lib/ingest/cache/**/*", "./node_modules/onnxruntime-node/**/*", "./node_modules/.pnpm/onnxruntime-common@1.30.0/**/*"],
+    "/*": ["./slack-manifest.yaml", "./lib/graph/queries/**/*.cypher", "./lib/db/migrations/**/*", "./scripts/migrate.mjs", "./node_modules/drizzle-orm/**/*", "./node_modules/postgres/**/*", "./lib/ingest/cache/**/*", "./node_modules/onnxruntime-node/**/*", "./node_modules/.pnpm/onnxruntime-common@1.30.0/**/*"],
   },
   cacheComponents: true,
   // bundling the redis client breaks the build ("a.BigInt is not a function")

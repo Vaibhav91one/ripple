@@ -1,11 +1,22 @@
 # Create the Slack app from this file: api.slack.com/apps -> Create New App -> From a manifest.
-# Hosted at https://ripple.vaibhav.quest (change it if APP_URL differs; Slack needs https). Then copy Client ID/Secret and the
+# Hosted at https://ripple.vaibhav.quest (change it if APP_URL differs; Slack needs https; /setup/slack on your server renders this file with its own URL). Then copy Client ID/Secret and the
 # Signing Secret into SLACK_CLIENT_ID / SLACK_CLIENT_SECRET / SLACK_SIGNING_SECRET.
 display_information:
   name: Ripple
   description: Tells the right people when a change lands, and records who was told.
   background_color: "#0b0d10"
 features:
+  app_home:
+    home_tab_enabled: true
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  agent_view:
+    agent_description: Ask Ripple who a change affects. It answers in the thread with sources, and only shows what you are allowed to see.
+    suggested_prompts:
+      - title: Who does this affect?
+        message: Who does the Q4 pricing change affect?
+      - title: What is waiting on us?
+        message: Which changes are waiting on my team?
   bot_user:
     display_name: Ripple
     always_online: true
@@ -38,6 +49,10 @@ oauth_config:
       - users:read.email
       - pins:write
       - commands
+      - app_mentions:read
+      - im:history
+      - assistant:write
+      - groups:read
 settings:
   event_subscriptions:
     request_url: https://ripple.vaibhav.quest/api/slack/events
@@ -45,6 +60,9 @@ settings:
       - message.channels
       - message.groups
       - app_home_opened
+      - app_mention
+      - message.im
+      - member_joined_channel
   interactivity:
     is_enabled: true
     request_url: https://ripple.vaibhav.quest/api/slack/interactive

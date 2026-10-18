@@ -10,9 +10,10 @@ import { ingestDocument } from "../../ingest/pipeline";
 import { pickModel } from "../../llm";
 import { getMember } from "../../members";
 import { safeMessage } from "../../log";
+import { isFullMember } from "./mention";
 import { slackClient } from "./client";
 import type { Deps, InboundJob } from "./interactive";
-import { changeForChannel, slackToken } from "./store";
+import { accountsForTeam, changeForChannel, slackToken } from "./store";
 import { messageHook } from "./wire";
 
 
@@ -27,12 +28,18 @@ export async function realDeps(job: InboundJob): Promise<Deps> {
   if (!tokenEnc) throw new Error("slack is not connected for this org");
   const slack = slackClient(decrypt(tokenEnc));
   const graph = () => graphFor(org?.graphName ?? job.orgId);
+  let bot: Promise<string> | undefined;
   return {
+    primaryAccount: async () => (await accountsForTeam(job.teamId)).map((a) => a.id).sort()[0] === job.accountId,
+    botUserId: () => (bot ??= slack.call<{ user_id: string }>("auth.test").then((r) => r.user_id)),
     graph, slack, respond, onMessageEvent: messageHook({ graph, slack }),
     changeForChannel: (c) => changeForChannel(job.orgId, c),
     async asker(slackUserId) {
       try {
-        const email = (await slack.call<{ user: { profile?: { email?: string } } }>("users.info", { user: slackUserId })).user.profile?.email?.toLowerCase();
+        const u = (await slack.call<{ user: { team_id?: string; is_stranger?: boolean; is_restricted?: boolean; is_ultra_restricted?: boolean; profile?: { email?: string } } }>("users.info", { user: slackUserId })).user;
+        // Only a full member of the bound workspace may borrow a Ripple identity by email (guests and Slack Connect users could carry any email).
+        if (!isFullMember(u, job.teamId)) return { viewer: { teamIds: [] } };
+        const email = u.profile?.email?.toLowerCase();
         if (!email) return { viewer: { teamIds: [] } };
         const g = await graph();
         const person = (await roQuery<{ id: string }>(g, "MATCH (p:Person) WHERE toLower(p.email) = $email RETURN p.id AS id LIMIT 1", { email }))[0]?.id;
@@ -54,7 +61,7 @@ export async function realDeps(job: InboundJob): Promise<Deps> {
     },
     ask(question, g, viewer) {
       const model = pickModel("agent");
-      if (!model) return (async function* () { yield { type: "text_delta", text: "No model is configured on this server." } as const; })();
+      if (!model) return (async function* () { yield { type: "text_delta", text: "I can't answer questions yet: no model key is configured on this Ripple server." } as const; })();
       return runInteractive({ model, question, g, now: Math.floor(Date.now() / 1000), viewer });
     },
   };

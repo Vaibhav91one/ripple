@@ -10,6 +10,7 @@ export const ROUTES: string[] = [
   "/graph",
   "/connectors",
   "/setup/github",
+  "/setup/slack",
   "/settings",
   "/api/health",
   // v2 shell (#227): new tabs and stubs, plus the remaining v1 redirect sources
