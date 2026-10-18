@@ -49,3 +49,7 @@ next-env.d.ts
 
 # screenshots from pnpm shots
 /.shots/
+
+# playwright
+/test-results/
+/playwright-report/

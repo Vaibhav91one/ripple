@@ -152,6 +152,12 @@ pnpm dev                 # http://localhost:3000 (map the FalkorDB browser to an
 
 Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Ask drawer and brief rewording. Other scripts: `pnpm extract`, `pnpm embed`, `pnpm test`, `pnpm eval`.
 
+## Testing
+
+- `pnpm test`: unit and route tests (vitest).
+- `pnpm e2e`: Playwright smoke suite. Loads every route in `e2e/routes.ts` at 1440x900 and 390x844 and fails on a non-2xx/3xx status or any console or page error. Run `pnpm build` first; it starts `next start` on port 3201, or set `E2E_BASE_URL` to test a running deployment. Uses the installed Chrome locally.
+- Compose smoke: `docker compose up` plus a health check against `/api/health` (coming in #228).
+
 ## Graph data model
 
 **Nodes** (label: properties). Artifacts carry two labels, `Artifact` plus their kind.

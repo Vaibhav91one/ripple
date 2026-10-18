@@ -73,3 +73,28 @@ jobs:
         run: docker compose logs --tail=200
       - if: always()
         run: docker compose down -v
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      falkordb:
+        image: falkordb/falkordb:6.0.2
+        ports: ["6379:6379"]
+    env:
+      FALKORDB_HOST: localhost
+      FALKORDB_PORT: "6379"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version from packageManager
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm e2e
+        env:
+          SKIP_ENV_VALIDATION: "1"

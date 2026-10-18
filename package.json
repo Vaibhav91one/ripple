@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "e2e": "playwright test",
     "seed": "tsx lib/ingest/seed.ts",
     "graph:migrate": "tsx scripts/graph-migrate.ts",
     "worker": "tsx --conditions=react-server worker/index.ts",
