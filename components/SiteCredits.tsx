@@ -7,9 +7,9 @@ const credits = [
   ["SakaniUI", "https://sakaniui.com"],
 ] as const;
 
-export function SiteCredits() {
+export function SiteCredits({ className = "px-8 py-6 text-center text-xs" }: { className?: string }) {
   return (
-    <footer className="px-8 py-6 text-center text-xs text-faint">
+    <footer className={`text-faint ${className}`}>
       Components by{" "}
       {credits.map(([name, href], i) => (
         <span key={name}>

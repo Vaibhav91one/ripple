@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { MotionRoot } from "@/components/motion/MotionRoot";
-import { SiteCredits } from "@/components/SiteCredits";
 import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -14,13 +13,12 @@ export const metadata: Metadata = {
   description: "Change one thing. See everyone it touches, and who hasn't been told.",
 };
 
-// Dark first: the light theme is a token swap for later (#1).
+// Light only (v2, #227). Kit credits live in the sidebar footer and on /help.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers><MotionRoot>{children}</MotionRoot></Providers>
-        <SiteCredits />
       </body>
     </html>
   );

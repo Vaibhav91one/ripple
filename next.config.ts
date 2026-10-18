@@ -11,15 +11,24 @@ const nextConfig: NextConfig = {
   // transformers.js loads onnxruntime-node (native .so) by dynamic import, which the tracer misses: keep both external
   serverExternalPackages: ["falkordb", "@redis/client", "@huggingface/transformers", "onnxruntime-node", "unpdf", "mammoth"],
   partialPrefetching: true,
-  // v1 URLs: /ripple?d=X opens that decision, bare /ripple opens the overview
+  // v1 -> v2 IA (#227): every old tab lands on its v2 home. /connectors/* setup flows stay until they move under /connections.
   async redirects() {
     return [
-      // /decisions became /changes (one page per change)
-      { source: "/decisions", destination: "/changes", permanent: true },
-      { source: "/decisions/:id", destination: "/changes/:id", permanent: true },
-      { source: "/inbox", destination: "/home", permanent: true }, // Home shows everything the inbox did
-      { source: "/ripple", has: [{ type: "query", key: "d", value: "(?<d>.+)" }], destination: "/changes/:d", permanent: false },
-      { source: "/ripple", destination: "/overview", permanent: false },
+      { source: "/home", destination: "/", permanent: true },
+      { source: "/inbox", destination: "/", permanent: true },
+      { source: "/approvals", destination: "/", permanent: true }, // Needs you lives on the Assistant
+      { source: "/changes", destination: "/reports", permanent: true },
+      { source: "/changes/:id", destination: "/reports/:id", permanent: true },
+      { source: "/decisions", destination: "/reports", permanent: true },
+      { source: "/decisions/:id", destination: "/reports/:id", permanent: true },
+      { source: "/overview", destination: "/analytics", permanent: true },
+      { source: "/graph", destination: "/analytics#graph", permanent: true },
+      { source: "/it", destination: "/reports?kind=access", permanent: true },
+      { source: "/teams/:team", destination: "/agents?team=:team", permanent: true },
+      { source: "/connectors", destination: "/connections", permanent: true },
+      // v1 share links: /ripple?d=X opens that case, bare /ripple opens analytics
+      { source: "/ripple", has: [{ type: "query", key: "d", value: "(?<d>.+)" }], destination: "/reports/:d", permanent: false },
+      { source: "/ripple", destination: "/analytics", permanent: false },
     ];
   },
   turbopack: {

@@ -2,53 +2,150 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getApprovals } from "@/lib/api";
 import { parseAsString, useQueryState } from "nuqs";
-import { Sparkles } from "lucide-react";
-import { DashboardButton, DashboardShell } from "@/components/kit/obsidian/dashboard-shell/dashboard-shell";
+import { Ellipsis, Menu, PanelLeft, Search, X } from "lucide-react";
+import { getApprovals } from "@/lib/api";
 import { Mark } from "@/components/brand/Mark";
-import { HealthPill } from "./HealthPill";
-import { NAV, NAV_FOOTER, routeInfo } from "./nav";
-import { TeamSwitcher } from "./TeamSwitcher";
+import { SiteCredits } from "@/components/SiteCredits";
+import { NAV, NAV_FOOTER, activeHref, type NavItem } from "./nav";
 
-/** Dashboard chrome: grouped sidebar, header (title, status slot, Team chip, Ask). Nav lives in ./nav. */
-export function AppShell({ status, authSlot, lensSlot, children }: { status?: string; authSlot?: React.ReactNode; lensSlot?: React.ReactNode; children: React.ReactNode }) {
+/** v2 shell (margin layout): a calm sidebar on the page colour, content on the right. Below lg the sidebar is a drawer. */
+export function AppShell({ lensSlot, children }: { lensSlot?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname();
-  const { activeId, title } = routeInfo(pathname);
-  const [, setAsk] = useQueryState("ask", parseAsString);
-  // The Approvals badge: how many open actions this viewer may decide. Shares the /approvals query, so a decision there updates it.
-  const { data } = useQuery({ queryKey: ["approvals", "open"], queryFn: () => getApprovals("open"), refetchInterval: 60_000, retry: false });
-  const navigation = useMemo(
-    () => NAV.map((s) => ({ ...s, items: s.items.map((i) => (i.id === "/approvals" && data?.open && !data.sample ? { ...i, count: data.open } : i)) })),
-    [data],
-  );
+  // The drawer remembers the path it opened on, so navigating closes it without an effect.
+  const [openAt, setOpenAt] = useState<string | null>(null);
+  const open = openAt === pathname;
+  const setOpen = (v: boolean) => setOpenAt(v ? pathname : null);
+  const [collapsed, setCollapsed] = useState(false);
   return (
-    <DashboardShell
-      className="h-full"
-      brand={{ name: "Ripple", logo: <Mark /> }}
-      navigation={navigation}
-      activeItemId={activeId}
-      linkComponent={Link}
-      title={title}
-      status={status}
-      statusTone="neutral"
-      secondaryNavigation={NAV_FOOTER}
-      sidebarFooter={<HealthPill />}
-      headerActions={
-        <>
-          {lensSlot}
-          <TeamSwitcher />
-          {authSlot}
-          <DashboardButton variant="primary" size="md" onClick={() => setAsk("1")}>
-            <Sparkles aria-hidden />
-            Ask
-          </DashboardButton>
-        </>
-      }
-    >
-      {children}
-    </DashboardShell>
+    <div className="flex min-h-dvh bg-page text-body">
+      {/* phone and tablet: top bar + drawer */}
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-page/90 px-4 backdrop-blur lg:hidden">
+        <Brand />
+        <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="grid size-9 place-items-center rounded-control border border-hairline bg-surface text-strong">
+          <Menu size={18} aria-hidden />
+        </button>
+      </div>
+      {open && <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-strong/20 lg:hidden" />}
+      <aside
+        className={`${open ? "flex" : "hidden"} fixed inset-y-0 left-0 z-50 w-[272px] flex-col bg-page px-4 pb-4 pt-5 shadow-xl lg:sticky lg:top-0 lg:z-auto lg:flex lg:h-dvh lg:shadow-none ${collapsed ? "lg:w-[76px] lg:px-3" : "lg:w-[248px]"}`}
+        aria-label="Sidebar"
+      >
+        <div className="flex items-center justify-between pl-1.5">
+          {!collapsed && <Brand />}
+          <button type="button" onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden size-8 place-items-center rounded-control text-faint hover:bg-raised hover:text-strong lg:grid">
+            <PanelLeft size={17} aria-hidden />
+          </button>
+          <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="grid size-8 place-items-center rounded-control text-faint lg:hidden">
+            <X size={17} aria-hidden />
+          </button>
+        </div>
+        <SearchButton collapsed={collapsed} />
+        <nav className="mt-4 flex flex-col" aria-label="Main">
+          {NAV.map((section, i) => (
+            <div key={section.title ?? i} className={i ? "mt-6" : ""}>
+              {section.title && !collapsed && <p className="mb-1.5 px-3 text-xs text-faint">{section.title}</p>}
+              <ul className="flex flex-col gap-0.5">
+                {section.items.map((item) => <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />)}
+              </ul>
+            </div>
+          ))}
+        </nav>
+        <div className="mt-auto flex flex-col gap-3 pt-6">
+          {!collapsed && lensSlot && <div className="flex flex-wrap items-center gap-2 px-1">{lensSlot}</div>}
+          <ul className="flex flex-col gap-0.5">
+            {NAV_FOOTER.map((item) => <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} badge={item.label === "Notifications" ? <NotificationCount /> : undefined} />)}
+          </ul>
+          <div className="border-t border-hairline pt-3">
+            <Link href="/profile" className="flex items-center gap-3 rounded-control px-1.5 py-1.5 hover:bg-raised" aria-label="Profile">
+              <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-[conic-gradient(var(--ripple),var(--gap),var(--ripple))] p-[2px]">
+                <span className="grid size-full place-items-center rounded-full bg-surface text-xs font-medium text-strong">DV</span>
+              </span>
+              {!collapsed && (
+                <>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate text-sm font-medium text-strong">Demo visitor</span>
+                    <span className="block truncate text-xs text-faint">Viewer · Ledgerly</span>
+                  </span>
+                  <Ellipsis size={16} className="text-faint" aria-hidden />
+                </>
+              )}
+            </Link>
+            {!collapsed && <SiteCredits className="mt-2 px-1.5 text-left text-2xs leading-snug" />}
+          </div>
+        </div>
+      </aside>
+      <main className="min-w-0 flex-1 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-7">{children}</main>
+    </div>
   );
+}
+
+function Brand() {
+  return (
+    <Link href="/" className="flex items-center gap-2.5" aria-label="Ripple home">
+      <span className="grid size-8 place-items-center rounded-control bg-surface shadow-[0_0_0_1px_var(--hairline)]">
+        <Mark size={20} />
+      </span>
+      <span className="text-lg font-medium tracking-tight text-strong">ripple</span>
+    </Link>
+  );
+}
+
+function NavLink({ item, pathname, collapsed, badge }: { item: NavItem; pathname: string; collapsed: boolean; badge?: React.ReactNode }) {
+  const active = activeHref(pathname) === item.href;
+  const Icon = item.icon;
+  return (
+    <li>
+      <Link
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        title={collapsed ? item.label : undefined}
+        className={`flex h-10 items-center gap-3 rounded-control px-3 text-md transition-colors ${active ? "bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.12)]" : "text-body hover:bg-raised hover:text-strong"} ${collapsed ? "justify-center px-0" : ""}`}
+      >
+        <Icon size={17} strokeWidth={1.6} aria-hidden className="shrink-0" />
+        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+        {!collapsed && badge}
+      </Link>
+    </li>
+  );
+}
+
+/** Opens the Ask drawer (?ask=1); ⌘K / Ctrl+K anywhere does the same. */
+function SearchButton({ collapsed }: { collapsed: boolean }) {
+  const [, setAsk] = useQueryState("ask", parseAsString);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setAsk("1");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setAsk]);
+  return (
+    <button
+      type="button"
+      onClick={() => setAsk("1")}
+      aria-label="Search"
+      className={`mt-5 flex h-10 items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm text-faint hover:text-body ${collapsed ? "justify-center px-0" : ""}`}
+    >
+      <Search size={16} aria-hidden />
+      {!collapsed && (
+        <>
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="rounded-chip bg-raised px-1.5 py-0.5 font-sans text-2xs text-faint">⌘K</kbd>
+        </>
+      )}
+    </button>
+  );
+}
+
+/** Open approvals this viewer may decide (shares the approvals query). Sample data shows no badge. */
+function NotificationCount() {
+  const { data } = useQuery({ queryKey: ["approvals", "open"], queryFn: () => getApprovals("open"), refetchInterval: 60_000, retry: false });
+  if (!data?.open || data.sample) return null;
+  return <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gap px-1.5 text-2xs font-medium text-ink-on-strong">{data.open}</span>;
 }
