@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixtures from "@/lib/schemas/fixtures/reports.json";
 import { ReportDetail, ReportList, type ReportRow } from "@/lib/schemas/reports";
-import { coverageAfter, day, gaps, isReadOnlyError, listSentence, matches, noticedSentence, relDays, STATE, usd, worstFirst } from "./reports-ui";
+import { teamsWorstFirst, coverageAfter, day, gaps, isReadOnlyError, listSentence, matches, noticedSentence, relDays, STATE, usd, worstFirst } from "./reports-ui";
 
 const detail = ReportDetail.parse(fixtures.detail);
 const row = ReportList.parse(fixtures.list).cases[0];
@@ -55,9 +55,16 @@ describe("reports state mapping", () => {
     expect(g[1]).toMatchObject({ figure: "+20 pts", action: "Notify Security" });
   });
 
-  it("the noticed sentence comes from typed contract rows, and is absent when they are redacted", () => {
+  it("the noticed sentence comes from typed contract rows, and says so when they are redacted", () => {
     expect(noticedSentence(detail)).toBe("Northwind Capital MSA guarantees API v1 until Jun 30, 2027. The Jan 31 sunset breaks it. 1 more contract says the same. Nobody in Legal knows.");
-    expect(noticedSentence({ ...detail, conflicts: detail.conflicts.map((c) => ({ ...c, contracts: [] })) })).toBeNull();
+    expect(noticedSentence({ ...detail, conflicts: detail.conflicts.map((c) => ({ ...c, contracts: [] })) })).toMatch(/restricted to its owning team/);
+    expect(noticedSentence({ ...detail, conflicts: [] })).toBeNull();
+  });
+
+  it("Legal leads the gaps even when the contract rows are redacted", () => {
+    const red = { ...detail, conflicts: detail.conflicts.map((c) => ({ ...c, contracts: [] })), teams: [...detail.teams].reverse() };
+    expect(gaps(red)[0]).toMatchObject({ name: "Legal", figure: "+20 pts" });
+    expect(teamsWorstFirst(detail.teams).map((t) => t.status)).toEqual(["not_told", "not_told", "not_told", "acked", "acked"]);
   });
 
   it("recognises the shared demo's read-only refusal", () => {

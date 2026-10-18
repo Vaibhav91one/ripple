@@ -13,12 +13,12 @@ import { EvidenceDiff } from "@/components/ui/evidence-diff";
 import { hatch } from "@/components/ui/hatch";
 import { HatchedBar } from "@/components/ui/hatched-bar";
 import { HeroNumber } from "@/components/ui/hero-number";
-import { NeedsYouList } from "@/components/ui/needs-you-list";
+import { NeedsYou } from "@/components/ui/needs-you";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { TargetBar } from "@/components/ui/target-bar";
 import { chaseTeam, decideApproval, getApprovals, getReport, isGraphDown, NotFoundError } from "@/lib/api";
-import { day, dayTime, daysLeft, eventTone, gaps, isReadOnlyError, KIND_LABEL, noticedSentence, relDays, STATE, TEAM_STATUS, teamDelta, usd, type Gap } from "@/lib/reports-ui";
+import { day, dayTime, daysLeft, eventTone, gaps, isReadOnlyError, KIND_LABEL, noticedSentence, STATE, TEAM_STATUS, teamDelta, teamsWorstFirst, usd, type Gap } from "@/lib/reports-ui";
 import type { ReportDetail, TimelineEvent } from "@/lib/schemas/reports";
 import { DemoTag, KIND_ICON, Segmented } from "./shared";
 
@@ -129,7 +129,8 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
   const noticed = noticedSentence(d);
   const legal = g.find((x) => x.teamId === "legal");
   const left = r.effectiveAt ? daysLeft(r.effectiveAt, d.now) : null;
-  const strip = d.timeline.slice(0, 6);
+  const events = [...d.timeline].sort((a, b) => a.at - b.at);
+  const strip = events.slice(0, 5);
   const demo = d.timeline.filter((e) => e.demo).length;
   return (
     <div className="space-y-4">
@@ -147,7 +148,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               }
             />
             <ul className="mt-5 divide-y divide-hairline">
-              {d.teams.map((t) => {
+              {teamsWorstFirst(d.teams).map((t) => {
                 const s = TEAM_STATUS[t.status];
                 return (
                   <li key={t.teamId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 py-3 sm:grid-cols-[11rem_minmax(0,1fr)_9rem_6rem]">
@@ -170,16 +171,16 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
 
           <Card>
             <CardHeader title="What happened" action={<button type="button" onClick={onTimeline} className="inline-flex items-center gap-1 text-sm text-faint hover:text-strong">View all {d.timeline.length} events<ChevronRight size={14} aria-hidden /></button>} />
-            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <div className={`mt-6 grid gap-6 ${noticed ? "xl:grid-cols-[minmax(0,1fr)_280px]" : ""}`}>
               <div className="-mx-1 overflow-x-auto px-1 pb-1">
-                <ol className="grid min-w-[560px] grid-flow-col auto-cols-fr">
+                <ol className="grid min-w-[520px] grid-flow-col auto-cols-fr">
                   {strip.map((e, i) => (
-                    <li key={e.id} className="relative pr-4">
+                    <li key={`${e.id}-${i}`} className="relative pr-4">
                       {i < strip.length - 1 && <span aria-hidden className="absolute left-2 right-0 top-[5px] h-px bg-hairline" />}
                       <span aria-hidden className={`relative block size-[11px] rounded-full ring-4 ring-surface ${DOT[eventTone(e.kind)]}`} />
-                      <p className="mt-3 text-xs text-faint">{day(e.at)}{e.demo && <span className="ml-1.5"><DemoTag /></span>}</p>
+                      <p className="mt-3 flex items-center gap-1.5 whitespace-nowrap text-xs text-faint">{day(e.at)}{e.demo && <DemoTag />}</p>
                       <p className="mt-1 text-sm font-medium text-strong">{KIND_LABEL[e.kind]}</p>
-                      <p className="mt-1 text-xs leading-snug text-faint">{e.text}</p>
+                      <p className="mt-1 line-clamp-3 text-xs leading-snug text-faint">{e.text}</p>
                     </li>
                   ))}
                 </ol>
@@ -198,7 +199,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
 
         <div className="min-w-0 space-y-4">
           <Card>
-            <CardHeader title="Result" sub={r.effectiveAt ? `Goal: every team told and acked before ${day(r.effectiveAt)}` : "Goal: every team told and acked"} menuLabel="Result options" />
+            <CardHeader title="Result" sub={r.effectiveAt ? `Goal: every team told and acked before ${day(r.effectiveAt)}` : "Goal: every team told and acked"} />
             <div className="mt-5">
               <HeroNumber value={`${c.pct}%`} delta={{ value: `${100 - c.pct} pts`, dir: "down", tone: c.pct < 100 ? "bad" : "neutral", vs: "vs 100% needed" }}>
                 {c.pct < 100 ? `${c.affected - c.told} of ${c.affected} teams have not been told.` : "Every affected team has been told."}{" "}
@@ -208,9 +209,9 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
             <div className="mt-6"><TargetBar value={c.pct} target={100} from={`Now ${c.pct}%`} targetLabel="Needed 100%" tone={c.pct < 100 ? "conflict" : "ripple"} label="Coverage against the 100% goal" /></div>
             <dl className="mt-5 divide-y divide-hairline text-md">
               {[
-                ["ARR at risk", usd(r.arrAtRisk), conflict ? `${conflict.contracts.length} contracts guarantee it` : "No contract guarantee"],
+                ["ARR at risk", usd(r.arrAtRisk), conflict ? `${d.counts.contracts} ${d.counts.contracts === 1 ? "contract guarantees" : "contracts guarantee"} it` : "No contract guarantee"],
                 ["Customers", String(d.counts.customers), `${d.result.noticesSent} notified${d.result.noticesSentDemo ? " (demo)" : ""}`],
-                ["Days left", left === null ? "No date" : String(Math.max(0, left)), r.effectiveAt ? `effective ${relDays(r.effectiveAt, d.now)}` : ""],
+                ["Days left", left === null ? "No date" : String(Math.max(0, left)), r.effectiveAt ? `until ${day(r.effectiveAt)}` : ""],
               ].map(([k, v, s]) => (
                 <div key={k} className="flex items-baseline justify-between gap-3 py-3">
                   <dt className="text-body">{k}</dt>
@@ -219,7 +220,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               ))}
             </dl>
           </Card>
-          <NeedsYouList
+          <NeedsYou
             title="Pending on you"
             sub={pending.length ? `${pending.length} waiting for your OK` : "Nothing waiting"}
             empty="No approvals wait on you for this change."
@@ -239,7 +240,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               onAction={legal && !readOnly ? () => onAct(legal) : undefined}
               docLine={conflict.sources[1]?.quote ?? "Restricted"}
               groups={conflict.sources.map((s, i) => ({
-                label: i === 0 ? "The decision says" : "The contract says",
+                label: i === 0 ? "The decision says" : `${conflict.contracts[i - 1]?.name ?? `Contract ${i}`} says`,
                 chips: [{ text: s.quote ?? "Restricted to its owning team", tone: i === 0 ? "conflict" : "covered" }],
                 caption: s.artifactId ?? "Source restricted",
               }))}
@@ -249,11 +250,11 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
       )}
 
       {g.length > 0 && (
-        <section aria-label="Gaps" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Gaps" className={`grid gap-4 sm:grid-cols-2 ${g.length === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
           {g.map((x) => (
             <Card key={x.teamId} className="flex flex-col">
               <span className={`grid size-9 place-items-center rounded-full ${x.status === "told" ? "bg-gap-soft text-gap" : "bg-conflict-soft text-conflict"}`}>{x.arr ? <ShieldAlert size={16} aria-hidden /> : <UserX size={16} aria-hidden />}</span>
-              <p className={`mt-4 text-4xl font-light tracking-[-0.04em] ${x.status === "told" ? "text-gap" : "text-conflict"}`}>{x.figure}</p>
+              <p className={`mt-4 text-3xl font-light tracking-[-0.04em] ${x.status === "told" ? "text-gap" : "text-conflict"}`}>{x.figure}</p>
               <p className="text-xs text-faint">{x.figureNote}</p>
               <h3 className="mt-3 text-md font-medium text-strong">{x.name} {x.status === "told" ? "has not acked" : "not told"}</h3>
               <p className="mt-1 mb-4 text-sm leading-relaxed text-faint">{x.body}</p>
@@ -274,10 +275,10 @@ function EventList({ events }: { events: TimelineEvent[] }) {
   if (!events.length) return <p className="mt-6 text-sm text-faint">Nothing recorded yet.</p>;
   return (
     <ol className="mt-4 divide-y divide-hairline">
-      {events.map((e) => {
+      {[...events].sort((a, b) => a.at - b.at).map((e, i) => {
         const Icon = KIND_ICON[e.kind];
         return (
-          <li key={e.id} className="flex items-start gap-3 py-3">
+          <li key={`${e.id}-${i}`} className="flex items-start gap-3 py-3">
             <span className={`grid size-9 shrink-0 place-items-center rounded-full ${e.kind === "conflict" ? "bg-conflict-soft text-conflict" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
             <div className="min-w-0 flex-1">
               <p className="text-md text-strong">{e.text} {e.demo && <DemoTag />}</p>
@@ -296,7 +297,7 @@ function Artifacts({ d }: { d: ReportDetail }) {
   const rows: Row[] = [
     ...(d.sourceRef ? [{ key: "src", icon: FileText, title: "The announcement", quote: d.sourceRef.quote, meta: d.sourceRef.artifactId }] : []),
     ...d.conflicts.flatMap((c) => c.sources.slice(1).map((s, i) => ({ key: `${c.id}-${i}`, icon: ShieldAlert, title: c.contracts[i]?.name ?? "Contract clause", quote: s.quote ?? "Restricted to its owning team", meta: s.artifactId ?? "restricted" }))),
-    ...d.timeline.filter((e) => e.kind === "issue" || e.kind === "notified" || e.kind === "proposed").map((e) => ({ key: e.id, icon: KIND_ICON[e.kind], title: e.text, meta: `${KIND_LABEL[e.kind]} · ${dayTime(e.at)}`, url: e.url, demo: e.demo })),
+    ...d.timeline.filter((e) => e.kind === "issue" || e.kind === "notified" || e.kind === "proposed").map((e, i) => ({ key: `${e.id}-${i}`, icon: KIND_ICON[e.kind], title: e.text, meta: `${KIND_LABEL[e.kind]} · ${dayTime(e.at)}`, url: e.url, demo: e.demo })),
   ];
   return (
     <Card>
@@ -351,7 +352,7 @@ function ApproveModal({ d, gap, readOnly, busy, error, onClose, onConfirm }: { d
           <span><span className="block text-xs text-faint">Now</span><span className="text-3xl font-light tabular-nums text-faint">{c.pct}%</span></span>
           <ArrowRight size={18} aria-hidden className="mb-2 text-faint" />
           <span><span className="block text-xs text-faint">{chase ? "After the ack" : "After this notice"}</span><span className="text-3xl font-light tabular-nums">{gap.after}%</span></span>
-          <span className="mb-1.5 ml-auto rounded-full bg-gap-soft px-2 py-0.5 text-xs font-medium text-gap">{c.affected - c.told} of {c.affected} teams untold</span>
+          <span className="mb-1.5 ml-auto hidden whitespace-nowrap rounded-full bg-gap-soft sm:inline px-2 py-0.5 text-xs font-medium text-gap">{c.affected - c.told} of {c.affected} teams untold</span>
         </div>
         <p className="mt-3 border-t border-hairline pt-3 text-sm text-faint">Ripple sends it to the {gap.name} owner with the evidence, then waits for their ack.</p>
       </div>

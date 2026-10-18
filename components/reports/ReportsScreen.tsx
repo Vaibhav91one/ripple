@@ -54,20 +54,32 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
   const max = Math.max(60, ...days) + 10;
   const pos = (v: number) => ((v - min) / (max - min)) * 100; // DotStrip places values on a 0-100 axis
   const by = data.summary.byState;
+  const controls = (
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex h-10 w-full items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm sm:w-64">
+                <Search size={15} aria-hidden className="text-faint" />
+                <span className="sr-only">Search cases</span>
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search cases, systems, teams" className="min-w-0 flex-1 bg-transparent text-strong outline-none placeholder:text-faint" />
+              </label>
+              <Segmented label="Filter by state" value={state} onChange={(v) => void setState(v)} options={STATES.map((s) => ({ id: s, label: s === "all" ? "All" : STATE[s].label.split(" ")[0] }))} />
+            </div>
+  );
+  const legend = (
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-faint">
+              {(["blocked", "waiting", "done"] as const).map((s) => (
+                <li key={s} className="flex items-center gap-1.5"><span aria-hidden className={`size-2 rounded-full ${DOT_BG[s]}`} />{STATE[s].label} {by[s] ?? 0}</li>
+              ))}
+            </ul>
+  );
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader
           title={`${data.summary.total} ${data.summary.total === 1 ? "change" : "changes"} by state`}
           sub="One dot per change, placed by the days left until it takes effect"
-          action={
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-faint">
-              {(["blocked", "waiting", "done"] as const).map((s) => (
-                <li key={s} className="flex items-center gap-1.5"><span aria-hidden className={`size-2 rounded-full ${DOT_BG[s]}`} />{STATE[s].label} {by[s] ?? 0}</li>
-              ))}
-            </ul>
-          }
+          action={<div className="hidden sm:block">{legend}</div>}
         />
+        <div className="mt-3 sm:hidden">{legend}</div>
         <div className="mt-8">
           <DotStrip
             label="Changes by days until they take effect"
@@ -88,17 +100,9 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
         <CardHeader
           title="Needs attention first"
           sub="Blocked first, then the lowest coverage"
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="flex h-10 w-full items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm sm:w-64">
-                <Search size={15} aria-hidden className="text-faint" />
-                <span className="sr-only">Search cases</span>
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search cases, systems, teams" className="min-w-0 flex-1 bg-transparent text-strong outline-none placeholder:text-faint" />
-              </label>
-              <Segmented label="Filter by state" value={state} onChange={(v) => void setState(v)} options={STATES.map((s) => ({ id: s, label: s === "all" ? "All" : STATE[s].label.split(" ")[0] }))} />
-            </div>
-          }
+          action={<div className="hidden lg:block">{controls}</div>}
         />
+        <div className="mt-4 lg:hidden">{controls}</div>
         <div className="mt-5">
           <DataTable<ReportRow>
             caption="Cases, worst first"
@@ -155,10 +159,10 @@ function ActivityFeed() {
         <p className="mt-6 text-sm text-faint">Nothing recorded for this filter yet.</p>
       ) : (
         <ol className="mt-4 divide-y divide-hairline">
-          {items.map((it) => {
+          {items.map((it, i) => {
             const Icon = KIND_ICON[it.kind];
             return (
-              <li key={`${it.caseId}-${it.id}`} className="grid grid-cols-[auto_1fr] items-start gap-3 py-3 sm:grid-cols-[7.5rem_auto_1fr_auto] sm:items-center">
+              <li key={`${it.caseId}-${it.id}-${i}`} className="grid grid-cols-[auto_1fr] items-start gap-3 py-3 sm:grid-cols-[7.5rem_auto_1fr_auto] sm:items-center">
                 <time className="hidden text-sm tabular-nums text-faint sm:block">{dayTime(it.at)}</time>
                 <span className={`grid size-9 place-items-center rounded-full ${it.kind === "conflict" ? "bg-conflict-soft text-conflict" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
                 <div className="min-w-0">

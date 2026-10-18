@@ -67,7 +67,7 @@ export const teamDelta = (t: TeamProgress) => (t.status === "acked" ? "Done" : t
 
 export const KIND_LABEL: Record<TimelineEvent["kind"], string> = {
   announced: "Announced", traversed: "Traced", proposed: "Proposed", approved: "Approved", rejected: "Rejected", notified: "Notice sent",
-  delivered: "Delivered", ack: "Acked", issue: "GitHub issue", conflict: "Conflict found", audit: "Audit", run: "Agent run",
+  delivered: "Delivered", ack: "Answered", issue: "GitHub issue", conflict: "Conflict found", audit: "Audit", run: "Agent run",
 };
 
 /** Dot colour on the timeline: red only for conflicts, amber for rejected (still not told), ink for the rest. */
@@ -83,7 +83,7 @@ export function gaps(d: ReportDetail): Gap[] {
   const contractTeam = conflict ? (d.teams.find((t) => t.teamId === "legal") ?? null) : null;
   return d.teams
     .filter((t) => t.status !== "acked")
-    .sort((a, b) => (a.status === b.status ? 0 : a.status === "not_told" ? -1 : 1))
+    .sort((a, b) => Number(b === contractTeam) - Number(a === contractTeam) || (a.status === b.status ? 0 : a.status === "not_told" ? -1 : 1))
     .map((t) => {
       const told = t.status === "told";
       const after = told ? c.pct : coverageAfter(c);
@@ -98,11 +98,15 @@ export function gaps(d: ReportDetail): Gap[] {
     });
 }
 
+/** Teams worst first: not told, told without an ack, then acked. */
+export const teamsWorstFirst = (ts: TeamProgress[]) => [...ts].sort((a, b) => TEAM_STATUS[a.status].actual - TEAM_STATUS[b.status].actual);
+
 /** The amber callout sentence, built only from typed contract rows (redaction drops them for non-owners). */
 export function noticedSentence(d: ReportDetail): string | null {
   const conflict = d.conflicts.find((x) => x.status === "open");
   const k = conflict?.contracts.find((x) => x.guaranteedUntil);
-  if (!conflict || !k?.guaranteedUntil) return null;
+  if (!conflict) return null;
+  if (!k?.guaranteedUntil) return `The ${d.report.effectiveAt ? `${day(d.report.effectiveAt)} ` : ""}sunset clashes with a contract guarantee. The contract text is restricted to its owning team, so only the topology shows here.`;
   const until = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(k.guaranteedUntil * 1000);
   const legal = d.teams.find((t) => t.teamId === "legal");
   const n = conflict.contracts.length - 1;
