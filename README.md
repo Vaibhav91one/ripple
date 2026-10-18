@@ -2,7 +2,7 @@
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
-- **Live:** https://ripple.vaibhav.quest (on Zerops)
+- **Live:** https://web-2fa0-3000.prg1.zerops.app (on Zerops; the custom domain ripple.vaibhav.quest is waiting on a Google Safe Browsing review)
 - **Track:** Track 03: Company Brain, WeMakeDevs x FalkorDB Graph Hacks
 - **Pitch:** before you ship a breaking change, ask the graph who it hits and who was never told.
 - **Modelling:** Telling a team is an edge (INVOLVED_IN / ACKED), so a missing edge is the finding.
@@ -23,7 +23,7 @@ Ripple ships an MCP server: stateless Streamable HTTP at `/api/mcp` (12 tools) o
 
 ```bash
 # Claude Code, hosted demo
-claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
+claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
 # local stdio: FalkorDB on :6379 with the seed loaded (this repo's .mcp.json already wires it)
 claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp
 ```
@@ -31,19 +31,19 @@ claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm -
 Cursor and other clients (`mcp.json`):
 
 ```json
-{ "mcpServers": { "ripple": { "url": "https://ripple.vaibhav.quest/api/mcp" } } }
+{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }
 ```
 
 **Your own org (API key).** The hosted demo MCP is anonymous and read-only (`ack_brief` is refused with 403). To query your org's graph, an org admin creates a key in **Settings > API keys** (shown once, only its sha256 is stored, revocable). The key acts as the admin who created it: the same teams and role, so restricted text is redacted exactly as in their session. Add it as a bearer header:
 
 ```bash
 # Claude Code
-claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp --header "Authorization: Bearer rpl_<prefix>_<secret>"
+claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp --header "Authorization: Bearer rpl_<prefix>_<secret>"
 ```
 
 ```json
 // Cursor (.cursor/mcp.json)
-{ "mcpServers": { "ripple": { "url": "https://ripple.vaibhav.quest/api/mcp", "headers": { "Authorization": "Bearer rpl_<prefix>_<secret>" } } } }
+{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp", "headers": { "Authorization": "Bearer rpl_<prefix>_<secret>" } } } }
 ```
 
 A revoked or unknown key gets 401. `ack_brief` with a key needs the admin or change_owner role and is written to the audit log.
