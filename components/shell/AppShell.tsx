@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Ellipsis, Menu, PanelLeft, Search, X } from "lucide-react";
+import { Ellipsis, Menu, PanelLeft, X } from "lucide-react";
 import { getApprovals } from "@/lib/api";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Mark } from "@/components/brand/Mark";
@@ -64,7 +64,6 @@ export function AppShell({ user, lensSlot, authSlot, children }: { user: ShellUs
             <X size={17} aria-hidden />
           </button>
         </div>
-        <SearchButton collapsed={collapsed} />
         <nav className="mt-4 flex flex-col" aria-label="Main">
           {NAV.map((section, i) => (
             <div key={section.title ?? i} className={i ? "mt-6" : ""}>
@@ -133,42 +132,6 @@ function NavLink({ item, pathname, collapsed, badge }: { item: NavItem; pathname
         {!collapsed && badge}
       </Link>
     </li>
-  );
-}
-
-/** Goes to the Assistant at / and focuses its prompt (on / it just focuses); ⌘K / Ctrl+K anywhere does the same. */
-function SearchButton({ collapsed }: { collapsed: boolean }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const ask = useCallback(() => {
-    if (pathname === "/") document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Prompt"]')?.focus();
-    else router.push("/"); // the composer autofocuses on arrival
-  }, [pathname, router]);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        ask();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [ask]);
-  return (
-    <button
-      type="button"
-      onClick={ask}
-      aria-label="Search"
-      className={`mt-5 flex h-11 items-center gap-2 lg:h-10 rounded-control border border-hairline bg-surface px-3 text-sm text-faint hover:text-body ${collapsed ? "justify-center px-0" : ""}`}
-    >
-      <Search size={16} aria-hidden />
-      {!collapsed && (
-        <>
-          <span className="flex-1 text-left">Search</span>
-          <kbd className="rounded-chip bg-raised px-1.5 py-0.5 font-sans text-2xs text-faint">⌘K</kbd>
-        </>
-      )}
-    </button>
   );
 }
 
