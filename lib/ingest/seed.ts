@@ -175,9 +175,13 @@ export async function seed(graphName: string): Promise<void> {
   await query(g, "MERGE (s:SeedInfo {k: 'seed'}) SET s.version = $v, s.at = $at", { v: SEED_VERSION, at: Math.floor(Date.now() / 1000) });
 }
 
+/** `pnpm seed <graph>` seeds that graph only; no argument seeds the shared demo graph. */
+export const seedTarget = (argv: string[]) => argv.filter((a) => a !== "--")[0] ?? "demo";
+
 if (process.argv[1]?.endsWith("lib/ingest/seed.ts")) {
-  seed("demo")
-    .then(() => console.log("seeded graph demo"))
+  const target = seedTarget(process.argv.slice(2));
+  seed(target)
+    .then(() => console.log(`seeded graph ${target}`))
     .catch((e) => { console.error(e); process.exitCode = 1; })
     .finally(closeClient);
 }

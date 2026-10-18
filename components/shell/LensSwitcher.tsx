@@ -16,7 +16,7 @@ const OPTIONS = [
 ];
 
 /** Demo org only: "View as" a team (sets the ripple_lens cookie, then re-reads the page), plus the read-only badge. Mounted by LensArea. */
-export function LensSwitcher({ current }: { current: Lens }) {
+export function LensSwitcher({ current, local = false }: { current: Lens; local?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [lens, setLens] = useState(current);
@@ -32,8 +32,8 @@ export function LensSwitcher({ current }: { current: Lens }) {
 
   return (
     <>
-      <span className="rounded-chip border border-hairline bg-surface px-2 py-1 text-xs text-faint" title="The shared demo can't be changed">
-        Demo · read-only
+      <span className="rounded-chip border border-hairline bg-surface px-2 py-1 text-xs text-faint" title={local ? "Your own writable workspace" : "The shared demo can't be changed"}>
+        {local ? "Local workspace" : "Demo · read-only"}
       </span>
       <DashboardPopover open={open} onOpenChange={setOpen}>
         <DashboardPopoverTrigger asChild>
@@ -45,7 +45,7 @@ export function LensSwitcher({ current }: { current: Lens }) {
         </DashboardPopoverTrigger>
         <DashboardPopoverContent align="end" className="flex w-auto flex-col items-center gap-1 p-3">
           <MagneticSelect options={OPTIONS} value={lens} onChange={choose} label="View as" />
-          <p className="text-xs text-faint">Demo · read-only. Pick whose view to see.</p>
+          <p className="text-xs text-faint">{local ? "Local workspace." : "Demo · read-only."} Pick whose view to see.</p>
         </DashboardPopoverContent>
       </DashboardPopover>
       <p className="w-full text-2xs leading-snug text-faint">Viewing as {label}. Switch to see what other teams see.</p>

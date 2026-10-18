@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ellipsis, Menu, PanelLeft, Search, X } from "lucide-react";
 import { getApprovals } from "@/lib/api";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Mark } from "@/components/brand/Mark";
 import { SiteCredits } from "@/components/SiteCredits";
 import { NAV, NAV_FOOTER, activeHref, type NavItem } from "./nav";
@@ -174,6 +175,8 @@ function SearchButton({ collapsed }: { collapsed: boolean }) {
 /** Open approvals this viewer may decide (shares the approvals query). Sample data shows no badge. */
 function NotificationCount() {
   const { data } = useQuery({ queryKey: ["approvals", "open"], queryFn: () => getApprovals("open"), refetchInterval: 60_000, retry: false });
-  if (!data?.open || data.sample) return null;
+  // Prerendered markup has no count; render it only after hydration so a warm query cache can't change the first client render.
+  const hydrated = useHydrated();
+  if (!hydrated || !data?.open || data.sample) return null;
   return <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gap px-1.5 text-2xs font-medium text-ink-on-strong">{data.open}</span>;
 }

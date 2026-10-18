@@ -29,3 +29,10 @@ test("the user card shows the demo, local or signed-in identity", async () => {
   expect(shellUser({ RIPPLE_MODE: "local" })).toMatchObject({ name: "Local workspace", role: "Admin" });
   expect(shellUser({ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_x", CLERK_SECRET_KEY: "sk_test_x", RIPPLE_MODE: "local" }).name).toBe("Your workspace");
 });
+
+test("local mode (no Clerk) is the local workspace; Clerk keys win", async () => {
+  const { isLocalMode } = await import("./identity");
+  expect(isLocalMode({ RIPPLE_MODE: "local" })).toBe(true);
+  expect(isLocalMode({})).toBe(false);
+  expect(isLocalMode({ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_x", CLERK_SECRET_KEY: "sk_test_x", RIPPLE_MODE: "local" })).toBe(false);
+});
