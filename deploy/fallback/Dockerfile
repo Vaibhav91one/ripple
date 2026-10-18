@@ -10,7 +10,7 @@ COPY . .
 RUN SKIP_ENV_VALIDATION=1 pnpm install --frozen-lockfile && SKIP_ENV_VALIDATION=1 pnpm build \
  && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public \
  && mkdir -p .next/standalone/scripts .next/standalone/lib/db \
- && cp scripts/migrate.mjs .next/standalone/scripts/ && cp -r lib/db/migrations .next/standalone/lib/db/
+ && cp slack-manifest.yaml .next/standalone/ && cp scripts/migrate.mjs .next/standalone/scripts/ && cp -r lib/db/migrations .next/standalone/lib/db/
 
 FROM node:22-slim AS worker
 ENV NODE_ENV=production

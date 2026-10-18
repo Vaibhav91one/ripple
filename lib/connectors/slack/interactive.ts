@@ -25,6 +25,8 @@ export type Deps = {
   changeForChannel: (channelId: string) => Promise<string | null>;
   /** Evidence from every `message` event (#177, wired in #199). */
   onMessageEvent: (p: MessageEventPayload) => Promise<void>;
+  /** Our bot's Slack user id (auth.test), to ignore our own posts. Optional: without it only bot_id/subtype filtering applies. */
+  botUserId?: () => Promise<string>;
 };
 
 const ACK_KIND = { ack: "seen", concern: "concern", not_relevant: "not_relevant" } as const;
@@ -108,7 +110,10 @@ async function onCommand(job: InboundJob, d: Deps) {
 
 export async function handleInbound(job: InboundJob, d: Deps): Promise<void> {
   if (job.kind === "events") {
-    if (job.data.type === "message") await d.onMessageEvent({ orgId: job.orgId, accountId: job.accountId, teamId: job.teamId, event: job.data });
+    const t = job.data.type;
+    if (t === "app_mention" || (t === "message" && job.data.channel_type === "im")) { await (await import("./mention")).handleMention(job, d); return; }
+    if (t === "member_joined_channel") { await (await import("./mention")).handleJoined(job, d); return; }
+    if (t === "message") await d.onMessageEvent({ orgId: job.orgId, accountId: job.accountId, teamId: job.teamId, event: job.data });
     return;
   }
   const p = job.data;

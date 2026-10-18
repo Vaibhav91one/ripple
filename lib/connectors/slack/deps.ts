@@ -27,7 +27,9 @@ export async function realDeps(job: InboundJob): Promise<Deps> {
   if (!tokenEnc) throw new Error("slack is not connected for this org");
   const slack = slackClient(decrypt(tokenEnc));
   const graph = () => graphFor(org?.graphName ?? job.orgId);
+  let bot: Promise<string> | undefined;
   return {
+    botUserId: () => (bot ??= slack.call<{ user_id: string }>("auth.test").then((r) => r.user_id)),
     graph, slack, respond, onMessageEvent: messageHook({ graph, slack }),
     changeForChannel: (c) => changeForChannel(job.orgId, c),
     async asker(slackUserId) {
@@ -54,7 +56,7 @@ export async function realDeps(job: InboundJob): Promise<Deps> {
     },
     ask(question, g, viewer) {
       const model = pickModel("agent");
-      if (!model) return (async function* () { yield { type: "text_delta", text: "No model is configured on this server." } as const; })();
+      if (!model) return (async function* () { yield { type: "text_delta", text: "I can't answer questions yet: no model key is configured on this Ripple server." } as const; })();
       return runInteractive({ model, question, g, now: Math.floor(Date.now() / 1000), viewer });
     },
   };

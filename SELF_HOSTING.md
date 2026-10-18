@@ -64,7 +64,7 @@ Caddy fetches the certificate on first request. For sign-in, create a Clerk app 
 
 ## Optional: GitHub and Slack
 
-Both are optional; Ripple works without them. One-click setup: `/setup/github` is live (admin only): press the button, confirm on GitHub, install the app; no env vars needed for GitHub. If you later set the `GITHUB_APP_*` env vars, env wins over the stored app, and the webhook accepts both secrets during the switch. `/setup/slack` arrives in #240; until then Slack is manual:
+Both are optional; Ripple works without them. One-click setup: `/setup/github` (admin only: press the button, confirm on GitHub, install the app; no env vars needed) and `/setup/slack` (renders the Slack manifest for your URL). If you later set the `GITHUB_APP_*` env vars, env wins over the stored app, and the webhook accepts both secrets during the switch. To set them up by hand instead:
 
 - **GitHub, by hand** (only if you skip `/setup/github`): create a GitHub App from `github-app-manifest.json` (details in `docs/github-app.md`), then set `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` (PEM with newlines as `\n`), `GITHUB_APP_WEBHOOK_SECRET`, `GITHUB_APP_SLUG`, `GITHUB_REPO`. Webhook URL: `<APP_URL>/api/connectors/github/webhook`.
 - **Slack**: create an app from `slack-manifest.yaml` and set `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`. Request URLs are under `<APP_URL>/api/slack/` (`events`, `interactive`, `command`, `oauth`).
@@ -82,7 +82,7 @@ npx smee-client --url https://smee.io/<your-channel> --target http://localhost:3
 
 For smee, use the smee channel URL as the GitHub App's webhook URL. Restart with the new `APP_URL`: `docker compose up -d`.
 
-**Slack Socket Mode**: Socket Mode would avoid the tunnel for Slack, but Ripple's Slack integration uses HTTP request URLs (`socket_mode_enabled: false` in `slack-manifest.yaml`), so a tunnel is required for Slack today.
+**Slack Socket Mode**: Socket Mode would avoid the tunnel for Slack, but Ripple's Slack integration uses HTTP request URLs (`socket_mode_enabled: false` in `slack-manifest.yaml`), so a tunnel is required for Slack today, including for `@Ripple` mentions and DMs. Start the tunnel, set `APP_URL` to it, restart, then open `/setup/slack`: it renders the manifest with your tunnel URL ready to paste into "Create app from a manifest".
 
 ## Troubleshooting
 
