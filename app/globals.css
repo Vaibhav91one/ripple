@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Light only (v2). The variant matches nothing, so stray `dark:` utilities never follow the OS scheme. */
+@custom-variant dark (&:is(.ripple-never-dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -39,6 +40,8 @@
   --text-2xs: 11px;
   --text-3xl: 40px;
   --text-4xl: 64px;
+  --text-title: 40px; /* page title */
+  --text-hero: 68px; /* one hero number per card */
   /* motion */
   --ease-enter: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -83,9 +86,11 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --radius-chip: 4px;
-  --radius-control: 8px;
-  --radius-card: 12px;
+  --radius-chip: 6px;
+  --radius-control: 10px;
+  --radius-card: 20px;
+  --radius-inset: 12px;
+  --color-ink-on-strong: var(--ink-on-strong);
 }
 
 :root {
@@ -120,14 +125,25 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --page: oklch(0.985 0 0);
+  /* v2 light (margin): off-white page, white cards, hairlines, near-black ink for the active pill and primary button */
+  --page: oklch(0.973 0.002 95);
   --surface: oklch(1 0 0);
-  --raised: oklch(0.97 0 0);
+  --raised: oklch(0.955 0.002 95);
   --overlay: oklch(1 0 0);
-  --hairline: oklch(0.92 0 0);
-  --strong: oklch(0.16 0 0);
-  --body: oklch(0.3 0 0);
-  --faint: oklch(0.55 0 0);
+  --hairline: oklch(0.918 0.003 95);
+  --strong: oklch(0.21 0.003 285);
+  --body: oklch(0.38 0.004 285);
+  --faint: oklch(0.52 0.006 285); /* 4.5:1 on page and raised */
+  --ink-on-strong: oklch(0.99 0 0);
+  --background: var(--page);
+  --card: var(--surface);
+  --popover: var(--overlay);
+  --border: var(--hairline);
+  /* the one gradient per page (InsightCard): deep ink to teal to a warm amber corner */
+  --insight-bg:
+    radial-gradient(60% 55% at 100% 100%, oklch(0.84 0.1 70 / 0.95) 0%, oklch(0.84 0.1 70 / 0) 100%),
+    radial-gradient(55% 60% at 85% 35%, oklch(0.62 0.11 200 / 0.9) 0%, oklch(0.62 0.11 200 / 0) 100%),
+    linear-gradient(165deg, oklch(0.24 0.04 250) 0%, oklch(0.32 0.06 230) 45%, oklch(0.5 0.09 205) 100%);
   --ripple: oklch(0.55 0.13 200);
   --ripple-soft: oklch(0.55 0.13 200 / 12%);
   --conflict: oklch(0.58 0.21 27);
@@ -138,58 +154,6 @@
   --covered-soft: oklch(0.62 0.13 155 / 12%);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --page: oklch(0.13 0 0);
-  --surface: oklch(0.165 0 0);
-  --raised: oklch(0.205 0 0);
-  --overlay: oklch(0.225 0 0);
-  --hairline: oklch(1 0 0 / 9%);
-  --strong: oklch(0.97 0 0);
-  --body: oklch(0.82 0 0);
-  --faint: oklch(0.6 0 0);
-  --ripple: oklch(0.78 0.12 200);
-  --ripple-soft: oklch(0.78 0.12 200 / 14%);
-  --conflict: oklch(0.68 0.2 25);
-  --conflict-soft: oklch(0.68 0.2 25 / 16%);
-  --gap: oklch(0.8 0.15 75);
-  --gap-soft: oklch(0.8 0.15 75 / 15%);
-  --covered: oklch(0.74 0.13 155);
-  --covered-soft: oklch(0.74 0.13 155 / 14%);
-  --background: var(--page);
-  --card: var(--surface);
-  --popover: var(--overlay);
-  --border: var(--hairline);
-}
 
 /* Reference-component tokens (components/kit/refs). Ripple's values live here so a ref renders correctly on any page;
    the .skin-* classes in components/kit/refs/skins.css override them for /styleguide/refs.
@@ -199,7 +163,7 @@
   --chart: var(--ripple);
   --chart-2: var(--gap);
   --accent-ink: var(--page);
-  --ref-radius: 12px;
+  --ref-radius: 20px;
   --glow-a: var(--raised);
   --glow-b: var(--gap);
   --glow-ink: var(--strong);

@@ -1,60 +1,75 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, CircleAlert, CircleCheck, Ellipsis, MapPin, Repeat } from "lucide-react";
-import { card } from "./hatch";
+import type { LucideIcon } from "lucide-react";
+import { ChevronRight, CircleAlert, CircleCheck, MapPin, Repeat } from "lucide-react";
+import { Card, CardHeader } from "./card";
+import type { StatusTone } from "./status-pill";
 
-const icons = {
-  warning: { Icon: CircleAlert, tone: "bg-conflict-soft text-conflict" },
-  check: { Icon: CircleCheck, tone: "bg-gap-soft text-gap" },
-  pin: { Icon: MapPin, tone: "bg-ripple-soft text-ripple" },
-  refresh: { Icon: Repeat, tone: "bg-raised text-body" },
-} as const;
+const TINT: Record<StatusTone, string> = { conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft text-gap", covered: "bg-covered-soft text-covered", ripple: "bg-ripple-soft text-ripple", neutral: "bg-raised text-body" };
+/** Shorthand icons (v1 callers): each pairs an icon with its tint. */
+const PRESET = {
+  warning: { icon: CircleAlert, tone: "conflict" },
+  check: { icon: CircleCheck, tone: "gap" },
+  pin: { icon: MapPin, tone: "ripple" },
+  refresh: { icon: Repeat, tone: "neutral" },
+} as const satisfies Record<string, { icon: LucideIcon; tone: StatusTone }>;
 
-export type NeedsYouProps = {
+export type NeedsYouRow = {
+  id?: string;
+  /** A preset name, or any lucide icon with `tone`. */
+  icon: keyof typeof PRESET | LucideIcon;
+  tone?: StatusTone;
   title: string;
   sub: string;
-  /** `href` makes the row a link; `actions` render under it (buttons, so they sit outside the link). */
-  rows: { icon: keyof typeof icons; title: string; sub: string; href?: string; actions?: ReactNode }[];
-  /** Shown instead of the rows when there are none. */
-  empty?: string;
-  menuLabel?: string;
+  href?: string;
+  /** Rendered under the row (buttons, so they sit outside the link). */
+  actions?: ReactNode;
 };
 
-export function NeedsYou({ title, sub, rows, menuLabel = "More", empty }: NeedsYouProps) {
+export type NeedsYouProps = {
+  /** Anchor id of the card (e.g. "needs-you" for a #needs-you link). */
+  id?: string;
+  title?: string;
+  /** Defaults to "<n> things today"; `unit` and `period` change the wording. */
+  sub?: string;
+  unit?: [one: string, many: string];
+  period?: string;
+  rows: NeedsYouRow[];
+  /** Shown instead of the rows when there are none. */
+  empty?: string;
+};
+
+/** "Needs you": tinted icon circle, bold line, grey line, chevron. One tint per kind of item. */
+export function NeedsYou({ id, title = "Needs you", sub, unit = ["thing", "things"], period = "today", rows, empty = "Nothing needs you right now." }: NeedsYouProps) {
   return (
-    <section className={`${card} p-5`}>
-      <header className="flex items-start justify-between">
-        <div>
-          <h4 className="text-md font-medium leading-5 text-strong">{title}</h4>
-          <p className="mt-0.5 text-2xs text-faint">{sub}</p>
-        </div>
-        <button type="button" aria-label={menuLabel} className="grid size-8 place-items-center rounded-full border border-hairline text-body focus-visible:outline-2 focus-visible:outline-ripple">
-          <Ellipsis size={14} />
-        </button>
-      </header>
-      {rows.length === 0 && empty && <p className="py-3 text-sm text-faint">{empty}</p>}
-      <ul className="mt-2">
-        {rows.map((r) => {
-          const { Icon, tone } = icons[r.icon];
-          const body = (
-            <>
-              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${tone}`}><Icon size={16} /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium leading-4 text-strong">{r.title}</span>
-                <span className="mt-0.5 block text-2xs text-faint">{r.sub}</span>
-              </span>
-              <ChevronRight size={14} className="shrink-0 text-faint" />
-            </>
-          );
-          const row = "flex w-full items-center gap-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-ripple";
-          return (
-            <li key={r.title} className="border-b border-hairline last:border-b-0">
-              {r.href ? <Link href={r.href} className={row}>{body}</Link> : <button type="button" className={row}>{body}</button>}
-              {r.actions && <div className="-mt-1 flex flex-wrap gap-2 pb-3 pl-12">{r.actions}</div>}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <Card id={id}>
+      <CardHeader title={title} sub={sub ?? `${rows.length} ${rows.length === 1 ? unit[0] : unit[1]} ${period}`} />
+      {rows.length === 0 ? (
+        <p className="mt-6 text-sm text-faint">{empty}</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-hairline">
+          {rows.map((r) => {
+            const { icon: Icon, tone } = typeof r.icon === "string" ? PRESET[r.icon] : { icon: r.icon, tone: r.tone ?? "neutral" };
+            const body = (
+              <>
+                <span className={`grid size-9 shrink-0 place-items-center rounded-full ${TINT[tone]}`}><Icon size={16} aria-hidden /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-md font-medium text-strong">{r.title}</span>
+                  <span className="block truncate text-sm text-faint">{r.sub}</span>
+                </span>
+                {r.href && <ChevronRight size={16} className="shrink-0 text-faint" aria-hidden />}
+              </>
+            );
+            const row = "-mx-2 flex min-h-11 items-center gap-3 rounded-inset px-2 py-3";
+            return (
+              <li key={r.id ?? r.title}>
+                {r.href ? <Link href={r.href} className={`${row} hover:bg-raised/60`}>{body}</Link> : <div className={row}>{body}</div>}
+                {r.actions && <div className="-mt-1 flex flex-wrap gap-2 pb-3 pl-12">{r.actions}</div>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
   );
 }

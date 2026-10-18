@@ -32,14 +32,14 @@ export function LensSwitcher({ current }: { current: Lens }) {
 
   return (
     <>
-      <span className="hidden rounded-md border border-hairline bg-surface px-2 py-1 text-xs text-faint sm:inline" title="The shared demo can't be changed">
+      <span className="rounded-chip border border-hairline bg-surface px-2 py-1 text-xs text-faint" title="The shared demo can't be changed">
         Demo · read-only
       </span>
       <DashboardPopover open={open} onOpenChange={setOpen}>
         <DashboardPopoverTrigger asChild>
           <DashboardButton size="md" aria-label={`View as ${label}`}>
             <Eye aria-hidden />
-            <span className="hidden sm:inline">View as {label}</span>
+            <span>View as {label}</span>
             <ChevronDown aria-hidden />
           </DashboardButton>
         </DashboardPopoverTrigger>

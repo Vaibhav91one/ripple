@@ -1,5 +1,4 @@
-import { BookOpen, Bot, ClipboardCheck, Code2, Handshake, Headset, History, Home, KeyRound, LayoutDashboard, Network, Plug, Scale, Settings, ShieldCheck, Target } from "lucide-react";
-import type { DashboardShellNavItem, DashboardShellNavSection } from "@/components/kit/obsidian/dashboard-shell/dashboard-shell";
+import { BarChart3, Bell, BookOpen, Bot, Cable, Code2, FileText, Handshake, Headset, LifeBuoy, type LucideIcon, MessageCircle, Puzzle, Scale, Settings, ShieldCheck, Target } from "lucide-react";
 
 export const TEAMS = [
   { id: "eng", label: "Engineering", icon: Code2 },
@@ -14,44 +13,37 @@ export const TEAMS = [
 export type TeamId = (typeof TEAMS)[number]["id"];
 export const isTeamId = (s: string): s is TeamId => TEAMS.some((t) => t.id === s);
 
-// Item ids are route prefixes, so the active item falls out of the pathname.
-export const NAV: DashboardShellNavSection[] = [
+export type NavItem = { href: string; label: string; icon: LucideIcon };
+
+// v2 sidebar (margin layout). Sub-pages keep their parent active: /reports/x lights Reports.
+export const NAV: { title?: string; items: NavItem[] }[] = [
   {
-    id: "work",
-    title: "Work",
     items: [
-      { id: "/home", label: "Home", icon: Home, href: "/home" },
-      { id: "/changes", label: "Changes", icon: History, href: "/changes" },
-      { id: "/approvals", label: "Approvals", icon: ClipboardCheck, href: "/approvals" },
-      { id: "/agents", label: "Agents", icon: Bot, href: "/agents" },
-      { id: "/it", label: "IT", icon: KeyRound, href: "/it" },
+      { href: "/", label: "Assistant", icon: MessageCircle },
+      { href: "/reports", label: "Reports", icon: FileText },
+      { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },
   {
-    id: "understand",
-    title: "Understand",
+    title: "Workspace",
     items: [
-      { id: "/overview", label: "Overview", icon: LayoutDashboard, href: "/overview" },
-      { id: "/graph", label: "Graph", icon: Network, href: "/graph" },
-      { id: "/connectors", label: "Connectors", icon: Plug, href: "/connectors" },
+      { href: "/agents", label: "Agents", icon: Bot },
+      { href: "/connections", label: "Connections", icon: Cable },
+      { href: "/integrations", label: "Integrations", icon: Puzzle },
     ],
   },
 ];
 
-/** Footer link, rendered below the sections. */
-export const NAV_FOOTER: DashboardShellNavItem[] = [{ id: "/settings", label: "Settings", icon: Settings, href: "/settings" }];
-
-/** Routes with a page but no sidebar entry (reached from Home, TeamSwitcher, links): they keep a title, not an active item. */
-const UNLISTED = [
-  { prefix: "/inbox", title: "Inbox" },
-  ...TEAMS.map((t) => ({ prefix: `/teams/${t.id}`, title: t.label })),
+/** Bottom of the sidebar, above the user card. */
+export const NAV_FOOTER: NavItem[] = [
+  { href: "/reports?view=activity", label: "Notifications", icon: Bell },
+  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/help", label: "Help", icon: LifeBuoy },
 ];
 
-const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+const under = (pathname: string, prefix: string) => (prefix === "/" ? pathname === "/" : pathname === prefix || pathname.startsWith(`${prefix}/`));
 
-/** Page title and active nav id for a pathname. */
-export function routeInfo(pathname: string) {
-  const hit = [...NAV.flatMap((s) => s.items), ...NAV_FOOTER].find((i) => under(pathname, i.id));
-  if (hit) return { activeId: hit.id, title: hit.label };
-  return { activeId: undefined, title: UNLISTED.find((u) => under(pathname, u.prefix))?.title ?? "Ripple" };
+/** The nav href that is active for a pathname (undefined when nothing matches). */
+export function activeHref(pathname: string) {
+  return [...NAV.flatMap((s) => s.items), ...NAV_FOOTER].find((i) => under(pathname, i.href.split("#")[0]))?.href;
 }

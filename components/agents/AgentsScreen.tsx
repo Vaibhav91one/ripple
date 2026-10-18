@@ -101,7 +101,7 @@ export function AgentsScreen() {
     <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-8 px-4 py-6 sm:px-8 sm:py-8">
       {isGraphDown(err) && <GraphDownBanner onRetry={() => { void agents.refetch(); void runs.refetch(); }} />}
       <PageHeader title="Agents" subtitle="Who works for your org, what they did, and what they are allowed to do on their own.">
-        <Link href="/approvals" className={btn}><ClipboardCheck size={14} aria-hidden />Approvals{pending ? <span className="rounded-full bg-gap-soft px-1.5 text-2xs text-gap">{pending}</span> : null}</Link>
+        <Link href="/reports" className={btn}><ClipboardCheck size={14} aria-hidden />Approvals{pending ? <span className="rounded-full bg-gap-soft px-1.5 text-2xs text-gap">{pending}</span> : null}</Link>
       </PageHeader>
       {(agents.data?.note || runs.data?.note) && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body">{agents.data?.note ?? runs.data?.note}</p>}
       {patch.error && <p role="alert" className="text-sm text-conflict">{patch.error.message}</p>}

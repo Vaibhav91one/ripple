@@ -7,7 +7,7 @@ export function AuthControls() {
   return (
     <>
       <Show when="signed-in">
-        <OrganizationSwitcher hidePersonal afterSelectOrganizationUrl="/home" afterCreateOrganizationUrl="/home" />
+        <OrganizationSwitcher hidePersonal afterSelectOrganizationUrl="/reports" afterCreateOrganizationUrl="/reports" />
         <UserButton />
       </Show>
       <Show when="signed-out">

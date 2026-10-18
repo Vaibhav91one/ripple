@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteCredits } from "@/components/SiteCredits";
 import { ArrowRight } from "lucide-react";
 import { Mark } from "@/components/brand/Mark";
 import { RippleHero } from "@/components/brand/RippleHero";
@@ -37,7 +38,7 @@ export default function Home() {
         <span className="flex items-center gap-2 font-medium text-strong"><Mark size={20} />Ripple</span>
         <div className="flex items-center gap-5 text-body">
           <a href={DOCS} target="_blank" rel="noreferrer" className="transition-colors hover:text-strong">Docs</a>
-          <Link href="/home" className="transition-colors hover:text-strong">Live demo</Link>
+          <Link href="/reports" className="transition-colors hover:text-strong">Live demo</Link>
         </div>
       </nav>
 
@@ -51,7 +52,7 @@ export default function Home() {
             Before you ship a change, Ripple tells you which teams you forgot to tell and which contract you&apos;re about to break, with the quote to prove it.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button size="lg" asChild><Link href="/home">Try the live demo<ArrowRight aria-hidden /></Link></Button>
+            <Button size="lg" asChild><Link href="/reports">Try the live demo<ArrowRight aria-hidden /></Link></Button>
             <Button size="lg" variant="outline" asChild><a href={DOCS} target="_blank" rel="noreferrer">Read the docs</a></Button>
           </div>
         </div>
@@ -96,6 +97,7 @@ export default function Home() {
           <a href={DOCS} target="_blank" rel="noreferrer" className="transition-colors hover:text-body">GitHub</a>
         </span>
       </footer>
+      <SiteCredits />
     </main>
   );
 }

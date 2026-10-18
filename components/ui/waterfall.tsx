@@ -1,42 +1,46 @@
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { card, hatch } from "./hatch";
+import { Card, CardHeader, Takeaway } from "./card";
+import { hatch } from "./hatch";
 
 export type WaterfallProps = {
   title: string;
   subtitle: string;
-  link: string;
+  link?: string;
+  /** Where the header link goes (margin's "Leakage >"); the link is hidden without it. */
+  href?: string;
   /** Value-to-percent mapping of the bar area, and the tick labels under it. */
   axis: { min: number; max: number; ticks: { value: number; label: string }[] };
   target: { label: string; text: string; value: number };
   steps: { label: string; text: string; delta: number }[];
   actual: { label: string; text: string; value: number };
   note: { lead: string; sub: string };
+  /** Hatch colour of the loss steps: var(--gap) for "not told", var(--conflict) for conflicts (default var(--hatch)). */
+  stepColor?: string;
 };
+
+/** Axis labels: the ends align inward so they never stick out of the card. */
+export const edge = (i: number, n: number) => (i === 0 ? "" : i === n - 1 ? "-translate-x-full" : "-translate-x-1/2");
 
 const ROW = 63; // row pitch
 const BAR_TOP = 24;
 const BAR_H = 18;
 
-export function Waterfall({ title, subtitle, link, axis, target, steps, actual, note }: WaterfallProps) {
+export function Waterfall({ title, subtitle, link, href, stepColor = "var(--hatch)", axis, target, steps, actual, note }: WaterfallProps) {
   const pct = (v: number) => ((v - axis.min) / (axis.max - axis.min)) * 100;
   const bars = steps.map((s, i) => {
     const right = target.value - steps.slice(0, i).reduce((a, x) => a + x.delta, 0);
     const left = right - s.delta;
     return { ...s, left: pct(left), width: pct(right) - pct(left) };
   });
-  const label = "flex h-4 items-center justify-between text-xs";
+  const label = "flex h-4 items-center justify-between text-sm";
   return (
-    <section className={`${card} p-5`}>
-      <header className="flex items-start justify-between">
-        <div>
-          <h4 className="text-md font-medium leading-5 text-strong">{title}</h4>
-          <p className="mt-0.5 text-2xs text-faint">{subtitle}</p>
-        </div>
-        <button type="button" className="flex items-center gap-0.5 text-xs font-medium text-strong focus-visible:outline-2 focus-visible:outline-ripple">
-          {link}
-          <ChevronRight size={14} />
-        </button>
-      </header>
+    <Card>
+      <CardHeader
+        title={title}
+        sub={subtitle}
+        action={href && link ? <Link href={href} className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-strong hover:text-body">{link}<ChevronRight size={15} aria-hidden /></Link> : undefined}
+      />
       <div className="mt-10">
         <div className="relative" style={{ height: ROW }}>
           <p className={label}><span className="font-medium text-strong">{target.label}</span><span className="text-faint">{target.text}</span></p>
@@ -44,8 +48,8 @@ export function Waterfall({ title, subtitle, link, axis, target, steps, actual, 
         </div>
         {bars.map((b) => (
           <div key={b.label} className="relative" style={{ height: ROW }}>
-            <p className={label}><span className="font-medium text-strong">{b.label}</span><span className="font-medium text-[var(--hatch)]">{b.text}</span></p>
-            <div className="absolute rounded-chip" style={{ ...hatch("var(--hatch)"), top: BAR_TOP, height: BAR_H, left: `${b.left}%`, width: `${b.width}%` }} />
+            <p className={label}><span className="font-medium text-strong">{b.label}</span><span className="font-medium" style={{ color: stepColor }}>{b.text}</span></p>
+            <div className="absolute rounded-chip" style={{ ...hatch(stepColor), top: BAR_TOP, height: BAR_H, left: `${b.left}%`, width: `${b.width}%` }} />
             <span aria-hidden className="absolute border-l border-dashed border-faint" style={{ left: `${b.left}%`, top: BAR_TOP + BAR_H, height: ROW - BAR_H }} />
           </div>
         ))}
@@ -54,15 +58,12 @@ export function Waterfall({ title, subtitle, link, axis, target, steps, actual, 
           <div className="absolute min-w-1 rounded-chip bg-[var(--chart)] shadow-[0_2px_6px_color-mix(in_srgb,var(--chart)_45%,transparent)]" style={{ top: BAR_TOP, height: BAR_H, left: 0, width: `${pct(actual.value)}%` }} />
         </div>
       </div>
-      <div className="relative mt-2 h-4 text-2xs text-faint" aria-hidden>
-        {axis.ticks.map((t) => (
-          <span key={t.label} className="absolute -translate-x-1/2" style={{ left: `${pct(t.value)}%` }}>{t.label}</span>
+      <div className="relative mt-2 h-4 text-xs text-faint" aria-hidden>
+        {axis.ticks.map((t, i) => (
+          <span key={t.label} className={`absolute ${edge(i, axis.ticks.length)}`} style={{ left: `${pct(t.value)}%` }}>{t.label}</span>
         ))}
       </div>
-      <div className="mt-6 rounded-card border border-hairline bg-surface p-3 shadow-[0_1px_2px_var(--hairline)]">
-        <p className="text-xs font-medium leading-[17px] text-strong">{note.lead}</p>
-        <p className="mt-0.5 text-2xs text-faint">{note.sub}</p>
-      </div>
-    </section>
+      <div className="mt-6"><Takeaway lead={note.lead} sub={note.sub} /></div>
+    </Card>
   );
 }

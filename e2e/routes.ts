@@ -11,4 +11,16 @@ export const ROUTES: string[] = [
   "/connectors",
   "/settings",
   "/api/health",
+  // v2 shell (#227): new tabs and stubs, plus the remaining v1 redirect sources
+  "/reports",
+  "/reports/d-1",
+  "/analytics",
+  "/connections",
+  "/integrations",
+  "/profile",
+  "/help",
+  "/styleguide/v2",
+  "/it",
+  "/inbox",
+  "/teams/legal",
 ];
