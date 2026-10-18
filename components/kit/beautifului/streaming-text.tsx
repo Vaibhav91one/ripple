@@ -148,6 +148,7 @@ export default function StreamingText({
       <>
       {/* action icons row */}
       <div
+        inert={!done}
         className="mt-2 flex items-center gap-0.5 transition-opacity duration-400"
         style={{ opacity: done ? 1 : 0, pointerEvents: done ? "auto" : "none" }}
       >
@@ -191,25 +192,20 @@ export default function StreamingText({
       >
         <div className="overflow-hidden">
           <div className="mt-1.5 flex flex-col rounded-[10px] bg-page p-1 shadow-[var(--kit-shadow-hairline)]">
-            {sources.map((source) => (
-              <a
+            {sources.map((source) => {
+              const Row = source.onClick ? "button" : "a";
+              return (
+              <Row
                 key={source.domain}
-                href={source.href ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => {
-                  if (source.onClick) {
-                    e.preventDefault();
-                    source.onClick();
-                  }
-                }}
-                className="flex items-center gap-2 rounded-[6px] px-1.5 py-1 text-[12px] text-body transition-colors duration-150 hover:bg-raised hover:text-strong"
+                {...(source.onClick ? { type: "button" as const, onClick: source.onClick } : { href: source.href ?? "#", target: "_blank", rel: "noreferrer" })}
+                className="flex w-full items-center gap-2 rounded-[6px] px-1.5 py-1 text-left text-[12px] text-body transition-colors duration-150 hover:bg-raised hover:text-strong"
               >
                 <span aria-hidden className="grid size-4 place-items-center rounded-[4px] bg-ripple-soft text-[9px] font-bold text-ripple">{source.n ?? source.name[0]}</span>
                 <span className="animated-underline">{source.name}</span>
                 <span className="ml-auto font-mono text-[10.5px] text-faint">{source.domain}</span>
-              </a>
-            ))}
+              </Row>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -220,6 +216,7 @@ export default function StreamingText({
       {/* follow-ups */}
       {followUps.length > 0 && (
       <div
+        inert={!done}
         className="mt-2.5 transition-opacity duration-400"
         style={{ opacity: done ? 1 : 0, pointerEvents: done ? "auto" : "none" }}
       >

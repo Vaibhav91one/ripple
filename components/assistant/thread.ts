@@ -1,7 +1,8 @@
 // Assistant thread state: pure functions over StreamEvents, so the UI, history replay and tests share one reducer.
 import { addText } from "@/components/ask/parseStream";
+import { z } from "zod";
 import { STARTER_PROMPTS } from "@/lib/assistant/prompts";
-import type { Outcome, StreamEvent } from "@/lib/schemas";
+import { OUTCOMES, type Outcome, type StreamEvent } from "@/lib/schemas";
 
 /** A numbered source: one number per artifact, in first-cited order. */
 export type Cite = { n: number; artifactId: string; quote: string };
@@ -48,8 +49,10 @@ export function applyEvent(t: Turn, e: StreamEvent): Turn {
       const sources = [...t.sources];
       const marks: number[] = [];
       for (const s of e.sources) {
-        let c = sources.find((x) => x.artifactId === s.artifactId);
+        const i = sources.findIndex((x) => x.artifactId === s.artifactId);
+        let c = sources[i];
         if (!c) sources.push((c = { n: sources.length + 1, artifactId: s.artifactId, quote: s.quote }));
+        else if (s.quote.length > c.quote.length) sources[i] = c = { ...c, quote: s.quote }; // keep the richer quote
         if (!marks.includes(c.n)) marks.push(c.n);
       }
       return { ...t, sources, tokens: [...t.tokens, ...marks.map((n) => ({ text: "", cite: n }))], glue: false };
@@ -117,22 +120,47 @@ export const agentName = (key?: string) => AGENTS.find((a) => a.key === key)?.na
 
 // History in the browser (demo and no-DB self-host). Postgres-backed orgs use /api/conversations instead.
 export const THREADS_KEY = "ripple.v2.threads";
+/** One history per demo lens: a thread asked as Legal shows Legal's redactions, so it never shows up under another lens. */
+export const threadsKey = (lens?: string) => (lens ? `${THREADS_KEY}.${lens}` : THREADS_KEY);
 const MAX_THREADS = 30;
 
-export function loadThreads(store: Pick<Storage, "getItem"> | undefined = globalThis.localStorage): Thread[] {
+const ThreadSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  updatedAt: z.number(),
+  conversationId: z.string().optional(),
+  turns: z.array(z.object({
+    id: z.string(),
+    question: z.string(),
+    agent: z.string().optional(),
+    tools: z.array(z.object({ tool: z.string(), args: z.record(z.string(), z.unknown()), cypher: z.string(), rows: z.array(z.record(z.string(), z.unknown())).optional(), rowCount: z.number().optional(), ms: z.number().optional() })),
+    tokens: z.array(z.object({ text: z.string(), cite: z.number().int().positive().optional() })),
+    sources: z.array(z.object({ n: z.number().int().positive(), artifactId: z.string(), quote: z.string() })),
+    done: z.boolean(),
+    glue: z.boolean().optional(),
+    outcome: z.enum(OUTCOMES).optional(),
+    rejected: z.boolean().optional(),
+    cached: z.boolean().optional(),
+    exhausted: z.boolean().optional(),
+    error: z.string().optional(),
+  })),
+});
+
+/** Stored threads, each validated; anything malformed (old versions, hand edits) is dropped. */
+export function loadThreads(store: Pick<Storage, "getItem"> | undefined = globalThis.localStorage, key = THREADS_KEY): Thread[] {
   try {
-    const v: unknown = JSON.parse(store?.getItem(THREADS_KEY) ?? "[]");
-    return Array.isArray(v) ? v.filter((t): t is Thread => !!t && typeof t.id === "string" && Array.isArray(t.turns)) : [];
+    const v: unknown = JSON.parse(store?.getItem(key) ?? "[]");
+    return Array.isArray(v) ? v.flatMap((t) => { const r = ThreadSchema.safeParse(t); return r.success ? [r.data] : []; }) : [];
   } catch {
     return [];
   }
 }
 
-export function saveThreads(threads: Thread[], store: Pick<Storage, "setItem"> | undefined = globalThis.localStorage) {
+export function saveThreads(threads: Thread[], store: Pick<Storage, "setItem"> | undefined = globalThis.localStorage, key = THREADS_KEY) {
   try {
     // Unfinished turns are saved as finished: a reload never resumes a stream.
     const clean = threads.slice(0, MAX_THREADS).map((t) => ({ ...t, turns: t.turns.map((u) => ({ ...u, done: true })) }));
-    store?.setItem(THREADS_KEY, JSON.stringify(clean));
+    store?.setItem(key, JSON.stringify(clean));
   } catch {
     // storage full or blocked: history is a convenience
   }

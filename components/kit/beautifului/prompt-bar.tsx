@@ -3,7 +3,7 @@
 
 import "./kit.css";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 
 /* ─────────────────────────────────────────────────────────
@@ -149,6 +149,7 @@ export default function PromptBar({
   autoFocus?: boolean;
 }) {
   const live = !!onSend;
+  const listId = useId();
   const pill = variant === "Pill";
   const [draft, setDraft] = useState("");
   const [dismissed, setDismissed] = useState(false);
@@ -321,6 +322,7 @@ export default function PromptBar({
       {menu && (
         <div
           onMouseLeave={() => setEngaged(false)}
+          id={listId}
           role="listbox"
           aria-label={menu === "at" ? "Agents and sources" : "Commands"}
           className={`absolute inset-x-0 z-20 max-h-[min(360px,50vh)] overflow-y-auto rounded-[12px] bg-surface p-1 shadow-[var(--kit-shadow-raised)] ${menuBelow ? "top-full mt-2" : "bottom-full mb-2"}`}
@@ -355,6 +357,8 @@ export default function PromptBar({
                 }}
                 onClick={() => pick(row)}
                 role="option"
+                id={`${listId}-${i}`}
+                tabIndex={-1}
                 aria-selected={i === active}
                 className="relative z-10 flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2 text-left"
               >
@@ -529,7 +533,7 @@ export default function PromptBar({
               setPlusOpen(false);
             }}
             onKeyDown={(event) => {
-              if (menu && rows.length > 0) {
+              if (menu && rows.length > 0 && !event.nativeEvent.isComposing) {
                 if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                   event.preventDefault();
                   setEngaged(true);
@@ -554,6 +558,11 @@ export default function PromptBar({
             }}
             placeholder={listening ? "Listening…" : placeholder}
             aria-label="Prompt"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={!!menu}
+            aria-controls={menu ? listId : undefined}
+            aria-activedescendant={menu && rows.length > 0 ? `${listId}-${active}` : undefined}
             className={`min-h-7 min-w-0 w-full resize-none bg-transparent px-1 py-[5px] ${hero ? "px-2 pt-2 text-[15px] leading-[22px]" : "text-[13px] leading-[18px]"} text-strong outline-none [overflow-wrap:anywhere] placeholder:text-faint ${
               expanded ? "col-span-full col-start-1 row-start-1" : "col-start-2 row-start-1"
             }`}

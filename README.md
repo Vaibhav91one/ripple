@@ -90,7 +90,7 @@ Ask it as a team (what hits me?) and inside a team (who knows this?):
 - Which team is the bottleneck (open `WAITING_ON` requests, grouped by blocker).
 - What changed since a date (edges added or ended, dated).
 - Why was a decision made (`SUPPORTED_BY` artifacts).
-- Ask drawer: the model picks one of six query templates and fills parameters; it never writes Cypher.
+- Assistant (`/`): the model picks one of six query templates and fills parameters; it never writes Cypher.
 
 ## Why FalkorDB is load-bearing
 
@@ -139,7 +139,7 @@ pnpm seed                # builds graph `demo` from the committed caches
 pnpm dev                 # http://localhost:3000 (map the FalkorDB browser to another port if 3000 is taken)
 ```
 
-Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Ask drawer and brief rewording. Other scripts: `pnpm extract`, `pnpm embed`, `pnpm test`, `pnpm eval`.
+Set `LLM_PROVIDER` / `LLM_API_KEY` in `.env` to switch on the model-backed Assistant answers and brief rewording. Other scripts: `pnpm extract`, `pnpm embed`, `pnpm test`, `pnpm eval`.
 
 ## Testing
 

@@ -48,3 +48,14 @@ test("?agent= preselects the agent and the old ?ask=1 drawer lands on the Assist
   await page.goto("/reports?ask=1");
   await page.waitForURL((u) => u.pathname === "/" && !u.search.includes("ask"));
 });
+
+test("New chat mid-stream drops the running answer instead of writing into the new view", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: STARTER_PROMPTS[1] }).click();
+  await expect(page.getByText(STARTER_PROMPTS[1]).first()).toBeVisible();
+  await page.getByRole("button", { name: "New chat" }).locator("visible=true").first().click();
+  await page.waitForTimeout(2500);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText(/Sources \(\d+\)/)).toHaveCount(0);
+});

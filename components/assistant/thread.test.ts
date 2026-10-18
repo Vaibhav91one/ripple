@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STARTER_PROMPTS } from "@/lib/assistant/prompts";
 import type { StreamEvent } from "@/lib/schemas";
-import { answerText, applyEvent, expandCommand, loadThreads, newTurn, saveThreads, THREADS_KEY, toMessages, turnsFromMessages, upsertThread, type Thread } from "./thread";
+import { answerText, applyEvent, expandCommand, loadThreads, newTurn, saveThreads, THREADS_KEY, threadsKey, toMessages, turnsFromMessages, upsertThread, type Thread } from "./thread";
 
 const run = (events: StreamEvent[]) => events.reduce(applyEvent, newTurn("q"));
 const meta = (over: Partial<Extract<StreamEvent, { type: "meta" }>> = {}): StreamEvent => ({ type: "meta", remaining: 3, limit: 30, cached: false, exhausted: false, persist: false, ...over });
@@ -14,10 +14,11 @@ describe("applyEvent", () => {
       { type: "text_delta", text: "Sunset. " },
       { type: "citation", claimId: "c1", sources: [rfc, msa] },
       { type: "text_delta", text: "Again." },
-      { type: "citation", claimId: "c2", sources: [{ ...msa, quote: "other quote" }] },
+      { type: "citation", claimId: "c2", sources: [{ ...msa, quote: "guarantees v1 until 2027" }] },
       { type: "done" },
     ]);
     expect(t.sources.map((s) => [s.n, s.artifactId])).toEqual([[1, "art-rfc14"], [2, "art-msa"]]);
+    expect(t.sources[1].quote).toBe("guarantees v1 until 2027"); // the richer quote wins
     expect(t.tokens.filter((k) => k.cite).map((k) => k.cite)).toEqual([1, 2, 2]);
     expect(answerText(t)).toBe("Sunset.[1][2] Again.[2]");
     expect(t.done).toBe(true);
@@ -77,6 +78,13 @@ describe("localStorage history", () => {
   };
   const thread = (id: string, at: number): Thread => ({ id, title: id, updatedAt: at, turns: [newTurn("q")] });
 
+  it("keys history by lens", () => {
+    const s = mem();
+    saveThreads([thread("a", 1)], s, threadsKey("legal"));
+    expect(loadThreads(s, threadsKey("legal"))).toHaveLength(1);
+    expect(loadThreads(s, threadsKey("sales"))).toEqual([]);
+  });
+
   it("round-trips threads and saves streaming turns as finished", () => {
     const s = mem();
     saveThreads([thread("a", 2)], s);
@@ -89,6 +97,9 @@ describe("localStorage history", () => {
   it("survives junk and blocked storage", () => {
     expect(loadThreads({ getItem: () => "{not json" })).toEqual([]);
     expect(loadThreads({ getItem: () => JSON.stringify([{ nope: 1 }, thread("b", 1)]) }).map((t) => t.id)).toEqual(["b"]);
+    const bad = { ...thread("d", 1), turns: [{ ...newTurn("q"), tokens: [{ text: 5 }] }] };
+    expect(loadThreads({ getItem: () => JSON.stringify([bad, { ...thread("e", 1), title: null }]) })).toEqual([]);
+    expect(loadThreads({ getItem: () => { throw new Error("blocked"); } })).toEqual([]);
     expect(() => saveThreads([thread("c", 1)], { setItem: () => { throw new Error("quota"); } })).not.toThrow();
   });
 

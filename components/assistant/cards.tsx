@@ -3,6 +3,7 @@
 // Inline result cards in the thread, picked by tool name. Each card re-reads the graph (getRipple) instead of trusting
 // tool rows, so live and cached answers render the same card.
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import ApprovalCard from "@/components/kit/beautifului/approval-card";
@@ -130,20 +131,32 @@ function PathCard({ run }: { run: ToolRun }) {
   );
 }
 
-/** A pending action an agent proposed. Decidable in local mode; the public demo is read-only. */
+/** A pending action an agent proposed. Decidable in local mode; the public demo is read-only (inert, nothing sent). */
 function ProposalCard({ run, readonly }: { run: ToolRun; readonly: boolean }) {
   const row = run.rows?.[0] ?? {};
   const id = typeof row.id === "string" ? row.id : undefined;
   const what = typeof run.args.title === "string" ? run.args.title : run.tool.replace(/^propose_/, "").replace(/_/g, " ");
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const off = readonly || !id;
+  const decide = async (approve: boolean) => {
+    if (!id) return;
+    try {
+      await decideApproval(id, approve ? "approve" : "reject");
+      setResult({ ok: true, text: approve ? "Approved. Ripple will send it." : "Rejected. Nothing was sent." });
+    } catch (e) {
+      setResult({ ok: false, text: `Could not record the decision: ${e instanceof Error ? e.message : "unknown error"}` });
+    }
+  };
   return (
     <div className="space-y-2">
-      <div aria-disabled={readonly || !id} className={readonly || !id ? "pointer-events-none opacity-60" : ""}>
+      <div inert={off} className={off ? "opacity-60" : ""}>
         <ApprovalCard
           questions={[{ q: `Approve: ${what}?`, type: "radio", options: ["Approve", "Reject"] }]}
-          sentLabel="Decision recorded"
-          onSubmit={([a]) => id && void decideApproval(id, a.selected[0] === 0 ? "approve" : "reject")}
+          sentLabel="Sending your decision…"
+          onSubmit={([a]) => void decide(a.selected[0] === 0)}
         />
       </div>
+      {result && <p role={result.ok ? "status" : "alert"} className={`text-xs ${result.ok ? "text-covered" : "text-conflict"}`}>{result.text}</p>}
       {readonly && <p className="text-xs text-faint">Read-only demo: nothing is sent. Run Ripple locally to approve agent actions.</p>}
     </div>
   );

@@ -48,6 +48,7 @@ export function LensSwitcher({ current }: { current: Lens }) {
           <p className="text-xs text-faint">Demo · read-only. Pick whose view to see.</p>
         </DashboardPopoverContent>
       </DashboardPopover>
+      <p className="w-full text-2xs leading-snug text-faint">Viewing as {label}. Switch to see what other teams see.</p>
     </>
   );
 }

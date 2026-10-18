@@ -17,11 +17,11 @@ import { parseStream } from "@/components/ask/parseStream";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import { InsightCard } from "@/components/ui/insight-card";
 import { NeedsYou, type NeedsYouRow } from "@/components/ui/needs-you";
-import { chatStream, getApprovals, getReports, getRipple, getSource } from "@/lib/api";
+import { chatStream, getApprovals, getReports, getRipple, getSource, NotFoundError } from "@/lib/api";
 import { AGENT_SAMPLES, STARTER_PROMPTS } from "@/lib/assistant/prompts";
 import { cardRuns, ResultCard } from "./cards";
 import {
-  AGENTS, agentName, answerText, applyEvent, COMMANDS, expandCommand, loadThreads, newTurn, saveThreads, titleOf, toMessages, turnsFromMessages, upsertThread,
+  AGENTS, agentName, answerText, applyEvent, COMMANDS, expandCommand, loadThreads, newTurn, saveThreads, threadsKey, titleOf, toMessages, turnsFromMessages, upsertThread,
   type Thread, type ToolRun, type Turn,
 } from "./thread";
 
@@ -83,7 +83,7 @@ function useHome() {
 }
 
 // ── page ─────────────────────────────────────────────────────────────────────────────────────────
-export function Assistant() {
+export function Assistant({ lens, readonly }: { lens?: string; readonly: boolean }) {
   const router = useRouter();
   const search = useSearchParams();
   const qc = useQueryClient();
@@ -103,7 +103,9 @@ export function Assistant() {
   const persist = budget.persist || !!conv.data?.persist;
   // localStorage is read after mount so the server HTML and the first client render match.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setThreads(loadThreads()), []);
+  useEffect(() => setThreads(loadThreads(undefined, threadsKey(lens))), [lens]);
+  // A stream still running when the page unmounts is dropped.
+  useEffect(() => () => abort.current?.abort(), []);
   const items: Item[] = persist ? conv.data?.items ?? [] : threads;
 
   // Follow the stream unless the reader scrolled up.
@@ -125,18 +127,24 @@ export function Assistant() {
     const id = current?.id ?? crypto.randomUUID();
     let conversationId = current?.conversationId;
     let next = [...prior, turn];
+    // Each send owns its controller: New chat, opening another thread or unmounting aborts it, and an aborted run
+    // never touches state again (no late tokens in the new view, no save of a half answer).
+    abort.current?.abort();
+    const ac = new AbortController();
+    abort.current = ac;
+    const live = () => !ac.signal.aborted;
     const set = (fn: (t: Turn) => Turn) => {
       next = [...next.slice(0, -1), fn(next[next.length - 1])];
-      setTurns(next);
+      if (live()) setTurns(next);
     };
     stick.current = true;
     setTurns(next);
     setCurrent({ id, conversationId });
     setBusy(true);
-    abort.current = new AbortController();
     let cached = false;
     try {
-      for await (const e of parseStream(chatStream({ messages: toMessages(prior, cmd.prompt), agent: opts.agent, conversationId }, abort.current.signal))) {
+      for await (const e of parseStream(chatStream({ messages: toMessages(prior, cmd.prompt), agent: opts.agent, conversationId }, ac.signal))) {
+        if (!live()) break;
         if (e.type === "meta") {
           cached = e.cached;
           conversationId = e.conversationId ?? conversationId;
@@ -146,40 +154,44 @@ export function Assistant() {
         // Cached answers arrive at once; pace them so they read like a stream.
         if (cached && e.type === "text_delta") {
           for (const w of e.text.match(/\S+\s*/g) ?? []) {
+            if (!live()) break;
             set((t) => applyEvent(t, { type: "text_delta", text: w }));
             await sleep(22);
           }
           continue;
         }
         if (cached && e.type === "tool_call") await sleep(350);
-        set((t) => applyEvent(t, e));
+        if (live()) set((t) => applyEvent(t, e));
       }
     } catch (err) {
-      if (!(err instanceof DOMException && err.name === "AbortError")) set((t) => ({ ...t, error: err instanceof Error ? err.message : "Something went wrong" }));
+      if (live()) set((t) => ({ ...t, error: err instanceof Error ? err.message : "Something went wrong" }));
     } finally {
-      set((t) => ({ ...t, done: true }));
-      setBusy(false);
-      if (conversationId) void qc.invalidateQueries({ queryKey: ["conversations"] });
-      else {
-        const prev = threads.find((t) => t.id === id);
-        const thread: Thread = { id, title: prev?.title ?? titleOf(next[0].question), updatedAt: Date.now(), turns: next };
-        setThreads((ts) => {
-          const all = upsertThread(ts, thread);
-          saveThreads(all);
-          return all;
-        });
+      if (live()) {
+        set((t) => ({ ...t, done: true }));
+        setBusy(false);
+        if (conversationId) void qc.invalidateQueries({ queryKey: ["conversations"] });
+        else {
+          const thread: Thread = { id, title: titleOf(next[0].question), updatedAt: Date.now(), turns: next };
+          setThreads((ts) => {
+            const all = upsertThread(ts, { ...thread, title: ts.find((t) => t.id === id)?.title ?? thread.title });
+            saveThreads(all, undefined, threadsKey(lens));
+            return all;
+          });
+        }
       }
     }
-  }, [busy, turns, current, router, qc, threads]);
+  }, [busy, turns, current, router, qc, lens]);
 
   const newChat = () => {
     abort.current?.abort();
+    setBusy(false);
     setTurns([]);
     setCurrent(null);
     setSheet(false);
   };
   const open = async (it: Item) => {
     abort.current?.abort();
+    setBusy(false);
     setSheet(false);
     if (persist) {
       const r = await remote(it.id).catch(() => null);
@@ -197,7 +209,7 @@ export function Assistant() {
     } else
       setThreads((ts) => {
         const all = ts.map((t) => (t.id === it.id ? { ...t, title } : t));
-        saveThreads(all);
+        saveThreads(all, undefined, threadsKey(lens));
         return all;
       });
   };
@@ -209,7 +221,7 @@ export function Assistant() {
     } else
       setThreads((ts) => {
         const all = ts.filter((t) => t.id !== it.id);
-        saveThreads(all);
+        saveThreads(all, undefined, threadsKey(lens));
         return all;
       });
   };
@@ -266,14 +278,15 @@ export function Assistant() {
           <button type="button" onClick={() => setSheet(true)} className="inline-flex h-10 items-center gap-2 rounded-control px-2 text-sm text-body hover:bg-raised"><History size={16} aria-hidden />Chats</button>
           <button type="button" onClick={newChat} className="inline-flex h-10 items-center gap-2 rounded-control px-2 text-sm text-body hover:bg-raised"><Plus size={16} aria-hidden />New chat</button>
         </div>
-        <ol className={`${COL} flex-1 space-y-10 pb-8`} aria-live="polite">
+        <p role="status" className="sr-only">{busy ? (last.tools.some((x) => x.rows === undefined) || !last.tokens.length ? "Querying the graph…" : "Writing the answer…") : last.done && !last.error ? "Answer ready" : ""}</p>
+        <ol className={`${COL} flex-1 space-y-10 pb-8`}>
           {turns.map((t, i) => (
             <TurnView
               key={t.id}
               turn={t}
               streaming={busy && i === turns.length - 1}
-              readonly={!persist}
-              onRetry={i === turns.length - 1 && !busy ? () => void send(t.question, { agent: t.agent }, turns.slice(0, -1)) : undefined}
+              readonly={readonly}
+              onRetry={i === turns.length - 1 && !busy && !persist ? () => void send(t.question, { agent: t.agent }, turns.slice(0, -1)) : undefined}
             />
           ))}
         </ol>
@@ -357,7 +370,8 @@ function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; strea
   const panel = useSourcePanel();
   const titles = useQueries({ queries: t.sources.map((s) => ({ queryKey: ["source", s.artifactId], queryFn: () => getSource(s.artifactId), staleTime: Infinity, retry: false })) });
   const refs: SourceRef[] = t.sources.map((s, i) => {
-    const title = titles[i]?.data?.title ?? (titles[i]?.isError ? "Restricted source" : s.artifactId);
+    const err = titles[i]?.error;
+    const title = titles[i]?.data?.title ?? (err ? (err instanceof NotFoundError ? "Source not found" : "Restricted source") : s.artifactId);
     return { n: s.n, name: title, domain: s.artifactId, title, onClick: () => void panel.open(s.artifactId, s.quote) };
   });
   const tokens: Token[] = t.tokens.map((k) => (k.cite ? { text: "", cite: refs[k.cite - 1] } : { text: k.text }));
@@ -376,7 +390,7 @@ function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; strea
           {t.question}
         </p>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-3" aria-busy={running}>
         <p className="flex items-center gap-2 text-sm text-faint">
           <Mark size={18} />
           <span className="font-medium text-strong">{agentName(t.agent) ?? "Ripple"}</span>
@@ -386,7 +400,7 @@ function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; strea
           <p className="rounded-[14px] border border-gap/30 bg-gap-soft px-3 py-2 text-sm text-strong">Live answers are paused for today. This is the cached tour of the demo company.</p>
         )}
         {t.tools.length > 0 && <ToolChips live rows={t.tools.map(toolRow)} diffs={[]} summary={`Cypher used · ${t.tools.length} ${t.tools.length === 1 ? "query" : "queries"}`} />}
-        {running && t.tokens.length === 0 && <ThinkingLive label={t.tools.some((x) => x.rows === undefined) ? "Querying the graph…" : t.tools.length ? "Checking the answer against the graph…" : "Thinking…"} />}
+        {running && t.tokens.length === 0 && <div aria-hidden><ThinkingLive label={t.tools.some((x) => x.rows === undefined) ? "Querying the graph…" : t.tools.length ? "Checking the answer against the graph…" : "Thinking…"} /></div>}
         {tokens.length > 0 && (
           <StreamingText
             tokens={tokens}
@@ -417,6 +431,7 @@ function HistoryList({ items, currentId, onOpen, onNew, onRename, onDelete }: {
   items: Item[]; currentId?: string; onOpen: (it: Item) => void; onNew: () => void; onRename: (it: Item, title: string) => void; onDelete: (it: Item) => void;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
+  const cancelled = useRef(false);
   return (
     <nav aria-label="Chat history" className="flex flex-col gap-1">
       <button type="button" onClick={onNew} className="mb-2 flex h-10 items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm font-medium text-strong hover:bg-raised">
@@ -433,11 +448,12 @@ function HistoryList({ items, currentId, onOpen, onNew, onRename, onDelete }: {
                 onSubmit={(e) => {
                   e.preventDefault();
                   const v = new FormData(e.currentTarget).get("title")?.toString().trim();
-                  if (v) onRename(it, v.slice(0, 80));
+                  if (v && !cancelled.current) onRename(it, v.slice(0, 80));
+                  cancelled.current = false;
                   setEditing(null);
                 }}
               >
-                <input name="title" defaultValue={it.title} aria-label="Chat title" autoFocus onBlur={(e) => e.currentTarget.form?.requestSubmit()} className="h-8 w-full rounded-inset border border-hairline bg-surface px-2 text-sm text-strong outline-none focus:border-strong/30" />
+                <input name="title" defaultValue={it.title} aria-label="Chat title" autoFocus onBlur={(e) => e.currentTarget.form?.requestSubmit()} onKeyDown={(e) => { if (e.key === "Escape") { cancelled.current = true; e.currentTarget.form?.requestSubmit(); } }} className="h-8 w-full rounded-inset border border-hairline bg-surface px-2 text-sm text-strong outline-none focus:border-strong/30" />
               </form>
             ) : (
               <>
