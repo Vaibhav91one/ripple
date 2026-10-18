@@ -2,9 +2,9 @@
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
-[Live demo](https://web-2fa0-3000.prg1.zerops.app) · [Demo walkthrough](#demo-walkthrough) · [Self-host in 5 minutes](SELF_HOSTING.md) · WeMakeDevs x FalkorDB Graph Hacks, Track 03 (Company Brain)
+[Live demo](https://ripple.vaibhav.quest) · [Demo walkthrough](#demo-walkthrough) · [Self-host in 5 minutes](SELF_HOSTING.md) · WeMakeDevs x FalkorDB Graph Hacks, Track 03 (Company Brain)
 
-> The custom domain `ripple.vaibhav.quest` is waiting on a Google Safe Browsing review; the Zerops URL above is the live deployment.
+> Mirror: https://web-2fa0-3000.prg1.zerops.app (same deployment, Zerops subdomain).
 
 ## The 60-second pitch
 
@@ -17,9 +17,9 @@ The demo company, **Ledgerly**, has decided to sunset API v1. Ripple finds 40 cu
 ## Demo walkthrough
 
 <!-- H3: when docs/demo.gif is committed, add ![Demo walkthrough](docs/demo.gif) here -->
-The walkthrough GIF is coming; until then the live demo is the demo: <https://web-2fa0-3000.prg1.zerops.app>.
+The walkthrough GIF is coming; until then the live demo is the demo: <https://ripple.vaibhav.quest>.
 
-Prefer to click: open the [live demo](https://web-2fa0-3000.prg1.zerops.app), ask the Assistant "We're removing API v1. What breaks, and who doesn't know yet?", then follow the case file. The three-minute path is in [docs/demo-script.md](docs/demo-script.md).
+Prefer to click: open the [live demo](https://ripple.vaibhav.quest), ask the Assistant "We're removing API v1. What breaks, and who doesn't know yet?", then follow the case file. The three-minute path is in [docs/demo-script.md](docs/demo-script.md).
 
 ## What it does
 
@@ -323,7 +323,7 @@ graph LR
 
 ## Use Ripple from your AI tools
 
-The MCP server is stateless Streamable HTTP at `/api/mcp` (17 tools, all read-only except `ack_brief`) or stdio against a local FalkorDB. The hosted demo is anonymous and read-only. **[/integrations](https://web-2fa0-3000.prg1.zerops.app/integrations)** has copy buttons for each client below.
+The MCP server is stateless Streamable HTTP at `/api/mcp` (17 tools, all read-only except `ack_brief`) or stdio against a local FalkorDB. The hosted demo is anonymous and read-only. **[/integrations](https://ripple.vaibhav.quest/integrations)** has copy buttons for each client below.
 
 **Claude Code**
 
@@ -333,28 +333,28 @@ The MCP server is stateless Streamable HTTP at `/api/mcp` (17 tools, all read-on
 /plugin install ripple@ripple
 
 # or just the MCP server
-claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
+claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
 ```
 
-**Claude Desktop and claude.ai.** Customize > Connectors > + > Add custom connector, paste `https://web-2fa0-3000.prg1.zerops.app/api/mcp` ("No sign in" for the demo). Skill: zip `skills/ripple-impact` and upload it under Customize > Skills.
+**Claude Desktop and claude.ai.** Customize > Connectors > + > Add custom connector, paste `https://ripple.vaibhav.quest/api/mcp` ("No sign in" for the demo). Skill: zip `skills/ripple-impact` and upload it under Customize > Skills.
 
 **Codex** (`~/.codex/config.toml`)
 
 ```toml
 [mcp_servers.ripple]
-url = "https://web-2fa0-3000.prg1.zerops.app/api/mcp"
+url = "https://ripple.vaibhav.quest/api/mcp"
 # for org keys also: bearer_token_env_var = "RIPPLE_API_KEY"
 ```
 
 The skill ships in `.agents/skills/ripple-impact`; Codex reads `.agents/skills` in a repo.
 
-**Cursor.** One-click "Add to Cursor" on [/integrations](https://web-2fa0-3000.prg1.zerops.app/integrations), or `~/.cursor/mcp.json`:
+**Cursor.** One-click "Add to Cursor" on [/integrations](https://ripple.vaibhav.quest/integrations), or `~/.cursor/mcp.json`:
 
 ```json
-{ "mcpServers": { "ripple": { "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp" } } }
+{ "mcpServers": { "ripple": { "url": "https://ripple.vaibhav.quest/api/mcp" } } }
 ```
 
-**ChatGPT** (demo only). Developer mode connector, no auth, URL `https://web-2fa0-3000.prg1.zerops.app/api/mcp`.
+**ChatGPT** (demo only). Developer mode connector, no auth, URL `https://ripple.vaibhav.quest/api/mcp`.
 
 **Slack and GitHub.** `/ripple` and @Ripple in Slack, @ripple-company-brain on pull requests. See `/integrations` for setup (manifests: `slack-manifest.yaml`, `github-app-manifest.json`).
 
