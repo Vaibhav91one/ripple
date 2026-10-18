@@ -6,7 +6,8 @@ export function Card({ className = "", children, ...rest }: React.ComponentProps
 }
 
 /** Card title (18px) + muted one-liner, with an action (link or ⋯ button) on the right. */
-export function CardHeader({ title, sub, action, menuLabel }: { title: React.ReactNode; sub?: React.ReactNode; action?: React.ReactNode; menuLabel?: string }) {
+/** `menu` renders the round ⋯ button; it is omitted without a handler (no dead controls). */
+export function CardHeader({ title, sub, action, menu }: { title: React.ReactNode; sub?: React.ReactNode; action?: React.ReactNode; menu?: { label: string; onClick: () => void } }) {
   return (
     <header className="flex items-start justify-between gap-4">
       <div className="min-w-0">
@@ -14,8 +15,8 @@ export function CardHeader({ title, sub, action, menuLabel }: { title: React.Rea
         {sub && <p className="mt-0.5 text-sm text-faint">{sub}</p>}
       </div>
       {action}
-      {menuLabel && (
-        <button type="button" aria-label={menuLabel} className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline text-body hover:bg-raised">
+      {menu && (
+        <button type="button" aria-label={menu.label} onClick={menu.onClick} className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline text-body hover:bg-raised">
           <Ellipsis size={16} aria-hidden />
         </button>
       )}

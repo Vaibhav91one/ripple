@@ -122,7 +122,7 @@ export function FileUpload({ canUpload, customers }: { canUpload: boolean; custo
               ))}
             </ul>
             {ok.some((r) => !(r as { duplicate: boolean }).duplicate) && (
-              <p>{ok.length} {ok.length === 1 ? "file" : "files"} queued for ingestion. Proposed edges appear in <Link href="/approvals" className="text-ripple underline-offset-4 hover:underline">Approvals</Link> once the worker finishes.</p>
+              <p>{ok.length} {ok.length === 1 ? "file" : "files"} queued for ingestion. Proposed edges appear in <Link href="/reports" className="text-ripple underline-offset-4 hover:underline">Reports</Link> once the worker finishes.</p>
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Bot, CircleAlert, CircleCheck, FileText, MapPin, Scale } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
+import { shellUser } from "@/components/shell/identity";
 import { DateRange, ExportButton, FilterPill, PageHeader, PrimaryButton } from "@/components/shell/PageHeader";
 import { Card, CardHeader, Takeaway } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -9,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { HatchedBar, PlanLegend } from "@/components/ui/hatched-bar";
 import { DeltaChip, HeroNumber } from "@/components/ui/hero-number";
 import { InsightCard } from "@/components/ui/insight-card";
-import { NeedsYouList } from "@/components/ui/needs-you-list";
+import { NeedsYou } from "@/components/ui/needs-you";
 import { PageSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { StatusPill, type StatusTone } from "@/components/ui/status-pill";
 import { TargetBar } from "@/components/ui/target-bar";
@@ -28,6 +29,8 @@ const CASES: { id: string; title: string; owner: string; teams: string; told: nu
   { id: "chg-15", title: "Support hours change", owner: "Support", teams: "3 teams", told: 0, plan: 3, status: ["neutral", "Draft"] },
 ];
 
+const SAMPLE_CSV = `data:text/csv,${encodeURIComponent("change,told,planned\n" + CASES.map((c) => `${c.id},${c.told},${c.plan}`).join("\n"))}`;
+
 function Section({ name, children }: { name: string; children: React.ReactNode }) {
   return (
     <section className="mt-10">
@@ -40,16 +43,16 @@ function Section({ name, children }: { name: string; children: React.ReactNode }
 export default function StyleguideV2() {
   return (
     <Suspense>
-      <AppShell>
+      <AppShell user={shellUser({})}>
         <PageHeader title="Styleguide" subtitle="v2 primitives: light, calm, one gradient per page">
           <DateRange label="Oct 12 to 18" compare="Oct 5 to 11" />
-          <FilterPill label="All teams" />
-          <ExportButton />
+          <FilterPill label="All teams" href="/styleguide/v2?team=all" />
+          <ExportButton href={SAMPLE_CSV} />
         </PageHeader>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <Card>
-            <CardHeader title="Coverage" sub="Sunset API v1 · due Jan 31" menuLabel="More" />
+            <CardHeader title="Coverage" sub="Sunset API v1 · due Jan 31" />
             <div className="mt-5">
               <HeroNumber value="62%" delta={{ value: "14 pts", dir: "up", tone: "good", vs: "vs yesterday" }}>
                 3 of 7 affected teams have not been told. $74K of the $180K ARR at risk has no owner yet.
@@ -85,7 +88,8 @@ export default function StyleguideV2() {
               body="Legal owns the contract and has not been told. Clause 7.2 conflicts with the Jan 31 date."
               action={{ label: "Open the case", href: "/reports" }}
             />
-            <NeedsYouList
+            <NeedsYou
+              id="needs-you"
               rows={[
                 { id: "a", icon: CircleAlert, tone: "conflict", title: "1 contract conflict", sub: "Northwind MSA clause 7.2", href: "/reports" },
                 { id: "b", icon: CircleCheck, tone: "gap", title: "2 notices waiting for your OK", sub: "Drafted by the Notify agent", href: "/" },
@@ -147,7 +151,7 @@ export default function StyleguideV2() {
         <Section name="Buttons, empty state, skeleton">
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <div className="flex flex-wrap gap-2"><PrimaryButton>Approve notice</PrimaryButton><ExportButton label="Share" /><FilterPill label="All agents" /></div>
+              <div className="flex flex-wrap gap-2"><PrimaryButton href="/reports">Approve notice</PrimaryButton><ExportButton label="Download" href={SAMPLE_CSV} /><FilterPill label="All agents" href="/agents" /></div>
               <EmptyState icon={Bot} title="No agent runs yet" action={{ label: "Ask the assistant", href: "/" }}>Runs show here once an agent drafts a notice or opens an issue.</EmptyState>
             </Card>
             <Card>

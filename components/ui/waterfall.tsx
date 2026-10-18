@@ -6,8 +6,8 @@ import { hatch } from "./hatch";
 export type WaterfallProps = {
   title: string;
   subtitle: string;
-  link: string;
-  /** Where the header link goes (margin's "Leakage >"). */
+  link?: string;
+  /** Where the header link goes (margin's "Leakage >"); the link is hidden without it. */
   href?: string;
   /** Value-to-percent mapping of the bar area, and the tick labels under it. */
   axis: { min: number; max: number; ticks: { value: number; label: string }[] };
@@ -26,7 +26,7 @@ const ROW = 63; // row pitch
 const BAR_TOP = 24;
 const BAR_H = 18;
 
-export function Waterfall({ title, subtitle, link, href = "#", stepColor = "var(--hatch)", axis, target, steps, actual, note }: WaterfallProps) {
+export function Waterfall({ title, subtitle, link, href, stepColor = "var(--hatch)", axis, target, steps, actual, note }: WaterfallProps) {
   const pct = (v: number) => ((v - axis.min) / (axis.max - axis.min)) * 100;
   const bars = steps.map((s, i) => {
     const right = target.value - steps.slice(0, i).reduce((a, x) => a + x.delta, 0);
@@ -39,7 +39,7 @@ export function Waterfall({ title, subtitle, link, href = "#", stepColor = "var(
       <CardHeader
         title={title}
         sub={subtitle}
-        action={<Link href={href} className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-strong hover:text-body">{link}<ChevronRight size={15} aria-hidden /></Link>}
+        action={href && link ? <Link href={href} className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-strong hover:text-body">{link}<ChevronRight size={15} aria-hidden /></Link> : undefined}
       />
       <div className="mt-10">
         <div className="relative" style={{ height: ROW }}>

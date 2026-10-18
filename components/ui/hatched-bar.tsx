@@ -1,10 +1,10 @@
 import { hatch } from "./hatch";
-import { type BarTone, clamp, toneVar } from "./target-bar";
+import { type BarTone, pct, toneVar } from "./target-bar";
 
 /** Plan vs actual on one track: hatched = plan (not real yet), solid = actual, a hatched red tail = the overrun past plan. */
 export function HatchedBar({ plan, actual, max, tone = "ink", label }: { plan: number; actual: number; max: number; tone?: BarTone; label: string }) {
-  const p = clamp(plan, 0, max);
-  const a = clamp(actual, 0, max);
+  const p = pct(plan, 0, max);
+  const a = pct(actual, 0, max);
   return (
     <div role="img" aria-label={label} className="relative h-2.5 w-full">
       <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${p}%`, ...hatch("var(--faint)") }} />

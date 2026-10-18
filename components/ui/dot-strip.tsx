@@ -1,4 +1,4 @@
-import { clamp } from "./target-bar";
+import { pct } from "./target-bar";
 import { edge } from "./waterfall";
 
 export type Dot = { id: string; value: number; tone?: "conflict" | "gap" | "ripple" | "covered" | "neutral"; label?: string };
@@ -8,7 +8,7 @@ const FILL = { conflict: "bg-conflict", gap: "bg-gap", ripple: "bg-ripple", cove
 export function layoutDots(values: number[], min: number, max: number, cols: number): [number, number][] {
   const used = new Map<number, number>();
   return values.map((v) => {
-    const col = Math.round((clamp(v, min, max) / 100) * (cols - 1));
+    const col = Math.round((pct(v, min, max) / 100) * (cols - 1));
     const row = used.get(col) ?? 0;
     used.set(col, row + 1);
     return [(col / (cols - 1)) * 100, row];
@@ -24,7 +24,7 @@ export function DotStrip({ dots, min, max, cols = 48, marker, ticks, selected, l
     <figure aria-label={label} className="w-full">
       <div className="relative mx-1.5" style={{ height: rows * pitch + 22 }}>
         {marker && (
-          <div className="absolute inset-y-0 border-l border-dashed border-strong/60" style={{ left: `${clamp(marker.value, min, max)}%` }}>
+          <div className="absolute inset-y-0 border-l border-dashed border-strong/60" style={{ left: `${pct(marker.value, min, max)}%` }}>
             <span className="absolute -top-0.5 left-1.5 whitespace-nowrap text-xs font-medium text-strong">{marker.label}</span>
           </div>
         )}
@@ -39,7 +39,7 @@ export function DotStrip({ dots, min, max, cols = 48, marker, ticks, selected, l
       </div>
       {ticks && (
         <div className="relative mx-1.5 mt-3 h-4 text-xs text-faint">
-          {ticks.map((t, i) => <span key={t.label} className={`absolute whitespace-nowrap ${edge(i, ticks.length)}`} style={{ left: `${clamp(t.value, min, max)}%` }}>{t.label}</span>)}
+          {ticks.map((t, i) => <span key={t.label} className={`absolute whitespace-nowrap ${edge(i, ticks.length)}`} style={{ left: `${pct(t.value, min, max)}%` }}>{t.label}</span>)}
         </div>
       )}
     </figure>

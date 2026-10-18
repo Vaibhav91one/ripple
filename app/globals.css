@@ -133,7 +133,7 @@
   --hairline: oklch(0.918 0.003 95);
   --strong: oklch(0.21 0.003 285);
   --body: oklch(0.38 0.004 285);
-  --faint: oklch(0.6 0.008 285);
+  --faint: oklch(0.52 0.006 285); /* 4.5:1 on page and raised */
   --ink-on-strong: oklch(0.99 0 0);
   --background: var(--page);
   --card: var(--surface);

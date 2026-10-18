@@ -39,7 +39,7 @@ function BriefActions({ b, lens }: { b: HomeBrief; lens: string }) {
       <button type="button" className={btn} disabled={off} title={hint} onClick={() => ack.mutate("seen")}>Acknowledge</button>
       <button type="button" className={btn} disabled={off} title={hint} onClick={() => ack.mutate("concern")}>Raise a concern</button>
       <button type="button" className={btn} disabled={off} title={hint} onClick={() => ack.mutate("not_relevant")}>Not relevant</button>
-      <Link href={`/changes/${encodeURIComponent(b.decisionId)}`} className={btn}>Open</Link>
+      <Link href={`/reports/${encodeURIComponent(b.decisionId)}`} className={btn}>Open</Link>
       {hint && <span className="self-center text-2xs text-faint">{hint}</span>}
       {ack.isError && <span role="alert" className="self-center text-2xs text-faint">{ack.error.message}</span>}
     </>
@@ -73,10 +73,10 @@ export function HomeScreen({ lens }: { lens: string }) {
     ...h.briefs.map((b) => ({
       icon: h.hits.find((x) => x.decisionId === b.decisionId)?.status === "conflict" ? ("warning" as const) : ("pin" as const),
       title: b.title, sub: `Brief to acknowledge · ${date(b.at)}`,
-      href: `/changes/${encodeURIComponent(b.decisionId)}`, actions: <BriefActions b={b} lens={lens} />,
+      href: `/reports/${encodeURIComponent(b.decisionId)}`, actions: <BriefActions b={b} lens={lens} />,
     })),
-    ...h.approvals.map((a) => ({ icon: "pin" as const, title: a.subject ? proposalTitle({ summary: "", subject: a.subject }, name) : `Approve: ${a.kind.replaceAll("_", " ")}`, sub: waited(a.requestedAt), href: "/approvals" })),
-    ...h.accessRequests.map((a) => ({ icon: "pin" as const, title: "Access request", sub: waited(a.requestedAt), href: "/approvals" })),
+    ...h.approvals.map((a) => ({ icon: "pin" as const, title: a.subject ? proposalTitle({ summary: "", subject: a.subject }, name) : `Approve: ${a.kind.replaceAll("_", " ")}`, sub: waited(a.requestedAt), href: "/reports" })),
+    ...h.accessRequests.map((a) => ({ icon: "pin" as const, title: "Access request", sub: waited(a.requestedAt), href: "/reports" })),
     ...h.inbox.forMe.flatMap((i): Row[] => i.kind === "review"
       ? [{ icon: "pin", title: i.title, sub: `Review assigned to you · ${date(i.at)}`, href: `/items/task/${encodeURIComponent(i.taskId)}` }] : []),
     ...h.tasks.map((t) => ({
@@ -107,7 +107,7 @@ export function HomeScreen({ lens }: { lens: string }) {
               <ul className={`${card} divide-y divide-hairline px-5`}>
                 {h.inbox.sent.map((s) => (
                   <li key={s.id} className="flex items-center justify-between gap-4 py-3">
-                    <Link href={`/changes/${encodeURIComponent(s.decisionId)}`} className="min-w-0 truncate text-sm text-strong hover:underline">{s.title}</Link>
+                    <Link href={`/reports/${encodeURIComponent(s.decisionId)}`} className="min-w-0 truncate text-sm text-strong hover:underline">{s.title}</Link>
                     <Pill tone={s.status === "acked" ? "covered" : "gap"} dot>{s.status === "acked" ? "Acknowledged" : "Waiting"}</Pill>
                   </li>
                 ))}
@@ -121,7 +121,7 @@ export function HomeScreen({ lens }: { lens: string }) {
                 {h.hits.map((x) => (
                   <article key={x.decisionId} className={`${card} flex flex-col gap-3 p-5`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Link href={`/changes/${encodeURIComponent(x.decisionId)}`} className="text-md font-medium text-strong hover:underline">{x.title}</Link>
+                      <Link href={`/reports/${encodeURIComponent(x.decisionId)}`} className="text-md font-medium text-strong hover:underline">{x.title}</Link>
                       <span className="flex items-center gap-2">
                         {x.conflicts > 0 && <span className="text-2xs text-faint">{plural(x.conflicts, "open conflict")}</span>}
                         <Pill tone={x.status} dot>{STATUS[x.status]}</Pill>

@@ -24,41 +24,52 @@ export function PageHeader({ title, subtitle, crumbs, children }: { title: React
   );
 }
 
-const pill = "inline-flex h-10 items-center gap-2 rounded-control px-3.5 text-sm font-medium";
+const pill = "inline-flex h-11 items-center gap-2 rounded-control lg:h-10 px-3.5 text-sm font-medium";
 
-/** Date range pill plus the muted "vs previous" label that always follows it. */
+/** Date range pill plus the muted "vs previous" label. Without `onClick` it is a static label, not a dead button. */
 export function DateRange({ label, compare, onClick }: { label: string; compare?: string; onClick?: () => void }) {
+  const cls = `${pill} border border-hairline bg-surface text-strong shadow-[0_1px_1px_oklch(0_0_0/0.03)]`;
   return (
     <span className="inline-flex items-center gap-1">
-      <button type="button" onClick={onClick} className={`${pill} border border-hairline bg-surface text-strong shadow-[0_1px_1px_oklch(0_0_0/0.03)]`}>
-        <Calendar size={15} aria-hidden className="text-body" />
-        {label}
-        <ChevronDown size={14} aria-hidden className="text-faint" />
-      </button>
+      {onClick ? (
+        <button type="button" onClick={onClick} className={cls}>
+          <Calendar size={15} aria-hidden className="text-body" />
+          {label}
+          <ChevronDown size={14} aria-hidden className="text-faint" />
+        </button>
+      ) : (
+        <span className={cls}><Calendar size={15} aria-hidden className="text-body" />{label}</span>
+      )}
       {compare && <span className="px-2 text-sm text-faint">vs {compare}</span>}
     </span>
   );
 }
 
-export function FilterPill({ label, icon: Icon = ListFilter, onClick }: { label: string; icon?: typeof ListFilter; onClick?: () => void }) {
+type Action = { href?: string; onClick?: () => void };
+
+/** Renders a link (`href`) or a button (`onClick`); with neither it renders nothing, so a page never ships a dead control. */
+function Act({ href, onClick, download, className, children }: Action & { download?: boolean; className: string; children: React.ReactNode }) {
+  if (href) return download ? <a href={href} download className={className}>{children}</a> : <Link href={href} className={className}>{children}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} className={className}>{children}</button>;
+  return null;
+}
+
+export function FilterPill({ label, icon: Icon = ListFilter, ...act }: { label: string; icon?: typeof ListFilter } & Action) {
   return (
-    <button type="button" onClick={onClick} className={`${pill} bg-raised text-strong hover:bg-hairline`}>
+    <Act {...act} className={`${pill} bg-raised text-strong hover:bg-hairline`}>
       <Icon size={15} aria-hidden className="text-body" />
       {label}
       <ChevronDown size={14} aria-hidden className="text-faint" />
-    </button>
+    </Act>
   );
 }
 
-/** White pill button; `href` makes it a download link (e.g. a CSV route), otherwise it calls `onClick`. */
-export function ExportButton({ href, label = "Export", onClick }: { href?: string; label?: string; onClick?: () => void }) {
-  const body = (<><Download size={15} aria-hidden className="text-body" />{label}</>);
-  const cls = `${pill} border border-hairline bg-surface text-strong hover:bg-raised`;
-  return href ? <a href={href} download className={cls}>{body}</a> : <button type="button" onClick={onClick} className={cls}>{body}</button>;
+/** White pill; `href` is a download (e.g. a CSV route). */
+export function ExportButton({ label = "Export", ...act }: { label?: string } & Action) {
+  return <Act {...act} download className={`${pill} border border-hairline bg-surface text-strong hover:bg-raised`}><Download size={15} aria-hidden className="text-body" />{label}</Act>;
 }
 
 /** The one dark button a page may have (margin's "Flag for review"). */
-export function PrimaryButton({ children, href }: { children: React.ReactNode; href?: string }) {
-  const cls = `${pill} bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.15)] hover:bg-body`;
-  return href ? <Link href={href} className={cls}>{children}</Link> : <button type="button" className={cls}>{children}</button>;
+export function PrimaryButton({ children, ...act }: { children: React.ReactNode } & Action) {
+  return <Act {...act} className={`${pill} bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.15)] hover:bg-body`}>{children}</Act>;
 }

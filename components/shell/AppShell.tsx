@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { parseAsString, useQueryState } from "nuqs";
 import { Ellipsis, Menu, PanelLeft, Search, X } from "lucide-react";
@@ -10,35 +10,57 @@ import { getApprovals } from "@/lib/api";
 import { Mark } from "@/components/brand/Mark";
 import { SiteCredits } from "@/components/SiteCredits";
 import { NAV, NAV_FOOTER, activeHref, type NavItem } from "./nav";
+import type { ShellUser } from "./identity";
 
 /** v2 shell (margin layout): a calm sidebar on the page colour, content on the right. Below lg the sidebar is a drawer. */
-export function AppShell({ lensSlot, children }: { lensSlot?: React.ReactNode; children: React.ReactNode }) {
+export function AppShell({ user, lensSlot, authSlot, children }: { user: ShellUser; lensSlot?: React.ReactNode; authSlot?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname();
   // The drawer remembers the path it opened on, so navigating closes it without an effect.
   const [openAt, setOpenAt] = useState<string | null>(null);
   const open = openAt === pathname;
-  const setOpen = (v: boolean) => setOpenAt(v ? pathname : null);
   const [collapsed, setCollapsed] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const closer = useRef<HTMLButtonElement>(null);
+  // The opener sits in the inert top bar while the drawer is open, so focus it after the re-render clears inert.
+  const close = () => {
+    setOpenAt(null);
+    requestAnimationFrame(() => opener.current?.focus());
+  };
+  // Drawer as a modal dialog: focus moves in on open, Escape closes and returns focus to the menu button.
+  useEffect(() => {
+    if (!open) return;
+    closer.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpenAt(null);
+      requestAnimationFrame(() => opener.current?.focus());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
     <div className="flex min-h-dvh bg-page text-body">
       {/* phone and tablet: top bar + drawer */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-page/90 px-4 backdrop-blur lg:hidden">
+      <div inert={open} className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-page/90 px-4 backdrop-blur lg:hidden">
         <Brand />
-        <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="grid size-9 place-items-center rounded-control border border-hairline bg-surface text-strong">
+        <button ref={opener} type="button" onClick={() => setOpenAt(pathname)} aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar" className="grid size-11 place-items-center rounded-control border border-hairline bg-surface text-strong">
           <Menu size={18} aria-hidden />
         </button>
       </div>
-      {open && <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-strong/20 lg:hidden" />}
+      {open && <div aria-hidden onClick={close} className="fixed inset-0 z-40 bg-strong/20 lg:hidden" />}
       <aside
+        id="app-sidebar"
+        role={open ? "dialog" : undefined}
+        aria-modal={open || undefined}
         className={`${open ? "flex" : "hidden"} fixed inset-y-0 left-0 z-50 w-[272px] flex-col bg-page px-4 pb-4 pt-5 shadow-xl lg:sticky lg:top-0 lg:z-auto lg:flex lg:h-dvh lg:shadow-none ${collapsed ? "lg:w-[76px] lg:px-3" : "lg:w-[248px]"}`}
         aria-label="Sidebar"
       >
         <div className="flex items-center justify-between pl-1.5">
           {!collapsed && <Brand />}
-          <button type="button" onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden size-8 place-items-center rounded-control text-faint hover:bg-raised hover:text-strong lg:grid">
+          <button type="button" onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} aria-controls="app-sidebar" className="hidden size-8 place-items-center rounded-control text-faint hover:bg-raised hover:text-strong lg:grid">
             <PanelLeft size={17} aria-hidden />
           </button>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="grid size-8 place-items-center rounded-control text-faint lg:hidden">
+          <button ref={closer} type="button" onClick={close} aria-label="Close menu" className="grid size-11 place-items-center rounded-control text-faint lg:hidden">
             <X size={17} aria-hidden />
           </button>
         </div>
@@ -55,29 +77,30 @@ export function AppShell({ lensSlot, children }: { lensSlot?: React.ReactNode; c
         </nav>
         <div className="mt-auto flex flex-col gap-3 pt-6">
           {!collapsed && lensSlot && <div className="flex flex-wrap items-center gap-2 px-1">{lensSlot}</div>}
-          <ul className="flex flex-col gap-0.5">
+          <nav aria-label="Account and help"><ul className="flex flex-col gap-0.5">
             {NAV_FOOTER.map((item) => <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} badge={item.label === "Notifications" ? <NotificationCount /> : undefined} />)}
-          </ul>
+          </ul></nav>
           <div className="border-t border-hairline pt-3">
             <Link href="/profile" className="flex items-center gap-3 rounded-control px-1.5 py-1.5 hover:bg-raised" aria-label="Profile">
               <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-[conic-gradient(var(--ripple),var(--gap),var(--ripple))] p-[2px]">
-                <span className="grid size-full place-items-center rounded-full bg-surface text-xs font-medium text-strong">DV</span>
+                <span className="grid size-full place-items-center rounded-full bg-surface text-xs font-medium text-strong">{user.initials}</span>
               </span>
               {!collapsed && (
                 <>
                   <span className="min-w-0 flex-1 leading-tight">
-                    <span className="block truncate text-sm font-medium text-strong">Demo visitor</span>
-                    <span className="block truncate text-xs text-faint">Viewer · Ledgerly</span>
+                    <span className="block truncate text-sm font-medium text-strong">{user.name}</span>
+                    <span className="block truncate text-xs text-faint">{user.role} · {user.org}</span>
                   </span>
                   <Ellipsis size={16} className="text-faint" aria-hidden />
                 </>
               )}
             </Link>
+            {!collapsed && authSlot && <div className="mt-2 flex items-center gap-2 px-1.5">{authSlot}</div>}
             {!collapsed && <SiteCredits className="mt-2 px-1.5 text-left text-2xs leading-snug" />}
           </div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-7">{children}</main>
+      <main inert={open} className="min-w-0 flex-1 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-7">{children}</main>
     </div>
   );
 }
@@ -102,7 +125,8 @@ function NavLink({ item, pathname, collapsed, badge }: { item: NavItem; pathname
         href={item.href}
         aria-current={active ? "page" : undefined}
         title={collapsed ? item.label : undefined}
-        className={`flex h-10 items-center gap-3 rounded-control px-3 text-md transition-colors ${active ? "bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.12)]" : "text-body hover:bg-raised hover:text-strong"} ${collapsed ? "justify-center px-0" : ""}`}
+        aria-label={collapsed ? item.label : undefined}
+        className={`flex h-11 items-center gap-3 rounded-control px-3 text-md lg:h-10 transition-colors ${active ? "bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.12)]" : "text-body hover:bg-raised hover:text-strong"} ${collapsed ? "justify-center px-0" : ""}`}
       >
         <Icon size={17} strokeWidth={1.6} aria-hidden className="shrink-0" />
         {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
@@ -130,7 +154,7 @@ function SearchButton({ collapsed }: { collapsed: boolean }) {
       type="button"
       onClick={() => setAsk("1")}
       aria-label="Search"
-      className={`mt-5 flex h-10 items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm text-faint hover:text-body ${collapsed ? "justify-center px-0" : ""}`}
+      className={`mt-5 flex h-11 items-center gap-2 lg:h-10 rounded-control border border-hairline bg-surface px-3 text-sm text-faint hover:text-body ${collapsed ? "justify-center px-0" : ""}`}
     >
       <Search size={16} aria-hidden />
       {!collapsed && (

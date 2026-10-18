@@ -87,7 +87,7 @@ export function RunDetailScreen({ id }: { id: string }) {
           <ul className="divide-y divide-hairline overflow-hidden rounded-card border border-hairline bg-surface">
             {proposals.map((p) => (
               <li key={p.id}>
-                <Link href={`/approvals?a=${p.id}`} className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-raised focus-visible:bg-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ripple">
+                <Link href={`/reports?a=${p.id}`} className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-raised focus-visible:bg-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ripple">
                   <span className="hidden w-28 shrink-0 font-mono text-2xs text-faint sm:block">{kindLabel(p.kind)}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-strong">{title(p)}</span>
                   <Pill tone={STATUS_TONE[p.status] ?? "gap"} dot>{p.status}</Pill>
