@@ -64,9 +64,9 @@ Caddy fetches the certificate on first request. For sign-in, create a Clerk app 
 
 ## Optional: GitHub and Slack
 
-Both are optional; Ripple works without them. One-click setup pages (`/setup/github` and `/setup/slack`) arrive in #236 and #240. Until then, set them up by hand:
+Both are optional; Ripple works without them. One-click setup: `/setup/github` is live (admin only): press the button, confirm on GitHub, install the app; no env vars needed for GitHub. If you later set the `GITHUB_APP_*` env vars, env wins over the stored app, and the webhook accepts both secrets during the switch. `/setup/slack` arrives in #240; until then Slack is manual:
 
-- **GitHub**: create a GitHub App from `github-app-manifest.json` (details in `docs/github-app.md`), then set `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` (PEM with newlines as `\n`), `GITHUB_APP_WEBHOOK_SECRET`, `GITHUB_APP_SLUG`, `GITHUB_REPO`. Webhook URL: `<APP_URL>/api/connectors/github/webhook`.
+- **GitHub, by hand** (only if you skip `/setup/github`): create a GitHub App from `github-app-manifest.json` (details in `docs/github-app.md`), then set `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` (PEM with newlines as `\n`), `GITHUB_APP_WEBHOOK_SECRET`, `GITHUB_APP_SLUG`, `GITHUB_REPO`. Webhook URL: `<APP_URL>/api/connectors/github/webhook`.
 - **Slack**: create an app from `slack-manifest.yaml` and set `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`. Request URLs are under `<APP_URL>/api/slack/` (`events`, `interactive`, `command`, `oauth`).
 
 ### Webhooks to a laptop (tunnels)

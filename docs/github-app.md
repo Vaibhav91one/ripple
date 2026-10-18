@@ -1,6 +1,6 @@
 # GitHub App
 
-Ripple connects to GitHub as a GitHub App (not OAuth, not a PAT). One app, installed per org. It reads repos, CODEOWNERS and pull requests, and files issues (`create_issue`).
+Ripple connects to GitHub as a GitHub App (not OAuth, not a PAT). One app, installed per org. It reads repos, CODEOWNERS and pull requests, files issues (`create_issue`), comments on PRs (`pr_comment`), answers @mentions and posts a "Ripple impact" check run.
 
 ## What it does
 
@@ -33,36 +33,48 @@ Everything is a structured proposal (GitHub states it outright), so it is applie
 | `RIPPLE_SECRET_KEY` | already required: encrypts the stored installation id |
 | `GITHUB_APP_INSTALLATION_ID`, `GITHUB_REPO` | only for the `create_issue` action (installation on the demo repo, `owner/name`) |
 
+## One-click setup (self-hosters)
+
+Open `/setup/github` on your Ripple server (admins only) and press **Create the GitHub App**. The page POSTs the manifest to `https://github.com/settings/apps/new` with a signed, single-use `state`; GitHub sends you back to `/setup/github/callback?code&state`, which checks the state, calls `POST /app-manifests/{code}/conversions`, stores the app id, slug, private key, webhook secret and client id/secret **encrypted** (`lib/crypto.ts`) in `connector_account` (kind `github-app`, hidden from the connector list), and redirects to the app's install page. `APP_URL` must be a public URL GitHub can reach.
+
+One app per instance: setup is open only while no app exists. If `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` are set, **env wins**, `/setup/github` says the app is already configured, and any stored app is ignored for API calls. A second stored app is refused. For migrations the webhook accepts a signature valid under the env secret **or** the stored app's secret. Connecting an installation requires the installer to prove control: the setup redirect carries an OAuth `code`, Ripple exchanges it with the app's client id/secret and requires the installation in `GET /user/installations`. An app without stored client credentials (env-configured) only requires a valid signed state plus a `code`. A GitHub installation can be connected to one org only (first claim wins; enforced in code, a unique index would need a migration).
+
+## @mentions and the impact check
+
+- Subscribed events: `issue_comment` (issues and PR conversations) and `pull_request_review_comment`. A new comment from an OWNER, MEMBER or COLLABORATOR (public repos are open to everyone, so nobody else is answered) that contains `@<slug>` or a line starting `/ripple` is queued; edits, bot comments and the app's own replies are ignored.
+- The webhook dedupes on `X-GitHub-Delivery` (event log `dedupe_key`) and returns 2xx at once. The `github-reply` worker job reacts :eyes: to the comment, runs the Ask agent over the installation's org graph (as a viewer with no team, so restricted text never reaches the comment). On a public repository Ripple does not run the agent: it answers only with that repo's systems, owners and the change touching them. Replies are limited per installation (`GITHUB_REPLIES_PER_HOUR`, default 20; over it Ripple reacts with :confused: and does not reply), `@` in model text gets a zero-width space so it cannot ping, and GitHub 429/5xx/secondary-rate-limit errors are retried with `retry-after`, and replies as the app: `issues/{n}/comments`, or `pulls/{n}/comments/{id}/replies` inside a review thread. Citations are listed with the artifact title and quote; a link to `/reports/<decisionId>` is added when a change in flight touches the PR's systems. Without an LLM key it replies that no model is configured.
+- On `pull_request` opened/reopened/synchronize the same job creates the **Ripple impact** check run (`in_progress`), then completes it `neutral` with the systems and owning teams the PR's changed files map to (CODEOWNERS path systems), even before the PR is synced; on public repositories (including outside fork PRs) it shows only the repo's own systems and teams, never decision titles or case-file links; it is always completed, with a notice if the impact could not be computed.
+- Existing apps need the new permission/event settings (Checks, Issues: write; subscribe to the two comment events) and to accept the permission change.
+
 ## Create the app (owner)
 
 The manifest is [`github-app-manifest.json`](../github-app-manifest.json), in the format of the GitHub App manifest flow
-(<https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest>). Fields used: `name`, `url`, `description`, `hook_attributes`, `redirect_url`, `callback_urls`, `setup_url`, `setup_on_update`, `public`, `default_permissions`, `default_events`.
+(<https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest>). Fields used: `name`, `url`, `description`, `hook_attributes`, `redirect_url`, `callback_urls`, `request_oauth_on_install`, `public`, `default_permissions`, `default_events`.
 
 Option A, the form (what the orchestrator does in Chrome): <https://github.com/settings/apps/new> (or `https://github.com/organizations/<org>/settings/apps/new`), and copy these values from the manifest:
 
 - GitHub App name: `Ripple Company Brain` (names are global; add a suffix if taken)
 - Homepage URL: `https://ripple.vaibhav.quest`
-- Callback URL: `https://ripple.vaibhav.quest/api/connectors/github/setup`
-- Setup URL: `https://ripple.vaibhav.quest/api/connectors/github/setup`, and tick "Redirect on update"
+- Callback URL: `https://ripple.vaibhav.quest/api/connectors/github/setup`, and tick "Request user authorization (OAuth) during installation" (`request_oauth_on_install`; GitHub then allows no Setup URL). Ripple uses the returned `code` to confirm the installer controls the installation.
 - Webhook: Active, URL `https://ripple.vaibhav.quest/api/connectors/github/webhook`, Secret = a new random string (`openssl rand -hex 32`); keep it for `GITHUB_APP_WEBHOOK_SECRET`
 - Repository permissions: Contents read, Metadata read, Pull requests read and write, Checks read and write, Issues read and write
-- Subscribe to events: Pull request, Push
+- Subscribe to events: Pull request, Push, Issue comment, Pull request review comment
 - Where can this app be installed: Only on this account
 
 Then "Generate a private key" (downloads the `.pem`), and note the App ID and the slug from the app URL.
 
-Option B, the manifest flow itself: POST the manifest JSON in a `manifest` form field to `https://github.com/settings/apps/new`. GitHub redirects to `redirect_url` (`/connections/github`) with `?code=...`; within one hour exchange it for the app id, PEM and webhook secret:
+Option B, the manifest flow without the page: POST the manifest JSON in a `manifest` form field to `https://github.com/settings/apps/new`. GitHub redirects to `redirect_url` (`/setup/github/callback`) with `?code=...`; within one hour exchange it for the app id, PEM and webhook secret:
 
 ```bash
 curl -X POST -H "Accept: application/vnd.github+json" https://api.github.com/app-manifests/<code>/conversions
 ```
 
-`installation` and `installation_repositories` events are delivered to every GitHub App automatically and cannot be listed in `default_events`, so the manifest names only `pull_request` and `push`. The webhook route handles all four.
+`installation` and `installation_repositories` events are delivered to every GitHub App automatically and cannot be listed in `default_events`, so the manifest names `pull_request`, `push`, `issue_comment` and `pull_request_review_comment`. The webhook route handles all four.
 
 ## Install flow
 
-1. An admin opens `/connections/github` and presses Connect GitHub -> `GET /api/connectors/github/install` redirects to `github.com/apps/<slug>/installations/new?state=...` (`state` is encrypted: org, user, 10 minute expiry).
-2. After install GitHub redirects to the Setup URL `GET /api/connectors/github/setup?installation_id=...&state=...`. The route checks the state belongs to this admin and org, checks with the app JWT that the installation is ours, then stores a `connector_account` (`external_id` = installation id, `token_enc` = the installation id encrypted with `lib/crypto.ts`) and queues the first sync.
+1. An admin opens `/connectors/github` and presses Connect GitHub -> `GET /api/connectors/github/install` redirects to `github.com/apps/<slug>/installations/new?state=...` (`state` is encrypted: org, user, 10 minute expiry).
+2. After install GitHub redirects (with an OAuth `code`) to the callback URL `GET /api/connectors/github/setup?installation_id=...&code=...&state=...`. The route checks the state belongs to this admin and org, confirms the installer controls the installation (see above), checks with the app JWT that the installation is ours, then stores a `connector_account` (`external_id` = installation id, `token_enc` = the installation id encrypted with `lib/crypto.ts`) and queues the first sync.
 3. Installation tokens are never stored: `@octokit/app` mints them from the JWT and caches them in memory.
 
 ## Webhooks
@@ -82,4 +94,4 @@ One URL for every installation: `POST /api/connectors/github/webhook`.
 
 ## Test
 
-`pnpm test lib/connectors/github` runs on recorded API responses (no credentials): ownership edges from a fixture repo + CODEOWNERS into a real FalkorDB graph, the 401 on a bad signature, and `create_issue` through the octokit client against a mocked API.
+`pnpm test lib/connectors/github` runs on recorded API responses (no credentials): ownership edges from a fixture repo + CODEOWNERS into a real FalkorDB graph, the 401 on a bad signature, and `create_issue` through the octokit client against a mocked API; `mention.test.ts` covers mention detection, bot/edit/duplicate/bad-signature handling, the worker reply and check run (mocked Octokit), `pr_comment`, and the manifest state/conversion.

@@ -37,7 +37,7 @@ export type Octo = { request: (route: string, params?: Record<string, unknown>) 
 
 /** `seam` is for tests. token = the installation id (connector_account.token_enc). nextCursor = last finished repo; the final page clears it so the next run starts over. */
 export async function* syncGithub(acct: Account, cursor: unknown, seam: { octo?: Octo; dir?: Directory; owned?: (full: string) => Promise<ExistingOwner[]>; now?: number } = {}): AsyncGenerator<SyncPage> {
-  const octo = seam.octo ?? ((await githubApp()?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
+  const octo = seam.octo ?? ((await githubApp(await (await import("./app-creds")).githubEnv())?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
   if (!octo) throw new Error("GitHub App is not configured");
   const dir = seam.dir ?? (await loadDirectory(acct.orgId));
   const since = (seam.now ?? Date.now()) - 90 * DAY;

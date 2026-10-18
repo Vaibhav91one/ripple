@@ -1,6 +1,6 @@
 // Read side for /connectors. Never selects token_enc or the cursor.
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "../db";
 import { connectorAccounts } from "../db/schema";
 
@@ -10,6 +10,6 @@ export async function listAccounts(orgId: string): Promise<AccountRow[]> {
   const rows = await db().select({
     id: connectorAccounts.id, kind: connectorAccounts.kind, externalId: connectorAccounts.externalId,
     status: connectorAccounts.status, scopes: connectorAccounts.scopes, lastSyncAt: connectorAccounts.lastSyncAt,
-  }).from(connectorAccounts).where(eq(connectorAccounts.orgId, orgId)).orderBy(desc(connectorAccounts.createdAt));
+  }).from(connectorAccounts).where(and(eq(connectorAccounts.orgId, orgId), ne(connectorAccounts.kind, "github-app"))) // the app credentials are not a connector.orderBy(desc(connectorAccounts.createdAt));
   return rows.map((r) => ({ ...r, lastSyncAt: r.lastSyncAt?.toISOString() ?? null }));
 }
