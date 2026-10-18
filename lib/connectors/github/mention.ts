@@ -8,7 +8,7 @@ export type MentionJob = {
   /** public repo: answer with repo-scoped facts only */ publicRepo: boolean;
   /** over the installation's hourly reply limit: react, do not answer */ limited?: boolean;
 };
-export type CheckJob = { kind: "check"; installation: number; repo: string; number: number; headSha: string; url: string };
+export type CheckJob = { kind: "check"; installation: number; repo: string; number: number; headSha: string; url: string; /** public repo (incl. outside forks): no decision titles in the check */ publicRepo: boolean };
 export type GithubJob = MentionJob | CheckJob;
 
 type Payload = {

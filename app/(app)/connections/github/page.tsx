@@ -10,6 +10,7 @@ const MESSAGES: Record<string, string> = {
   bad_state: "The install link expired or belongs to another session. Try Connect GitHub again.",
   not_configured: "The GitHub App is not configured on this server.",
   installation_taken: "That GitHub installation is already connected to another workspace.",
+  unverified_installation: "GitHub did not confirm that you control that installation. Try Connect GitHub again.",
   unknown_installation: "GitHub doesn't know that installation for our app.",
 };
 

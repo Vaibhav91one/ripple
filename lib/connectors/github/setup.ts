@@ -1,7 +1,7 @@
 // One-click GitHub App setup: signed state, the manifest conversion, and storing the result. Routes stay thin.
 import { decrypt, encrypt } from "../../crypto";
-import { saveApp, type StoredApp } from "./app-creds";
-import { convertManifest } from "./client";
+import { LOCK_CLAIM, saveApp, storedApp, type StoredApp } from "./app-creds";
+import { convertManifest, userInstallations } from "./client";
 
 const TTL = 600;
 type Purpose = "manifest" | "install";
@@ -20,12 +20,27 @@ export function checkState(state: string | null, userId: string, purpose: Purpos
   } catch { return false; }
 }
 
-/** True when this GitHub installation is already connected to a different org: first claim wins. (A unique index on external_id per kind would need a migration; enforced here.) */
-export async function installationTaken(installation: string, orgId: string): Promise<boolean> {
-  const [{ db }, { connectorAccounts }, { and, eq, ne }] = await Promise.all([import("../../db"), import("../../db/schema"), import("drizzle-orm")]);
-  const rows = await db().select({ id: connectorAccounts.id }).from(connectorAccounts)
-    .where(and(eq(connectorAccounts.kind, "github"), eq(connectorAccounts.externalId, installation), ne(connectorAccounts.orgId, orgId)));
-  return rows.length > 0;
+/** Proves the admin controls the installation. With the app's client id/secret: exchange the OAuth `code` and require the installation in the user's own list. Without them: a GitHub `code` must at least be present (the state is checked by the caller). */
+export async function verifyInstaller(installation: string, code: string | null, fetcher?: typeof fetch): Promise<"ok" | "no_code" | "foreign"> {
+  if (!code) return "no_code";
+  const creds = (await storedApp())?.client_id && (await storedApp())?.client_secret ? (await storedApp())! : null;
+  if (!creds) return "ok";
+  try { return (await userInstallations({ client_id: creds.client_id!, client_secret: creds.client_secret! }, code, fetcher)).includes(Number(installation)) ? "ok" : "foreign"; } catch { return "foreign"; }
+}
+
+/** Connects the installation to the org unless another org already holds it (first claim wins). Check + upsert run under an advisory lock in one transaction. Returns the account id, or null when taken. */
+export async function bindInstallation(orgId: string, installation: string, tokenEnc: string, scopes: string[]): Promise<string | null> {
+  const [{ db }, { connectorAccounts }, { and, eq, ne, sql }] = await Promise.all([import("../../db"), import("../../db/schema"), import("drizzle-orm")]);
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${LOCK_CLAIM})`);
+    const taken = await tx.select({ id: connectorAccounts.id }).from(connectorAccounts)
+      .where(and(eq(connectorAccounts.kind, "github"), eq(connectorAccounts.externalId, installation), ne(connectorAccounts.orgId, orgId))); // a unique index on external_id per kind would need a migration
+    if (taken.length) return null;
+    const [row] = await tx.insert(connectorAccounts).values({ orgId, kind: "github", externalId: installation, tokenEnc, scopes })
+      .onConflictDoUpdate({ target: [connectorAccounts.orgId, connectorAccounts.kind, connectorAccounts.externalId], set: { tokenEnc, scopes, status: "active" } })
+      .returning({ id: connectorAccounts.id });
+    return row.id;
+  });
 }
 
 /** Convert, store encrypted, return where to send the admin next: the app's install page, with the same state the Connect GitHub button uses. */

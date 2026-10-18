@@ -18,12 +18,15 @@ export async function orgForInstallation(installation: number): Promise<{ orgId:
 }
 
 /** Owning teams and the decision in flight for a set of systems. */
-async function impactFor(g: Graph, systems: { id: string; name: string | null }[]): Promise<Impact> {
+async function impactFor(g: Graph, systems: { id: string; name: string | null }[], scope?: { repo: string; decision: boolean }): Promise<Impact> {
   if (!systems.length) return { systems: [], teams: [] };
   const ids = systems.map((s) => s.id);
   const [teams, dec] = await Promise.all([
     roQuery<{ name: string }>(g, "MATCH (s:System)-[r:OWNED_BY]->(t:Team) WHERE s.id IN $ids AND r.valid_to IS NULL RETURN DISTINCT t.name AS name", { ids }),
-    roQuery<{ id: string; title: string }>(g, "MATCH (d:Decision)-[sn:SUNSETS]->(:System)<-[:DEPENDS_ON*0..2]-(x:System) WHERE x.id IN $ids AND sn.valid_to IS NULL RETURN DISTINCT d.id AS id, d.title AS title LIMIT 1", { ids }),
+    // public repo: a decision only counts when it sunsets one of this repo's own systems, and the Check Run shows none at all
+    scope && !scope.decision ? Promise.resolve([] as { id: string; title: string }[])
+      : roQuery<{ id: string; title: string }>(g, `MATCH (d:Decision)-[sn:SUNSETS]->(t:System)<-[:DEPENDS_ON*0..2]-(x:System) WHERE x.id IN $ids AND sn.valid_to IS NULL${scope ? " AND (t.id = $repo OR t.id STARTS WITH $paths)" : ""} RETURN DISTINCT d.id AS id, d.title AS title LIMIT 1`,
+        { ids, repo: `gh:${scope?.repo}`, paths: `gh:${scope?.repo}:` }),
   ]);
   return { systems: systems.map((s) => ({ id: s.id, name: s.name ?? s.id })), teams: teams.map((t) => t.name), decisionId: dec[0]?.id, decisionTitle: dec[0]?.title };
 }
@@ -37,14 +40,14 @@ const repoSystems = (g: Graph, repo: string) =>
   roQuery<{ id: string; name: string | null; path: string | null }>(g, "MATCH (s:System) WHERE s.id = $repo OR s.id STARTS WITH $paths RETURN s.id AS id, s.name AS name, s.path AS path", { repo: `gh:${repo}`, paths: `gh:${repo}:` });
 
 /** Impact of a PR that may not be synced yet: its changed file paths (list files API) matched against the repo's CODEOWNERS path systems. */
-export async function pathImpact(g: Graph, octo: Octo, job: Pick<CheckJob, "repo" | "number">): Promise<Impact> {
+export async function pathImpact(g: Graph, octo: Octo, job: Pick<CheckJob, "repo" | "number" | "publicRepo">): Promise<Impact> {
   const [files, systems] = await Promise.all([changedPaths(octo, job.repo, job.number), repoSystems(g, job.repo)]);
-  return impactFor(g, systems.filter((s) => s.id === `gh:${job.repo}` || (s.path && files.some((f) => matchPath(s.path!, f)))));
+  return impactFor(g, systems.filter((s) => s.id === `gh:${job.repo}` || (s.path && files.some((f) => matchPath(s.path!, f)))), job.publicRepo ? { repo: job.repo, decision: false } : undefined);
 }
 
 /** Public repo answer: only this repo's systems, owners and the change touching them. No agent, so no org-wide customers, contracts or deals. */
 export async function repoFacts(g: Graph, job: Pick<MentionJob, "repo">): Promise<Answer> {
-  const i = await impactFor(g, await repoSystems(g, job.repo));
+  const i = await impactFor(g, await repoSystems(g, job.repo), { repo: job.repo, decision: true });
   const lines = [`Here is what Ripple knows about \`${job.repo}\`:`, impactSummary(i), "This repository is public, so Ripple only shares repository-level facts here."];
   return { text: lines.join("\n\n"), decisionId: i.decisionId };
 }

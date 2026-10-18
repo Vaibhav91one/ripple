@@ -12,7 +12,7 @@ import { enqueue } from "@/lib/queue";
 // verifies the signature first (401 when bad), then finds the account from payload.installation.id.
 const RESYNC = new Set(["push", "installation", "installation_repositories"]);
 
-type Pr = { action?: string; number?: number; pull_request?: { head?: { sha?: string }; html_url?: string }; repository?: { full_name: string }; installation?: { id: number } };
+type Pr = { action?: string; number?: number; pull_request?: { head?: { sha?: string }; html_url?: string }; repository?: { full_name: string; private?: boolean }; installation?: { id: number } };
 
 /** Records the delivery in the event log (unique dedupe_key), then queues the job once, keyed by the delivery id. A failed enqueue deletes the row again so GitHub's redelivery is not swallowed. Returns false for a replay. */
 async function queueOnce(orgId: string, key: string, type: string, subject: string, job: GithubJob): Promise<boolean> {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   }
   if (event === "pull_request" && ["opened", "synchronize", "reopened"].includes(payload.action ?? "") && payload.pull_request?.head?.sha && payload.repository) {
     await queueOnce(acct.orgId, `github:check:${delivery}`, "github.check", `gh:${payload.repository.full_name}#${payload.number}`,
-      { kind: "check", installation, repo: payload.repository.full_name, number: payload.number!, headSha: payload.pull_request.head.sha, url: payload.pull_request.html_url ?? "" });
+      { kind: "check", installation, repo: payload.repository.full_name, number: payload.number!, headSha: payload.pull_request.head.sha, url: payload.pull_request.html_url ?? "", publicRepo: payload.repository.private !== true });
   }
   if (RESYNC.has(event)) {
     await enqueue("sync", { accountId: acct.id }, { singletonKey: `sync:${acct.id}` });

@@ -7,8 +7,8 @@
     "active": true
   },
   "redirect_url": "https://ripple.vaibhav.quest/setup/github/callback",
-  "setup_url": "https://ripple.vaibhav.quest/api/connectors/github/setup",
-  "setup_on_update": true,
+  "callback_urls": ["https://ripple.vaibhav.quest/api/connectors/github/setup"],
+  "request_oauth_on_install": true,
   "public": false,
   "default_permissions": {
     "contents": "read",

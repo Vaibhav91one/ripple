@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildManifest } from "./manifest";
 import manifestFile from "../../../github-app-manifest.json";
 import { answerFor, handleCheck, handleMention, impactSummary, neutralize, parseMention, replyAllowed, resetLimiter, retrying, type MentionJob } from "./mention";
-import { checkState, installationTaken, makeState } from "./setup";
+import { bindInstallation, checkState, makeState, verifyInstaller } from "./setup";
 import { saveApp, setupStatus, clearStoredApp } from "./app-creds";
 import { encrypt } from "../../crypto";
 import { convertManifest } from "./client";
@@ -20,6 +20,11 @@ vi.mock("../../db", () => ({ db: () => ({
   select: () => ({ from: () => ({ where: () => Object.assign(Promise.resolve(acctRows), { orderBy: () => ({ limit: async () => storedRow }) }) }) }),
   insert: () => ({ values: (v: { dedupeKey: string }) => ({ onConflictDoNothing: () => ({ returning: async () => (keys.has(v.dedupeKey) ? [] : (keys.add(v.dedupeKey), [{ id: "e" }])) }) }) }),
   delete: () => ({ where: async () => keys.clear() }),
+  transaction: async (fn: (tx: unknown) => unknown) => fn({
+    execute: async () => undefined,
+    select: () => ({ from: () => ({ where: async () => acctRows }) }),
+    insert: () => ({ values: () => ({ onConflictDoUpdate: () => ({ returning: async () => [{ id: "new-acct" }] }) }) }),
+  }),
 }) }));
 
 const SECRET = "whsec_test";
@@ -102,7 +107,7 @@ describe("webhook route", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { headers: { "content-type": "application/json" } })));
     await send("pull_request", pr, "d5").catch(() => undefined);
     await send("pull_request", pr, "d5").catch(() => undefined);
-    expect((enqueue.mock.calls as unknown as [string, { kind: string }][]).filter((c) => c[1].kind === "check")).toEqual([["github-reply", { kind: "check", installation: 99, repo: "acme/shop", number: 7, headSha: "abc", url: "https://github.com/acme/shop/pull/7" }, { singletonKey: "github:check:d5" }]]);
+    expect((enqueue.mock.calls as unknown as [string, { kind: string }][]).filter((c) => c[1].kind === "check")).toEqual([["github-reply", { kind: "check", installation: 99, repo: "acme/shop", number: 7, headSha: "abc", url: "https://github.com/acme/shop/pull/7", publicRepo: true }, { singletonKey: "github:check:d5" }]]);
     vi.unstubAllGlobals();
   });
 });
@@ -178,7 +183,7 @@ describe("public repos, retries, neutral replies", () => {
   });
   it("the check run is completed even when impact fails", async () => {
     const { calls, octo } = recorder();
-    await handleCheck({ kind: "check", installation: 99, repo: "acme/shop", number: 7, headSha: "abc", url: "u" }, octo, async () => { throw new Error("graph down"); });
+    await handleCheck({ kind: "check", installation: 99, repo: "acme/shop", number: 7, headSha: "abc", url: "u", publicRepo: false }, octo, async () => { throw new Error("graph down"); });
     expect(calls[1].params).toMatchObject({ status: "completed", conclusion: "neutral" });
     expect((calls[1].params.output as { summary: string }).summary).toContain("could not compute");
   });
@@ -187,7 +192,7 @@ describe("public repos, retries, neutral replies", () => {
 describe("Ripple impact check run", () => {
   it("creates in_progress, then completes neutral with the summary", async () => {
     const { calls, octo } = recorder();
-    await handleCheck({ kind: "check", installation: 99, repo: "acme/shop", number: 7, headSha: "abc", url: "u" }, octo, async () => ({ systems: [{ id: "s1", name: "billing" }], teams: ["Finance"], decisionTitle: "Sunset v1" }));
+    await handleCheck({ kind: "check", installation: 99, repo: "acme/shop", number: 7, headSha: "abc", url: "u", publicRepo: false }, octo, async () => ({ systems: [{ id: "s1", name: "billing" }], teams: ["Finance"], decisionTitle: "Sunset v1" }));
     expect(calls[0]).toMatchObject({ route: "POST /repos/{owner}/{repo}/check-runs", params: { name: "Ripple impact", head_sha: "abc", status: "in_progress" } });
     expect(calls[1]).toMatchObject({ route: "PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}", params: { check_run_id: 77, status: "completed", conclusion: "neutral" } });
     expect((calls[1].params.output as { summary: string }).summary).toContain("Owned by: Finance");
@@ -239,11 +244,34 @@ describe("manifest flow", () => {
     vi.stubEnv("GITHUB_APP_ID", "9"); vi.stubEnv("GITHUB_APP_PRIVATE_KEY", "k");
     expect(await setupStatus()).toBe("env");
   });
-  it("rejects an installation already bound to another org", async () => {
+  it("rejects an installation already bound to another org, binds a free one", async () => {
     acctRows = [{ id: "x", orgId: "org-1" }];
-    expect(await installationTaken("99", "org-2")).toBe(true);
+    expect(await bindInstallation("org-2", "99", "enc", [])).toBeNull();
     acctRows = [];
-    expect(await installationTaken("99", "org-2")).toBe(false);
+    expect(await bindInstallation("org-2", "99", "enc", [])).toBe("new-acct");
+  });
+  it("a second concurrent setup inside the transaction is refused", async () => {
+    vi.stubEnv("DATABASE_URL", "postgres://unused");
+    acctRows = [{ id: "x", orgId: "org-1" }]; // another request inserted between the status check and our insert
+    await expect(saveApp("org-2", { id: 2, slug: "b", pem: "p", webhook_secret: "w" })).rejects.toThrow("already configured");
+  });
+  it("the installer must prove they control the installation (user-to-server)", async () => {
+    vi.stubEnv("DATABASE_URL", "postgres://unused");
+    storedRow = [{ t: encrypt(JSON.stringify({ id: 1, slug: "a", pem: "p", webhook_secret: "w", client_id: "cid", client_secret: "sec" })) }];
+    clearStoredApp();
+    const github = (ids: number[]) => vi.fn(async (url: string | URL | Request) => String(url).includes("oauth/access_token")
+      ? new Response(JSON.stringify({ access_token: "ghu_x" }))
+      : new Response(JSON.stringify({ installations: ids.map((id) => ({ id })) }))) as unknown as typeof fetch;
+    expect(await verifyInstaller("99", "code", github([5, 99]))).toBe("ok");
+    expect(await verifyInstaller("99", "code", github([5, 6]))).toBe("foreign"); // someone else's installation id
+    expect(await verifyInstaller("99", "code", (async () => new Response("{}", { status: 401 })) as never)).toBe("foreign");
+    expect(await verifyInstaller("99", null, github([99]))).toBe("no_code");
+  });
+  it("without client credentials a GitHub code is still required", async () => {
+    vi.stubEnv("DATABASE_URL", "postgres://unused");
+    storedRow = []; clearStoredApp();
+    expect(await verifyInstaller("99", null)).toBe("no_code");
+    expect(await verifyInstaller("99", "code")).toBe("ok");
   });
   it("converts the code via POST /app-manifests/{code}/conversions", async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ id: 5, slug: "my-ripple", pem: "PEM", webhook_secret: "ws", html_url: "https://github.com/apps/my-ripple" }), { status: 201 }));

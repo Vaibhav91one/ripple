@@ -47,11 +47,18 @@ export async function githubEnv(): Promise<GithubEnv> {
   return s ? { ...e, GITHUB_APP_ID: String(s.id), GITHUB_APP_PRIVATE_KEY: s.pem, GITHUB_APP_WEBHOOK_SECRET: s.webhook_secret, GITHUB_APP_SLUG: s.slug } : e;
 }
 
+/** Advisory lock keys: two concurrent setups (or claims) queue on these inside their transaction, so check + insert is atomic. */
+export const LOCK_APP = 236_001;
+export const LOCK_CLAIM = 236_002;
+
 export async function saveApp(orgId: string, app: StoredApp): Promise<void> {
   if ((await setupStatus()) !== "open") throw new Error("a GitHub App is already configured on this server");
-  const [{ db }, { connectorAccounts }] = await Promise.all([import("../../db"), import("../../db/schema")]);
+  const [{ db }, { connectorAccounts }, { eq, sql }] = await Promise.all([import("../../db"), import("../../db/schema"), import("drizzle-orm")]);
   const tokenEnc = encrypt(JSON.stringify(app));
-  await db().insert(connectorAccounts).values({ orgId, kind: APP_KIND, externalId: String(app.id), tokenEnc })
-    .onConflictDoUpdate({ target: [connectorAccounts.orgId, connectorAccounts.kind, connectorAccounts.externalId], set: { tokenEnc, status: "active" } });
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${LOCK_APP})`);
+    if ((await tx.select({ id: connectorAccounts.id }).from(connectorAccounts).where(eq(connectorAccounts.kind, APP_KIND))).length) throw new Error("a GitHub App is already configured on this server");
+    await tx.insert(connectorAccounts).values({ orgId, kind: APP_KIND, externalId: String(app.id), tokenEnc });
+  });
   clearStoredApp();
 }
