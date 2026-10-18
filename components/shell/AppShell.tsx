@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { parseAsString, useQueryState } from "nuqs";
 import { Ellipsis, Menu, PanelLeft, Search, X } from "lucide-react";
 import { getApprovals } from "@/lib/api";
 import { Mark } from "@/components/brand/Mark";
@@ -136,23 +135,28 @@ function NavLink({ item, pathname, collapsed, badge }: { item: NavItem; pathname
   );
 }
 
-/** Opens the Ask drawer (?ask=1); ⌘K / Ctrl+K anywhere does the same. */
+/** Goes to the Assistant at / and focuses its prompt (on / it just focuses); ⌘K / Ctrl+K anywhere does the same. */
 function SearchButton({ collapsed }: { collapsed: boolean }) {
-  const [, setAsk] = useQueryState("ask", parseAsString);
+  const pathname = usePathname();
+  const router = useRouter();
+  const ask = useCallback(() => {
+    if (pathname === "/") document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Prompt"]')?.focus();
+    else router.push("/"); // the composer autofocuses on arrival
+  }, [pathname, router]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setAsk("1");
+        ask();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setAsk]);
+  }, [ask]);
   return (
     <button
       type="button"
-      onClick={() => setAsk("1")}
+      onClick={ask}
       aria-label="Search"
       className={`mt-5 flex h-11 items-center gap-2 lg:h-10 rounded-control border border-hairline bg-surface px-3 text-sm text-faint hover:text-body ${collapsed ? "justify-center px-0" : ""}`}
     >

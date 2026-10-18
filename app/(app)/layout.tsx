@@ -4,7 +4,7 @@ import { LensArea } from "@/components/shell/LensArea";
 import { AppShell } from "@/components/shell/AppShell";
 import { shellUser } from "@/components/shell/identity";
 import { AuthArea } from "@/components/auth/AuthArea";
-import { AskDrawer } from "@/components/ask/AskDrawer";
+import { AskRedirect } from "@/components/assistant/AskRedirect";
 import { SourcePanel } from "@/components/panels/SourcePanel";
 
 // v2 shell around every app route (no sign-in UI in the demo; with Clerk keys the user card gets the Clerk org switch and user menu). Overlays are URL-driven and live here so they work on every page.
@@ -16,9 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Suspense fallback={<PageLoading />}>{children}</Suspense>
         </AppShell>
       </Suspense>
-      {/* Overlays driven by URL state: ?ask=1, ?src=<artifact> */}
+      {/* URL-driven: ?src=<artifact> opens the source panel; the retired ?ask=1 drawer redirects to the Assistant at / */}
       <Suspense>
-        <AskDrawer />
+        <AskRedirect />
         <SourcePanel />
       </Suspense>
     </>

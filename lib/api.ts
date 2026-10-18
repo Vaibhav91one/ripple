@@ -6,6 +6,7 @@ import {
   Artifact, BottleneckRow, Campaign, Change, Decision, Home, Inbox, ItDecided, ItQueue, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
+import { ReportList } from "@/lib/schemas/reports";
 import * as mock from "@/lib/mock/api";
 import { SAMPLE_APPROVALS, SAMPLE_RUN, SAMPLE_RUNS } from "@/lib/approvals/sample";
 
@@ -105,16 +106,11 @@ export const postChange = (decisionId: string, newOn: number): Promise<RippleRes
         body: JSON.stringify({ decisionId, newOn }),
       });
 
-/** Streams `/api/ask` (server-sent events); the route falls back to the cached mock answer without a model. */
-export async function* askStream(question: string): AsyncGenerator<unknown> {
-  const res = await fetch("/api/ask", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question }),
-  });
+/** Reads `data: <json>` server-sent event frames from a fetch response. */
+async function* sse(res: Response): AsyncGenerator<unknown> {
   if (!res.ok || !res.body) {
     const msg = await res.json().then((j: { error?: string }) => j.error, () => undefined);
-    throw new Error(msg ?? `Ask failed (${res.status})`);
+    throw new Error(msg ?? `Request failed (${res.status})`);
   }
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   let buf = "";
@@ -130,6 +126,19 @@ export async function* askStream(question: string): AsyncGenerator<unknown> {
     }
   }
 }
+
+/** Streams `/api/ask` (server-sent events); the route falls back to the cached mock answer without a model. */
+export async function* askStream(question: string): AsyncGenerator<unknown> {
+  yield* sse(await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question }) }));
+}
+
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+/** Streams `/api/chat`: a `meta` frame first, then the same StreamEvents as /api/ask. */
+export async function* chatStream(body: { messages: ChatMessage[]; agent?: string; conversationId?: string }, signal?: AbortSignal): AsyncGenerator<unknown> {
+  yield* sse(await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal }));
+}
+
+export const getReports = (): Promise<ReportList> => call(ReportList, "/api/reports");
 
 const JSON_HEADERS = { "content-type": "application/json" };
 

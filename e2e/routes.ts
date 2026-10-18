@@ -32,4 +32,6 @@ export const ROUTES: string[] = [
   "/connections/upload",
   "/connectors/github",
   "/connectors/csv",
+  // Assistant at / (#237): ?agent= preselects an agent
+  "/?agent=contract",
 ];
