@@ -204,6 +204,23 @@ export function Assistant({ lens, readonly }: { lens?: string; readonly: boolean
       setCurrent({ id: it.id });
     }
   };
+  // ⌘K hands over a question (?q=) or a local saved chat (?chat=): handled once, then the URL goes back to /.
+  const handed = useRef<string | null>(null);
+  useEffect(() => {
+    const q = search.get("q")?.trim(), chat = search.get("chat");
+    if (!q && !chat) {
+      handed.current = null;
+      return;
+    }
+    const thread = chat ? threads.find((t) => t.id === chat) : undefined;
+    if ((chat && !thread) || handed.current === search.toString()) return; // local threads load after mount
+    handed.current = search.toString();
+    router.replace("/", { scroll: false });
+    // a one-off hand-over from the URL, guarded by `handed`
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (q) void send(q);
+    else if (thread) void open(thread);
+  });
   const rename = async (it: Item, title: string) => {
     if (persist) {
       await remote(it.id, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ title }) }).catch(() => null);

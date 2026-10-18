@@ -87,3 +87,34 @@ test("/agents filters by team and search", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Chat with this agent" })).toHaveAttribute("href", "/?agent=support");
 });
 
+
+// #267: the ⌘K command menu over the whole company brain.
+test("⌘K finds the v1 change and Enter opens its case file; / opens it and Escape closes it", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/reports", { waitUntil: "networkidle" });
+  await page.keyboard.press("ControlOrMeta+k");
+  const box = page.getByRole("combobox", { name: "Search Ripple" });
+  await expect(box).toBeFocused();
+  await box.fill("v1");
+  await expect(page.getByRole("option", { name: /Sunset API v1 on Jan 31/ })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/reports\/d-\d+$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  await page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.keyboard.press("/");
+  await expect(box).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(box).toHaveCount(0);
+});
+
+test("the Ask Ripple fallback hands the question to the Assistant", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/reports", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Search", exact: true }).filter({ visible: true }).first().click();
+  await page.getByRole("combobox", { name: "Search Ripple" }).fill("hi there");
+  await page.getByRole("option", { name: /Ask Ripple: hi there/ }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("hi there").first()).toBeVisible({ timeout: 30_000 });
+});

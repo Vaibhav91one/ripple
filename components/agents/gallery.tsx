@@ -89,7 +89,7 @@ export function AgentTile({ a, now, lock, busy, onOpen, onToggle }: { a: AgentIn
   const Art = AGENT_ART[a.name];
   const st = agentStatus(a, now);
   return (
-    <li className="flex min-w-0 gap-4 rounded-card border border-hairline bg-surface p-3 sm:flex-col sm:pb-4">
+    <li id={a.name} className="scroll-mt-20 flex min-w-0 gap-4 rounded-card border border-hairline bg-surface p-3 sm:flex-col sm:pb-4">
       {Art && <Art className="w-[104px] shrink-0 self-start sm:w-full" />}
       <div className="flex min-w-0 flex-1 flex-col sm:px-2">
         <div className="flex items-start justify-between gap-3">
