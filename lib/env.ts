@@ -17,6 +17,7 @@ const shape = {
   LLM_BASE_URL: str,
   MODEL_AGENT: str,
   MODEL_EXTRACT: str,
+  DEMO_PROMPTS_PER_DAY: z.coerce.number().int().min(0).default(0), // live prompts per visitor per UTC day on the public demo; 0 = unlimited (self-host, local). The hosted demo sets 30.
   DAILY_TOKEN_BUDGET: z.coerce.number().int().min(0).default(2_000_000),
   ACK_TOKEN_SECRET: str,
   RESET_TOKEN: str,

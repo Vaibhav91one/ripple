@@ -92,6 +92,13 @@
       "when": 1792262988035,
       "tag": "0012_run_step_trace",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792333885374,
+      "tag": "0013_chat",
+      "breakpoints": true
     }
   ]
 }

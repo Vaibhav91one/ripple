@@ -121,6 +121,8 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "health": [{ url: "/api/health" }],
   "it": [{ url: "/api/it" }], // the IT queue: a request's justification quote is cited from a contract
   "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
+  "conversations": [{ url: "/api/conversations" }], // demo: {persist:false}, no graph data
+  "conversations/[id]": [{ url: "/api/conversations/x", params: { id: "x" } }],
   "search": [{ url: "/api/search?q=SENTINEL_SRC" }],
   "mcp": [{ url: "/api/mcp" }],
   "connectors/github/install": [{ url: "/api/connectors/github/install" }], // admin only: 403 for the demo viewers
