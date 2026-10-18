@@ -12,7 +12,7 @@ const OPTIONS = [
   { id: "sales", label: "Sales", icon: <Handshake className="size-[18px]" aria-hidden /> },
   { id: "security", label: "Security", icon: <ShieldCheck className="size-[18px]" aria-hidden /> },
   { id: "leadership", label: "Leadership", icon: <Target className="size-[18px]" aria-hidden /> },
-  { id: "change-owner", label: "Change owner", icon: <Briefcase className="size-[18px]" aria-hidden /> },
+  { id: "change-owner", label: "Engineering", icon: <Briefcase className="size-[18px]" aria-hidden /> },
 ];
 
 /** Demo org only: "View as" a team (sets the ripple_lens cookie, then re-reads the page), plus the read-only badge. Mounted by LensArea. */

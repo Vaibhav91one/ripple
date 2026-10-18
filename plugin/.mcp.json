@@ -2,7 +2,7 @@
   "mcpServers": {
     "ripple": {
       "type": "http",
-      "url": "https://web-2fa0-3000.prg1.zerops.app/api/mcp",
+      "url": "https://ripple.vaibhav.quest/api/mcp",
       "headers": { "Authorization": "Bearer ${RIPPLE_API_KEY:-}" }
     }
   }

@@ -13,10 +13,10 @@ features:
   agent_view:
     agent_description: Ask Ripple who a change affects. It answers in the thread with sources, and only shows what you are allowed to see.
     suggested_prompts:
-      - title: Who does this affect?
-        message: Who does the Q4 pricing change affect?
-      - title: What is waiting on us?
-        message: Which changes are waiting on my team?
+      - title: Who does the v1 sunset affect?
+        message: Who does sunsetting API v1 on Jan 31 affect?
+      - title: Who has not been told?
+        message: Which teams have not been told about the v1 sunset?
   bot_user:
     display_name: Ripple
     always_online: true

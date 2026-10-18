@@ -1,11 +1,11 @@
 # Demo script
 
-Record on the live URL (https://web-2fa0-3000.prg1.zerops.app). Two windows: the browser and Claude Code (terminal, large font) with the `ripple` MCP server connected.
+Record on the live URL (https://ripple.vaibhav.quest). Two windows: the browser and Claude Code (terminal, large font) with the `ripple` MCP server connected.
 
 Setup before recording:
 ```bash
-claude mcp add --transport http ripple https://web-2fa0-3000.prg1.zerops.app/api/mcp
-curl -s -X POST https://web-2fa0-3000.prg1.zerops.app/api/reset -H "x-reset-token: $RESET_TOKEN"   # clean baseline
+claude mcp add --transport http ripple https://ripple.vaibhav.quest/api/mcp
+curl -s -X POST https://ripple.vaibhav.quest/api/reset -H "x-reset-token: $RESET_TOKEN"   # clean baseline
 ```
 
 ## The 60-second pitch
