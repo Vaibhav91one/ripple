@@ -5,8 +5,8 @@ import {
   AgentList, ApprovalList, DecideResult, RunDetail, RunList, type SettingsPatch,
   Artifact, BottleneckRow, Campaign, Change, Decision, Home, Inbox, ItDecided, ItQueue, ItemView, Overview, Person, RippleResult, WhoKnowsRow,
 } from "@/lib/schemas";
+import { Activity, ReportDetail, ReportList } from "@/lib/schemas/reports";
 import { TeamDashboard, type TeamId } from "@/lib/teams/dashboards";
-import { ReportList } from "@/lib/schemas/reports";
 import * as mock from "@/lib/mock/api";
 import { SAMPLE_APPROVALS, SAMPLE_RUN, SAMPLE_RUNS } from "@/lib/approvals/sample";
 
@@ -138,8 +138,6 @@ export async function* chatStream(body: { messages: ChatMessage[]; agent?: strin
   yield* sse(await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal }));
 }
 
-export const getReports = (): Promise<ReportList> => call(ReportList, "/api/reports");
-
 const JSON_HEADERS = { "content-type": "application/json" };
 
 /** Pending + failed actions the viewer's role may decide (`decided` = history). */
@@ -167,3 +165,13 @@ export const getIt = (): Promise<ItQueue> => (OFFLINE ? Promise.resolve({ reques
 /** IT marks open requests granted or denied (bookkeeping: Ripple never writes to an identity provider). */
 export const decideIt = (ids: string[], verb: "grant" | "deny"): Promise<ItDecided> =>
   call(ItDecided, "/api/it", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids, verb }) });
+
+/** Reports (#232): the case list, one case file, and every event across cases. Offline serves the contract fixtures. */
+export const getReports = async (): Promise<ReportList> =>
+  OFFLINE ? ReportList.parse((await import("@/lib/schemas/fixtures/reports.json")).default.list) : call(ReportList, "/api/reports");
+
+export const getReport = async (id: string): Promise<ReportDetail> =>
+  OFFLINE ? ReportDetail.parse((await import("@/lib/schemas/fixtures/reports.json")).default.detail) : call(ReportDetail, `/api/reports/${encodeURIComponent(id)}`);
+
+export const getActivity = async (actor: "all" | "person" | "agent" | "system" = "all"): Promise<Activity> =>
+  OFFLINE ? Activity.parse((await import("@/lib/schemas/fixtures/activity.json")).default) : call(Activity, `/api/activity?${qs({ actor, limit: 100 })}`);

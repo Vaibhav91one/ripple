@@ -1,24 +1,26 @@
 import { Suspense } from "react";
-import { FileText } from "lucide-react";
+import { CaseFile } from "@/components/reports/CaseFile";
 import { PageSkeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { OWNER_ROLE } from "@/lib/actions/executors";
+import { getContext } from "@/lib/server/context";
 
 export default function ReportPage({ params }: PageProps<"/reports/[id]">) {
   return <Suspense fallback={<PageSkeleton />}><Report params={params} /></Suspense>;
 }
 
+/** The same rules the write routes apply: the shared demo is read-only; approving send_reminder needs a signed-in admin or its owner role (decide.ts). */
+async function viewerCan(): Promise<{ readOnly: boolean; canDecide: boolean }> {
+  try {
+    const ctx = await getContext();
+    const role = ctx.viewer.kind === "user" ? ctx.viewer.role : undefined;
+    return { readOnly: ctx.readonly, canDecide: !ctx.readonly && (role === "admin" || role === OWNER_ROLE.send_reminder) };
+  } catch {
+    return { readOnly: true, canDecide: false }; // graph down: the case file shows the banner anyway
+  }
+}
+
 async function Report({ params }: Pick<PageProps<"/reports/[id]">, "params">) {
   const { id } = await params;
-  return (
-    <>
-      <PageHeader title={`Case ${id}`} crumbs={[{ label: "Reports", href: "/reports" }, { label: id }]} />
-      <Card>
-        <EmptyState icon={FileText} title="This case file is being wired up" action={{ label: "All reports", href: "/reports" }}>
-          Notices, acks, approvals and agent runs for this change will show here.
-        </EmptyState>
-      </Card>
-    </>
-  );
+  const can = await viewerCan();
+  return <CaseFile id={id} {...can} />;
 }

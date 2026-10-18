@@ -37,4 +37,6 @@ export const ROUTES: string[] = [
   // agents gallery (#235)
   "/agents?team=legal",
   "/styleguide/agents",
+  // reports (#233): the activity tab
+  "/reports?tab=activity",
 ];
