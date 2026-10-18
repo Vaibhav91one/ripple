@@ -36,4 +36,8 @@ describe("GET /api/me", () => {
     expect(text).not.toMatch(/SENTINEL|sk_|token|secret/i);
     expect(Object.keys(JSON.parse(text)).sort()).toEqual(["lens", "mode", "name", "org", "role", "teamIds"]);
   });
+  it("is never cached across viewers", async () => {
+    const res = await GET(new Request("http://t/api/me"));
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
 });
