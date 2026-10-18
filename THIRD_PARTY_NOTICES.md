@@ -34,3 +34,11 @@ Stat card, sidebar, tabs and the summary line are ported from https://github.com
 The other components on `/styleguide/refs` are recreated by us from public images or a written spec. No source code was copied:
 Nizam (@nizamdesign: fivecorner, margin, Clearbill), Gr8r (its repo has no licence, so only its behaviour was described and rebuilt),
 Proton and CollectUI. Reference screenshots stay local and are never committed.
+
+## Brand icons: `components/brand/logos/`
+
+Inline SVG logos for the integration connections (GitHub, Slack, Jira, Notion, VS Code, PostgreSQL, Google, Linear, HubSpot, Zendesk, Google Drive, Claude, Claude Code, Codex, Cursor, MCP). Copied at build time from the packages below; no npm package is imported at runtime.
+
+- **devicon** (GitHub, Slack, Jira, Notion, VS Code, PostgreSQL, Google): MIT. Copyright (c) 2015 konpa and devicon contributors. https://github.com/devicons/devicon
+- **Simple Icons** (Linear, HubSpot, Zendesk, Google Drive): **CC0-1.0**, public domain dedication. https://github.com/simple-icons/simple-icons. The brand logos themselves remain trademarks of their respective owners. They are used only to identify the integration, and their use here does not imply endorsement by or affiliation with those owners.
+- **lobe-icons** (`@lobehub/icons-static-svg`: Claude, Claude Code, Codex, Cursor, MCP): MIT. Copyright (c) 2023 LobeHub. https://github.com/lobehub/lobe-icons. Claude, Claude Code, Codex, Cursor and MCP are trademarks of their respective owners and are used only to identify the integration.
