@@ -16,11 +16,12 @@ test("v1 routes 308 to their v2 home", async () => {
   const to = (source: string) => rules.find((r) => r.source === source);
   const expected: Record<string, string> = {
     "/home": "/", "/changes": "/reports", "/changes/:id": "/reports/:id", "/overview": "/analytics", "/approvals": "/",
-    "/it": "/reports?kind=access", "/graph": "/analytics#graph", "/teams/:team": "/agents?team=:team", "/inbox": "/", "/connectors": "/connections",
+    "/it": "/reports?kind=access", "/teams/:team": "/agents?team=:team", "/inbox": "/", "/connectors": "/connections",
   };
   for (const [source, destination] of Object.entries(expected)) {
     expect(to(source), source).toMatchObject({ destination, permanent: true });
   }
+  expect(to("/graph"), "/graph is the explorer again (#265)").toBeUndefined();
 });
 
 test("the user card shows the demo, local or signed-in identity", async () => {

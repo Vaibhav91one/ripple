@@ -39,6 +39,16 @@ Prefer to click: open the [live demo](https://ripple.vaibhav.quest), ask the Ass
 
 Ripple is a graph product, so the graph is the first thing to read. Both sections below are generated from a freshly seeded graph by `pnpm graph:readme` (`scripts/graph-map.ts`, `scripts/graph-proof.ts`); nothing in them is hand-written output.
 
+### Graph view
+
+The same graph, drawn in the app by FalkorDB's own [`@falkordb/canvas`](https://www.npmjs.com/package/@falkordb/canvas) web component (the force view from FalkorDB Browser), styled like Obsidian's graph view: dots sized by how connected they are, teal for the traced path, amber for a team nobody told, red for a contract conflict. `/graph` explores the whole company graph; every case file shows the ripple of its change.
+
+| The company graph (`/graph`) | The ripple of one change (`/reports/d-1`) |
+| --- | --- |
+| ![The whole Ripple company graph in FalkorDB, drawn by @falkordb/canvas](docs/screens/graph/graph-1440.png) | ![The ripple of the API v1 sunset: teal path, amber teams not told, red contract conflict](docs/screens/graph/ripple-d1.png) |
+
+Regenerate both with `pnpm graph:shot --base http://localhost:3000` (`scripts/graph-shot.ts`, Playwright; it waits for the canvas `data-engine-status="stopped"`).
+
 ### Graph map
 
 <!-- graph-map:start -->

@@ -6,9 +6,8 @@ import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { ChevronRight, Code2, CircleAlert, CircleCheck, Clock, FileWarning, Scale, Send, Users, type LucideIcon } from "lucide-react";
 import { DateRange, ExportButton, PageHeader } from "@/components/shell/PageHeader";
-import { GraphPage } from "@/components/graph/GraphPage";
+import { GraphEmbed } from "@/components/graph/GraphEmbed";
 import { getGraph } from "@/components/graph/api";
-import { useKinds } from "@/components/graph/GraphToolbar";
 import CodeBlock from "@/components/kit/beautifului/code-block";
 import { TEAM_TABS, useTeam } from "@/components/ripple/useTeam";
 import { Card, CardHeader, Takeaway } from "@/components/ui/card";
@@ -97,21 +96,20 @@ export function AnalyticsPage() {
   );
 }
 
-/** The existing graph explorer, with the Cypher it ran docked beside it (below on phones) instead of over the canvas. */
+/** The ripple of the analytics change (RippleGraph), with the Cypher it ran docked beside it (below on phones) instead of over the canvas. */
 function GraphSection({ d }: { d: string }) {
   const [team] = useTeam();
-  const [kinds] = useKinds();
-  const { data } = useQuery({ queryKey: ["graph", d, team, kinds.join()], queryFn: () => getGraph(d, { team, kinds }) });
+  const { data } = useQuery({ queryKey: ["graph", d, team, ""], queryFn: () => getGraph(d, { team }) });
   const [i, setI] = useState(0);
   const q = data?.cypher[Math.min(i, data.cypher.length - 1)];
   return (
     <section id="graph" className="mt-4 scroll-mt-6">
       <Card className="overflow-hidden !p-0">
         <div className="p-6 pb-4">
-          <CardHeader title="The graph behind these numbers" sub="Every figure above comes from Cypher over the company graph in FalkorDB. Click a node to see what it touches; Escape closes it." />
+          <CardHeader title="The graph behind these numbers" sub="Every figure above comes from Cypher over the company graph in FalkorDB. Hover a dot to light up what it touches; click it to see why. Escape closes it." />
         </div>
         <div className="grid border-t border-hairline lg:grid-cols-[1fr_380px]">
-          <div className="h-[560px] sm:h-[640px]"><GraphPage /></div>
+          <div className="min-w-0">{data ? <GraphEmbed d={d} team={team} view={data} height={560} /> : <div className="h-[560px] animate-pulse bg-raised/40" aria-busy="true" aria-label="Loading the graph" />}</div>
           <aside aria-label="Cypher used" className="min-w-0 border-t border-hairline p-5 lg:border-l lg:border-t-0">
             <h3 className="flex items-center gap-2 text-md font-medium text-strong"><Code2 size={16} aria-hidden /> Cypher used</h3>
             <p className="mt-1 text-sm text-faint">{data ? `${plural(data.cypher.length, "query", "queries")} built this view, run as written.` : "Loading the queries…"}</p>

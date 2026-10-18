@@ -86,3 +86,4 @@ test("/agents filters by team and search", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Contract Sentinel" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Chat with this agent" })).toHaveAttribute("href", "/?agent=support");
 });
+

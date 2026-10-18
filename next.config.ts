@@ -22,7 +22,6 @@ const nextConfig: NextConfig = {
       { source: "/decisions", destination: "/reports", permanent: true },
       { source: "/decisions/:id", destination: "/reports/:id", permanent: true },
       { source: "/overview", destination: "/analytics", permanent: true },
-      { source: "/graph", destination: "/analytics#graph", permanent: true },
       { source: "/it", destination: "/reports?kind=access", permanent: true },
       { source: "/teams/:team", destination: "/agents?team=:team", permanent: true },
       { source: "/connectors", destination: "/connections", permanent: true },

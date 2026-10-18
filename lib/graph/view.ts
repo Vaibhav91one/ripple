@@ -169,3 +169,71 @@ export function lensFor(view: Pick<GraphView, "nodes" | "edges">, teamId: string
   }
   return { teamId, nodeIds: [...seen], edgeIds: [...used] };
 }
+
+// ---------- the whole graph (/api/graph/all) ----------
+
+export type AllRow = { id: string; labels: string[]; title: string; conflict: boolean };
+export type AllEdge = { from: string; to: string; type: string };
+
+const LABEL_KIND: Record<string, { kind: GraphNode["kind"]; lane: number; noun: string }> = {
+  Decision: { kind: "decision", lane: 0, noun: "Decision" },
+  System: { kind: "system", lane: 1, noun: "System" },
+  Customer: { kind: "customers", lane: 2, noun: "Customer" },
+  Ticket: { kind: "tickets", lane: 2, noun: "Ticket" },
+  Deal: { kind: "deals", lane: 2, noun: "Deal" },
+  Contract: { kind: "contracts", lane: 2, noun: "Contract" },
+  Team: { kind: "team", lane: 3, noun: "Team" },
+};
+
+/**
+ * Rows from graph-all(-edges).cypher -> a GraphView of the whole company graph. Every node also carries `label`
+ * (= title) so redact() treats it as a graph node: a restricted node keeps its id and edges, its name becomes the
+ * kind noun. GraphAllView restores `title` from that label after redaction.
+ */
+export function buildAllView(
+  rows: AllRow[],
+  edgeRows: AllEdge[],
+  opts: { team?: string | null; kinds?: EvidenceKind[]; cap?: number; now: number },
+): GraphView {
+  const kinds = new Set<string>(opts.kinds?.length ? opts.kinds : EvidenceKind.options);
+  let nodes = rows.flatMap((r) => {
+    const k = r.labels.map((l) => LABEL_KIND[l]).find(Boolean);
+    if (!k || (k.lane === 2 && !kinds.has(k.kind))) return [];
+    const n: GraphNode & { label: string } = {
+      id: r.id, kind: k.kind, lane: k.lane, title: r.title, label: r.title, subtitle: k.noun,
+      status: r.conflict ? "conflict" : "neutral", count: 1, items: [], validFrom: opts.now,
+    };
+    return [n];
+  });
+  const ids = () => new Set(nodes.map((n) => n.id));
+  let has = ids();
+  let edges: GraphEdge[] = edgeRows.flatMap((e, i) => {
+    const type = EdgeType.safeParse(e.type);
+    if (!type.success || !has.has(e.from) || !has.has(e.to) || e.from === e.to) return [];
+    return [{ id: `${e.from}|${e.to}|${e.type}|${i}`, from: e.from, to: e.to, type: type.data, label: e.type, status: "neutral" as const, validFrom: opts.now, count: 1, sources: [] }];
+  });
+  if (opts.team && has.has(opts.team)) {
+    // the team and everything within two hops of it, either direction
+    const keep = new Set([opts.team]);
+    for (let hop = 0; hop < 2; hop++) {
+      const was = new Set(keep);
+      for (const e of edges) if (was.has(e.from) || was.has(e.to)) [e.from, e.to].forEach((x) => keep.add(x));
+    }
+    nodes = nodes.filter((n) => keep.has(n.id));
+  }
+  nodes = nodes.slice(0, opts.cap ?? 600);
+  has = ids();
+  edges = edges.filter((e) => has.has(e.from) && has.has(e.to));
+  for (const e of edges) {
+    const a = nodes.find((n) => n.id === e.from)!, b = nodes.find((n) => n.id === e.to)!;
+    if (a.status === "conflict" && b.status === "conflict") e.status = "conflict";
+  }
+  return { decision: { id: "all", title: "The company graph" }, nodes, edges, lens: null, cypher: [] };
+}
+
+/** GraphView after redaction: a redacted node lost `title` but kept `label` (the kind noun); put it back. */
+export const GraphAllView = z.preprocess((v) => {
+  if (!v || typeof v !== "object" || !Array.isArray((v as { nodes?: unknown }).nodes)) return v;
+  const o = v as { nodes: Record<string, unknown>[] };
+  return { ...o, nodes: o.nodes.map((n) => ({ ...n, title: typeof n.label === "string" ? n.label : n.title })) };
+}, GraphView);

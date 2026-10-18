@@ -25,7 +25,7 @@ export const ROUTES: string[] = [
   "/it",
   "/inbox",
   "/teams/legal",
-  // analytics (#234): the embedded graph explorer
+  // analytics (#234): the embedded graph (RippleGraph since #265)
   "/analytics#graph",
   // #238: setup flows moved under /connections, old /connectors/* URLs redirect
   "/connections/github",

@@ -14,3 +14,14 @@ export async function getGraph(decisionId: string, opts: { team?: string | null;
   }
   return GraphView.parse(await res.json());
 }
+
+/** GET /api/graph/all: the whole company graph (capped), optionally around one team or limited to some evidence kinds. */
+export async function getGraphAll(opts: { team?: string | null; kinds?: EvidenceKind[] } = {}): Promise<GraphView> {
+  const q = new URLSearchParams();
+  if (opts.team) q.set("team", opts.team);
+  if (opts.kinds?.length) q.set("kind", opts.kinds.join(","));
+  const res = await fetch(`/api/graph/all?${q}`);
+  if (res.status === 503) throw new GraphDownError();
+  if (!res.ok) throw new Error(`/api/graph/all: ${res.status}`);
+  return GraphView.parse(await res.json());
+}
