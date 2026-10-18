@@ -41,10 +41,10 @@ export function NotificationPrefs({ title, note, initial, zones, scope, readOnly
     });
 
   return (
-    <section className="space-y-5 rounded-lg border border-hairline bg-surface p-4 sm:p-5" aria-busy={pending}>
+    <section className="space-y-5 rounded-card border border-hairline bg-surface p-5 sm:p-6" aria-busy={pending}>
       <header>
-        <h2 className="font-medium text-strong">{title}</h2>
-        {note && <p className="text-sm text-faint">{note}</p>}
+        <h2 className="text-lg font-medium leading-6 text-strong">{title}</h2>
+        {note && <p className="mt-0.5 text-sm text-faint">{note}</p>}
       </header>
 
       <div className="overflow-x-auto">

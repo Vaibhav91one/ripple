@@ -123,6 +123,7 @@ const ROUTES: Record<string, { url: string; params?: Record<string, string> }[]>
   "agents/runs": [{ url: "/api/agents/runs" }],
   "agents/runs/[id]": [{ url: "/api/agents/runs/00000000-0000-4000-8000-00000000b001", params: { id: "00000000-0000-4000-8000-00000000b001" } }],
   "health": [{ url: "/api/health" }],
+  "me": [{ url: "/api/me" }], // identity only, no graph data
   "it": [{ url: "/api/it" }], // the IT queue: a request's justification quote is cited from a contract
   "items/[kind]/[id]": [], // filled in beforeAll below: every kind, every restricted node and every artifact
   "conversations": [{ url: "/api/conversations" }], // demo: {persist:false}, no graph data

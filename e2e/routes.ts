@@ -41,4 +41,9 @@ export const ROUTES: string[] = [
   "/styleguide/agents",
   // reports (#233): the activity tab
   "/reports?tab=activity",
+  // #239: settings and profile
+  "/settings/members",
+  "/settings/notifications",
+  "/settings?actor=agent&action=action.",
+  "/settings/api-keys",
 ];
