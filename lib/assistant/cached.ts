@@ -48,11 +48,11 @@ const gap = answer(
   ["Legal", "Security", "DevRel"], 3, rippleRun,
 );
 const conflict = answer(
-  ["Yes, one conflict is open. The v1 shutdown on Jan 31, 2027 contradicts two MSAs that guarantee v1 until 2027-06-30: Northwind Capital and Halden Bank. ", [sunset, northwind, halden]],
+  ["Yes, one conflict is open. The v1 shutdown on Jan 31, 2027 contradicts two signed contracts that guarantee v1 until 30 Jun 2027: Northwind Capital and Halden Bank, about $180K of ARR between them. ", [sunset, northwind, halden]],
   ["Northwind Capital", "Halden Bank"], 2, conflictRun,
 );
 const exposure = answer(
-  ["Northwind Capital and Halden Bank carry the most risk: their contracts guarantee v1 until 2027-06-30, about $180,000 of ARR. Three open deals also promise v1 through 2027. ", [northwind, halden, dealMsg]],
+  ["Northwind Capital and Halden Bank carry the most risk: their contracts guarantee v1 until 30 Jun 2027, about $180K of ARR. Three open deals also promise v1 through 2027. ", [northwind, halden, dealMsg]],
   ["Northwind Capital", "Halden Bank"], 5, dealsRun,
 );
 const access = answer(
@@ -63,10 +63,10 @@ const docs = answer(["The public SDK docs still point at the v1 endpoint, and De
 const security = answer(["auth-service verifies v1 tokens, so the sunset retires the legacy token path. Security has not acknowledged the decision yet. ", [authDesign, sunset]], ["Security", "auth-service"], 2);
 const support = answer(["Support has 12 open tickets about v1, mostly 429 errors. ", [ticket], "Support has acknowledged the sunset, so replies can mention the Jan 31 date. ", [sunset]], ["Support"], 12);
 const advisor = answer(
-  ["Holding Jan 31 breaks two signed contracts that guarantee v1 until 2027-06-30, and three open deals promise v1 through 2027. ", [sunset, northwind, dealMsg], "The options are to move the date, amend the two contracts, or keep v1 alive for those customers only. This is a recommendation to weigh, not a decision."],
+  ["Holding Jan 31 breaks two signed contracts that guarantee v1 until 30 Jun 2027, and three open deals promise v1 through 2027. ", [sunset, northwind, dealMsg], "The options are to move the date, amend the two contracts, or keep v1 alive for those customers only. This is a recommendation to weigh, not a decision."],
   ["d-1"], 3,
 );
-const digest = answer(["This week: the v1 sunset decision (d-1) is accepted, three teams still have not been told (Legal, Security, DevRel) and one conflict with two contracts is open. ", [sunset, northwind]], ["d-1"], 3);
+const digest = answer(["This week: the v1 sunset decision is accepted, three teams still have not been told (Legal, Security, DevRel) and one conflict with two contracts is open. ", [sunset, northwind]], ["d-1"], 3);
 
 const BY_TEXT: Record<string, StreamEvent[]> = {
   [STARTER_PROMPTS[0]]: askEvents,

@@ -71,14 +71,35 @@ export function answerText(t: Turn): string {
   return t.tokens.map((k) => (k.cite ? `[${k.cite}]` : k.text)).join(" ").replace(/ (\[\d+\])/g, "$1").trim();
 }
 
+/** The answer as a person copies it: no [n] markers (#274). */
+export const plainAnswer = (t: Turn) => answerText(t).replace(/\s?\[\d+\]/g, "").trim();
+
+/** What an answer was based on, so a follow-up ("which of those customers…") keeps the change, names and figures (#274). */
+export function turnContext(t: Turn, max = 1500): string {
+  const facts = t.tools.filter((r) => r.rows?.length).map((r) => `${r.tool} ${JSON.stringify(r.args)}: ${JSON.stringify(r.rows).slice(0, 500)}`);
+  const quotes = t.sources.map((s) => `"${s.quote}"`);
+  const lines = [...(facts.length ? [`Looked up: ${facts.join("; ")}`] : []), ...(quotes.length ? [`Quoted: ${quotes.join("; ")}`] : [])];
+  return lines.length ? `\n\n(Context for follow-ups, not shown to the person. ${lines.join(" ")})`.slice(0, max) : "";
+}
+
 /** Thread turns -> /api/chat messages (finished turns only, then the new question). */
 export function toMessages(turns: Turn[], question: string) {
   const msgs = turns.filter((t) => t.done && !t.error).flatMap((t) => {
-    const a = answerText(t);
-    return a ? [{ role: "user" as const, content: t.question }, { role: "assistant" as const, content: a.slice(0, 4000) }] : [];
+    const a = plainAnswer(t);
+    return a ? [{ role: "user" as const, content: t.question }, { role: "assistant" as const, content: (a.slice(0, 2400) + turnContext(t)).slice(0, 4000) }] : [];
   });
   return [...msgs.slice(-38), { role: "user" as const, content: question }];
 }
+
+// Tool trace in plain words (#274): the summary says what Ripple checked; the Cypher stays inside the expander.
+const TOOL_LABELS: Record<string, string> = {
+  ripple: "What the change touches", ripple_impact: "What the change touches", why_affected: "Why a team is affected", weighted_path: "How it reaches a team",
+  search: "Searched what Ripple knows", who_knows: "Who knows it", list_decisions: "Open changes", contract_conflicts: "Contract conflicts",
+  deals_at_risk: "Deals at risk", customers_at_risk: "Customers at risk", access_gap: "Access gaps", list_agents: "Agents", run_agent: "Asked another agent",
+};
+export const toolLabel = (tool: string) => TOOL_LABELS[tool] ?? tool.replace(/^propose_/, "Draft: ").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+export const traceSummary = (n: number) => `Checked ${n} ${n === 1 ? "source" : "sources"}`;
+export const resultNote = (rowCount?: number) => (rowCount === undefined ? "checking…" : rowCount ? `${rowCount} ${rowCount === 1 ? "result" : "results"}` : "nothing found");
 
 export const titleOf = (q: string) => (q.length > 60 ? `${q.slice(0, 57).trimEnd()}…` : q);
 

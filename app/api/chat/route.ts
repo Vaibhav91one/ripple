@@ -6,6 +6,7 @@ import { runAgent } from "@/lib/agent/loop";
 import { READ_TOOLS, type Ctx } from "@/lib/agent/tools";
 import { sessionViewer } from "@/lib/auth";
 import { cachedAnswer, tour } from "@/lib/assistant/cached";
+import { sampleLoaded } from "@/lib/assistant/sample";
 import { classify, helpChips, reply } from "@/lib/assistant/smalltalk";
 import { env } from "@/lib/env";
 import { pickModel } from "@/lib/llm";
@@ -24,7 +25,7 @@ const Body = z.object({
 });
 
 const VID = "ripple_vid";
-const CHAT_RULES = `\nYou are answering in a chat. Answer only from tool results. After every factual claim cite the supporting artifact as [[artifact-id]] using ONLY ids returned by tools this turn. If the tools return nothing relevant, say so. Be concise.`;
+const CHAT_RULES = `\nYou are answering in a chat. Answer only from tool results. After every factual claim cite the supporting artifact as [[artifact-id]] using ONLY ids returned by tools this turn. If the tools return nothing relevant, say Ripple hasn't learned about it yet and where it could come from (a repo, a Slack channel, a CSV). Never write ids or ISO dates. Be concise.`;
 
 const sign = (id: string) => createHmac("sha256", env().ACK_TOKEN_SECRET ?? "ripple-dev-visitor").update(id).digest("base64url");
 /** Visitor = signed cookie + trusted client IP (the right-most x-forwarded-for hop is the one our proxy appended; x-real-ip otherwise; null when neither, so unknown IPs never share one key). */
@@ -83,10 +84,12 @@ export async function POST(req: Request): Promise<Response> {
 
   // --- decide cached / live / exhausted before streaming, so the first event can carry the budget. Quota, token cap and canned answers are the public demo's; real orgs (Clerk, local) are never limited or given canned answers. ---
   const talk = def ? undefined : classify(question); // "hi", "thanks", "what can you do?": a reply with no model, tools, citations or quota
+  const model = talk ? null : pickModel("agent");
+  // An org that loaded the Ledgerly sample and has no model key still gets the sample's starter answers: same data, same answer (#274).
+  const sample = !talk && !demo && !model && ctx ? await sampleLoaded(ctx.org.graphName).catch(() => false) : false;
   const cached: StreamEvent[] | undefined = talk
     ? [{ type: "text_delta", text: reply(talk) }, { type: "suggestions", kind: "help", items: helpChips() }, { type: "done" }]
-    : demo ? cachedAnswer(question, def?.name) : undefined;
-  const model = cached ? null : pickModel("agent");
+    : demo || sample ? cachedAnswer(question, def?.name) : undefined;
   let quota: Quota = { ok: true, remaining: null, limit: null };
   let exhausted = false;
   if (demo) quota = await visitorQuota(visitor, false);

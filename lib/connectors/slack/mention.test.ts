@@ -39,7 +39,7 @@ describe("slack mentions and DMs", () => {
     expect(t.posts()).toHaveLength(1);
     expect(t.posts()[0]).toMatchObject({ channel: "C1", thread_ts: "100.1" });
     expect(String(t.posts()[0].text)).toContain("*legal*");
-    expect(String(t.posts()[0].text)).toContain("art-1");
+    expect(String(t.posts()[0].text)).not.toContain("art-1"); // #274: sources by title, never a raw id
     expect(t.q()).toBe("who is hit?");
     expect(t.calls.find((c) => c.method === "assistant.threads.setStatus" && c.params.status === "")).toBeTruthy();
   });
@@ -198,5 +198,16 @@ describe("slackManifest", () => {
     expect(y).toContain("https://my.example.com/api/slack/events");
     expect(y).not.toContain("ripple.vaibhav.quest/api");
     for (const k of ["app_mention", "message.im", "member_joined_channel", "app_mentions:read", "im:history", "assistant:write", "agent_view:", "messages_tab_enabled: true"]) expect(y).toContain(k);
+  });
+});
+
+describe("#274: Slack reply wording", () => {
+  it("cites sources by title, never a raw id, and gives a next step when nothing was found", async () => {
+    const { slackReply, NOTHING_YET } = await import("./mention");
+    const body = slackReply("Legal has not been told.", new Map([["art-msa-northwind", "guarantees v1"]]), new Map([["art-msa-northwind", "Northwind MSA"]]));
+    expect(body).toContain('*Northwind MSA*: "guarantees v1"');
+    expect(body).not.toContain("art-msa-northwind");
+    expect(slackReply("", new Map())).toBe(NOTHING_YET);
+    expect(NOTHING_YET).not.toMatch(/graph/i);
   });
 });

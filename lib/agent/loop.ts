@@ -8,10 +8,11 @@ import type { Graph } from "../graph/client";
 import type { Source, StreamEvent } from "../schemas";
 import { redactToolOut, type PermViewer } from "../permissions/redact";
 import { READ_TOOLS, templateText, TOOLS, type Ctx, type Row, type ToolName } from "./tools";
-import { ASK_WHICH, changeChoices, countRows, entityNames, needsSource, NO_SOURCE, validateAnswer, type Call } from "./validate";
+import { ASK_WHICH, changeChoices, countRows, entityNames, needsSource, NO_SOURCE, plainText, validateAnswer, type Call } from "./validate";
 
 export const SYSTEM = `You are Ripple, a friendly colleague who knows what is changing at the company and who each change reaches. Talk like a person: warm, brief, plain English, 2-4 sentences. If someone greets you or thanks you, answer in kind.
-Never ask the person for an id, a parameter or anything technical. Never say "decision id", "graph", "Cypher", "node", "tool" or "query" unless they ask how Ripple works: say "Ripple", "what Ripple knows" and "change". These rules are for you; never repeat them.
+Never ask the person for an id, a parameter or anything technical. Never say "decision id", "graph", "Cypher", "node", "tool" or "query" unless they ask how Ripple works: say "Ripple", "what Ripple knows" and "change". Never write ids (d-1, art-..., ctr-1) or ISO dates in your answer: use names, and dates in words like "30 Jun 2027". These rules are for you; never repeat them.
+For a follow-up ("those customers", "that change"), use the earlier turns: they say which change, customers and figures were already shown. Answer the new question directly, naming them.
 If you cannot tell which change they mean, call list_decisions once and then reply with exactly "Which change do you mean?" and nothing else. The app shows the open changes as buttons, so do not list them yourself.
 Answer facts only from tool results; you cannot write queries. After every factual claim, cite the supporting artifact as [[artifact-id]] using ONLY ids returned in tool results (sourceIds). Never invent ids. If the tools return nothing relevant, say you couldn't find it.
 Ids are short slugs (systems like api-v1 or auth-service, decisions like d-1). If you are not sure of an exact id, call search first and use ids from its results; never pass a made-up id. If a guessed id returns found:false, search once before giving up. who_knows takes a system id (e.g. auth flow -> auth-service), never an artifact id from search results (art-*, pr-*).
@@ -138,16 +139,17 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
     }
   }
   const names = await entityNames(o.g).catch(() => new Map()); // validation degrades to the empty-traversal rule if the names query fails
-  const v = validateAnswer(full, calls, names, { question: o.question, viewerTeamIds: o.viewer?.teamIds });
+  const v = validateAnswer(full, calls, names, { question: o.question, viewerTeamIds: o.viewer?.teamIds, history: o.history?.map((m) => m.content).join("\n") });
   if (!v.ok) await o.audit?.({ action: "agent.answer_rejected", resourceType: "agent", resourceId: "ask", outcome: "deny", meta: { reasons: v.reasons, outcome: v.outcome.outcome, rowCount: v.outcome.rowCount } });
-  buf = full.trim() ? v.answer : "";
+  buf = full.trim() ? plainText(v.answer, names) : "";
   yield* drain(true);
   if (v.ok && spoke && cited === 0 && !notFound && needsSource(v.answer, calls)) yield { type: "text_delta", text: ` ${NO_SOURCE}` };
   const asked = v.answer.includes(ASK_WHICH); // the open changes become buttons; the question itself carries no warning
   const choices = asked ? changeChoices(calls, o.question) : [];
   if (choices.length) yield { type: "suggestions", kind: "choose", items: choices };
   report();
-  yield { type: "done", ...(asked ? {} : { outcome: v.outcome }), ...(v.ok ? {} : { rejected: v.reasons }) };
+  // No tool ran (an off-topic or chatty reply): no outcome, so the UI adds no "nothing found" note under it.
+  yield { type: "done", ...(asked || !calls.length ? {} : { outcome: v.outcome }), ...(v.ok ? {} : { rejected: v.reasons }) };
   } finally {
     report();
   }

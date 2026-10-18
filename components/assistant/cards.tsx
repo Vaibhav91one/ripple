@@ -79,7 +79,7 @@ function Quote({ s, label, onOpen }: { s: Source; label: string; onOpen: () => v
           “<mark className="rounded-sm bg-conflict-soft px-0.5 text-strong">{s.quote}</mark>”
         </span>
       )}
-      <span className="mt-1 block truncate font-mono text-2xs text-faint group-hover:text-body">{s.artifactId}</span>
+      {!s.restricted && <span className="mt-1 block text-2xs text-faint group-hover:text-body">Open the source</span>}
     </button>
   );
 }
@@ -177,7 +177,7 @@ function GraphCard({ decisionId }: { decisionId: string }) {
   );
 }
 
-/** Tool name -> card. Tools without a card still show their "Cypher used" chip. */
+/** Tool name -> card. Tools without a card still show in the "Checked N sources" trace. */
 export function ResultCard({ run, readonly }: { run: ToolRun; readonly: boolean }) {
   if (run.rows === undefined) return null;
   const d = decisionOf(run);
@@ -188,5 +188,9 @@ export function ResultCard({ run, readonly }: { run: ToolRun; readonly: boolean 
   return null;
 }
 
-/** One card per kind: two ripple calls in one answer show one impact card. */
-export const cardRuns = (runs: ToolRun[]) => runs.filter((r, i) => runs.findIndex((x) => x.tool === r.tool && decisionOf(x) === decisionOf(r)) === i);
+const cardKey = (r: ToolRun) => `${r.tool}:${decisionOf(r) ?? ""}`;
+/** One card per kind: two ripple calls in one answer show one impact card, and a card an earlier answer already showed is not re-attached (#274). */
+export const cardRuns = (runs: ToolRun[], earlier: ToolRun[] = []) => {
+  const shown = new Set(earlier.filter((r) => !r.tool.startsWith("propose_")).map(cardKey));
+  return runs.filter((r, i) => runs.findIndex((x) => cardKey(x) === cardKey(r)) === i && !shown.has(cardKey(r)));
+};

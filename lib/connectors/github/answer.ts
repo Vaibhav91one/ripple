@@ -5,7 +5,7 @@ import { pickModel } from "../../llm";
 import { graphFor, roQuery, type Graph } from "../../graph/client";
 import { prId } from "./map";
 import { matchPath } from "./codeowners";
-import { impactSummary, type Answer, type CheckJob, type Impact, type MentionJob } from "./mention";
+import { publicReply, type Answer, type CheckJob, type Impact, type MentionJob } from "./mention";
 import type { Octo } from "./sync";
 import { changedPaths } from "./webhook";
 
@@ -46,10 +46,9 @@ export async function pathImpact(g: Graph, octo: Octo, job: Pick<CheckJob, "repo
 }
 
 /** Public repo answer: only this repo's systems, owners and the change touching them. No agent, so no org-wide customers, contracts or deals. */
-export async function repoFacts(g: Graph, job: Pick<MentionJob, "repo">): Promise<Answer> {
+export async function repoFacts(g: Graph, job: Pick<MentionJob, "repo"> & Partial<Pick<MentionJob, "text">>): Promise<Answer> {
   const i = await impactFor(g, await repoSystems(g, job.repo), { repo: job.repo, decision: true });
-  const lines = [`Here is what Ripple knows about \`${job.repo}\`:`, impactSummary(i), "This repository is public, so Ripple only shares repository-level facts here."];
-  return { text: lines.join("\n\n"), decisionId: i.decisionId };
+  return { text: publicReply(job.repo, i, job.text), decisionId: i.decisionId };
 }
 
 /** Ask agent over the org graph. Reads as a viewer with no team, so restricted text never reaches the model or the comment. */

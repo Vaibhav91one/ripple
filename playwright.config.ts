@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_GRAPH } from "./e2e/global-setup";
+import { E2E_EMPTY_GRAPH, E2E_EMPTY_PORT, E2E_GRAPH } from "./e2e/global-setup";
 
 // E2E_BASE_URL: test a running deployment instead of starting `next start` locally.
 const external = process.env.E2E_BASE_URL;
@@ -20,7 +20,11 @@ export default defineConfig({
   // Expects a prior `pnpm build`.
   webServer: external
     ? undefined
-    : { command: "pnpm start -p 3201", url: baseURL, reuseExistingServer: true, timeout: 120_000, env: { RIPPLE_GRAPH: E2E_GRAPH } },
+    : [
+      { command: "pnpm start -p 3201", url: baseURL, reuseExistingServer: true, timeout: 120_000, env: { RIPPLE_GRAPH: E2E_GRAPH } },
+      // #274: a local-mode org whose graph starts empty (e2e/empty-org.spec.ts)
+      { command: `pnpm start -p ${E2E_EMPTY_PORT}`, url: `http://localhost:${E2E_EMPTY_PORT}/api/health`, reuseExistingServer: true, timeout: 120_000, env: { RIPPLE_GRAPH: E2E_EMPTY_GRAPH, RIPPLE_MODE: "local", RIPPLE_AUTH: "off" } },
+    ],
   projects: [
     {
       name: "desktop",

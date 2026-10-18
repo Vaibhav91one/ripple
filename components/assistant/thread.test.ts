@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STARTER_PROMPTS } from "@/lib/assistant/prompts";
 import type { StreamEvent } from "@/lib/schemas";
-import { answerText, applyEvent, expandCommand, loadThreads, newTurn, saveThreads, THREADS_KEY, threadsKey, toMessages, turnsFromMessages, upsertThread, type Thread } from "./thread";
+import { answerText, applyEvent, expandCommand, plainAnswer, resultNote, toolLabel, traceSummary, loadThreads, newTurn, saveThreads, THREADS_KEY, threadsKey, toMessages, turnsFromMessages, upsertThread, type Thread } from "./thread";
 
 const run = (events: StreamEvent[]) => events.reduce(applyEvent, newTurn("q"));
 const meta = (over: Partial<Extract<StreamEvent, { type: "meta" }>> = {}): StreamEvent => ({ type: "meta", remaining: 3, limit: 30, cached: false, exhausted: false, persist: false, ...over });
@@ -132,5 +132,28 @@ describe("suggestions (#268)", () => {
     const mem = new Map<string, string>();
     saveThreads([{ id: "a", title: "t", updatedAt: 1, turns: [t] }], { setItem: (k, v) => void mem.set(k, v) });
     expect(loadThreads({ getItem: (k) => mem.get(k) ?? null })[0].turns[0].suggestions?.items[0].label).toBe("Sunset API v1");
+  });
+});
+
+describe("#274: follow-ups keep context, copy and trace in plain words", () => {
+  it("the history for 'which of those customers pays the most' carries the customers and the $180K, without [n] markers", async () => {
+    const { cachedAnswer } = await import("@/lib/assistant/cached");
+    const conflict = { ...cachedAnswer(STARTER_PROMPTS[3])!.reduce(applyEvent, newTurn(STARTER_PROMPTS[3])), done: true };
+    const msgs = toMessages([conflict], "Which of those customers pays us the most?");
+    expect(msgs.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+    const prior = msgs[1].content;
+    expect(prior).toMatch(/Northwind Capital and Halden Bank/);
+    expect(prior).toMatch(/\$180K/);
+    expect(prior).toMatch(/contract_conflicts \{"decisionId":"d-1"\}/); // what was looked up, for the model only
+    expect(prior).not.toMatch(/\[\d+\]/);
+    expect(prior.length).toBeLessThanOrEqual(4000);
+    expect(plainAnswer(conflict)).not.toMatch(/\[\d+\]|2027-06-30/);
+  });
+  it("names tools in plain words and folds the trace to a count", () => {
+    expect(toolLabel("contract_conflicts")).toBe("Contract conflicts");
+    expect(toolLabel("some_new_tool")).toBe("Some new tool");
+    expect(traceSummary(1)).toBe("Checked 1 source");
+    expect(traceSummary(2)).toBe("Checked 2 sources");
+    expect([resultNote(undefined), resultNote(0), resultNote(3)]).toEqual(["checking…", "nothing found", "3 results"]);
   });
 });

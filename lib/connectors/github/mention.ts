@@ -94,8 +94,21 @@ export async function handleMention(job: MentionJob, octo: Octo, answer: (j: Men
   if (job.limited) return;
   let a: Answer;
   try { a = await answer(job); } catch (e) { console.error("[github] answer failed:", e instanceof Error ? e.message : e); a = { text: "I could not answer that just now. Please try again in a minute." }; }
-  const footer = a.decisionId && appUrl ? `\n\n[Open the case file](${appUrl.replace(/\/+$/, "")}/reports/${encodeURIComponent(a.decisionId)})` : "";
+  const base = appUrl?.replace(/\/+$/, "");
+  const footer = !base ? "" : job.publicRepo ? `\n\n[Ask the full question in Ripple](${base}/)` : a.decisionId ? `\n\n[Open the case file](${base}/reports/${encodeURIComponent(a.decisionId)})` : "";
   await postComment(octo, job.repo, job.number, `@${job.author} ${neutralize(a.text)}${footer}`, job.review ? job.replyTo : undefined);
+}
+
+/**
+ * The reply on a public repository (#274): same tone as the Assistant, says what it can't share here and what it can.
+ * Anyone can read a public thread, so customers, contracts, deals and who was told stay in the private app (the footer links it).
+ */
+export function publicReply(repo: string, i: Impact, question = ""): string {
+  const asked = question.trim() ? "I can't answer that fully here" : "I can't go into detail here";
+  const facts = i.systems.length
+    ? impactSummary(i)
+    : `Ripple hasn't learned about \`${repo}\` yet. Once it syncs, I can say who owns it and which changes touch it.`;
+  return `${asked}, because this repository is public: customers, contracts, deals and who has been told stay in the private Ripple app.\n\nWhat I can share about \`${repo}\`:\n${facts}`;
 }
 
 export type Impact = { systems: { id: string; name: string }[]; teams: string[]; decisionId?: string; decisionTitle?: string };

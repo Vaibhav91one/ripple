@@ -1,7 +1,7 @@
 "use client";
 
 // The Assistant at `/`: greeting, centred prompt bar, starters, Needs you and one insight card; then a Claude-style thread
-// (user bubbles, streamed answer with numbered sources, "Cypher used" chips, inline result cards) with the composer docked.
+// (user bubbles, streamed answer with numbered sources, a "Checked N sources" trace (Cypher inside), inline result cards) with the composer docked.
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "radix-ui";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,11 +19,12 @@ import { InsightCard } from "@/components/ui/insight-card";
 import { NeedsYou, type NeedsYouRow } from "@/components/ui/needs-you";
 import type { Suggestion } from "@/lib/schemas";
 import { chatStream, getApprovals, getReports, getRipple, getSource, NotFoundError } from "@/lib/api";
-import { AGENT_SAMPLES, STARTER_PROMPTS } from "@/lib/assistant/prompts";
-import { helpChips } from "@/lib/assistant/smalltalk";
+import { AGENT_SAMPLES } from "@/lib/assistant/prompts";
+import { ONBOARD_CHIPS } from "@/lib/assistant/smalltalk";
+import { Onboarding, SampleNote, useStarters } from "./Onboarding";
 import { cardRuns, ResultCard } from "./cards";
 import {
-  AGENTS, agentName, answerText, applyEvent, COMMANDS, expandCommand, loadThreads, newTurn, saveThreads, threadsKey, titleOf, toMessages, turnsFromMessages, upsertThread,
+  AGENTS, agentName, applyEvent, plainAnswer, resultNote, toolLabel, traceSummary, COMMANDS, expandCommand, loadThreads, newTurn, saveThreads, threadsKey, titleOf, toMessages, turnsFromMessages, upsertThread,
   type Thread, type ToolRun, type Turn,
 } from "./thread";
 
@@ -33,20 +34,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const COL = "mx-auto w-full max-w-[720px]";
 
 const OUTCOME_NOTE: Partial<Record<NonNullable<Turn["outcome"]>, string>> = {
-  not_in_graph: "Nothing Ripple knows is connected to that yet. That doesn't mean it has no impact, only that it hasn't been recorded.",
+  not_in_graph: "Ripple hasn't learned about this yet. Connect the repo or Slack channel where it lives, then ask again.",
   unknown_entity: "I don't recognise that name, so I haven't looked anything up.",
   memory: "Answered from what Ripple remembered, not from a fresh look.",
 };
 
 const toolRow = (t: ToolRun): ToolRowData => ({
   icon: "run",
-  label: "Ran",
-  chip: t.tool,
-  mono: true,
+  label: toolLabel(t.tool),
+  chip: "",
+  mono: false,
   detailMono: true,
   detail: [],
   body: <CodeBlock code={t.cypher} language="Cypher" title={t.tool} />,
-  meta: t.rows === undefined ? "running…" : `${t.rowCount} ${t.rowCount === 1 ? "row" : "rows"}${t.ms === undefined ? "" : ` · ${t.ms}ms`}`,
+  meta: resultNote(t.rows === undefined ? undefined : t.rowCount),
 });
 
 // ── conversations: Postgres (signed-in orgs) or localStorage (demo) ──────────────────────────────
@@ -305,6 +306,7 @@ export function Assistant({ lens, readonly }: { lens?: string; readonly: boolean
               turn={t}
               streaming={busy && i === turns.length - 1}
               readonly={readonly}
+              earlier={turns.slice(0, i).flatMap((x) => x.tools)}
               onPick={(s) => (s.href ? router.push(s.href) : s.prompt && void send(s.prompt))}
               onRetry={i === turns.length - 1 && !busy && !persist ? () => void send(t.question, { agent: t.agent }, turns.slice(0, -1)) : undefined}
             />
@@ -326,8 +328,11 @@ function Home({ hello, bar, agent, onAsk, recent, onOpen, onAll }: {
   recent: Item[]; onOpen: (it: Item) => void; onAll: () => void;
 }) {
   const { top, rows, sentence, ripple, loading } = useHome();
+  const starters = useStarters();
   const sample = agent ? AGENT_SAMPLES[agent] : undefined;
-  const chips = [...new Set([...(sample ? [sample] : []), ...STARTER_PROMPTS])].slice(0, 5);
+  const onboard = !starters.demo && starters.empty && !starters.sample;
+  const chips = [...new Set([...(sample ? [sample] : []), ...starters.chips.flatMap((c) => (c.prompt ? [c.prompt] : []))])].slice(0, 5);
+  const label = (q: string) => starters.chips.find((c) => c.prompt === q)?.label ?? q;
   const contracts = ripple?.counts.contracts ?? 0;
   return (
     <div className="mx-auto max-w-[1040px]">
@@ -344,11 +349,13 @@ function Home({ hello, bar, agent, onAsk, recent, onOpen, onAll }: {
                 onClick={() => onAsk(q, q === sample ? agent : undefined)}
                 className="rounded-full border border-hairline bg-surface px-3.5 py-2 text-sm text-body transition-colors hover:border-strong/20 hover:text-strong"
               >
-                {q}
+                {label(q)}
               </button>
             </li>
           ))}
         </ul>
+        {onboard && starters.loaded && <Onboarding canManage={starters.canManage} />}
+        {starters.sample && <SampleNote canManage={starters.canManage} />}
         {recent.length > 0 && (
           <div className="mt-8 w-full max-w-[520px] text-left">
             <div className="mb-1 flex items-center justify-between px-2 text-xs text-faint">
@@ -386,25 +393,27 @@ function Home({ hello, bar, agent, onAsk, recent, onOpen, onAll }: {
 }
 
 // ── one exchange ─────────────────────────────────────────────────────────────────────────────────
-function TurnView({ turn: t, streaming, readonly, onRetry, onPick }: { turn: Turn; streaming: boolean; readonly: boolean; onRetry?: () => void; onPick: (s: Suggestion) => void }) {
-  const reports = useQuery({ queryKey: ["reports"], queryFn: getReports, retry: false, enabled: t.suggestions?.kind === "help" });
+function TurnView({ turn: t, streaming, readonly, earlier, onRetry, onPick }: { turn: Turn; streaming: boolean; readonly: boolean; earlier: ToolRun[]; onRetry?: () => void; onPick: (s: Suggestion) => void }) {
+  const starters = useStarters();
   const panel = useSourcePanel();
   const titles = useQueries({ queries: t.sources.map((s) => ({ queryKey: ["source", s.artifactId], queryFn: () => getSource(s.artifactId), staleTime: Infinity, retry: false })) });
   const refs: SourceRef[] = t.sources.map((s, i) => {
     const err = titles[i]?.error;
-    const title = titles[i]?.data?.title ?? (err ? (err instanceof NotFoundError ? "Source not found" : "Restricted source") : s.artifactId);
-    return { n: s.n, name: title, domain: s.artifactId, title, onClick: () => void panel.open(s.artifactId, s.quote) };
+    const title = titles[i]?.data?.title ?? (err ? (err instanceof NotFoundError ? "Source not found" : "Restricted source") : "Source");
+    return { n: s.n, name: title, domain: "Source", title, onClick: () => void panel.open(s.artifactId, s.quote) };
   });
   const tokens: Token[] = t.tokens.map((k) => (k.cite ? { text: "", cite: refs[k.cite - 1] } : { text: k.text }));
   const [copied, setCopied] = useState(false);
   const copy = () => {
-    const text = [answerText(t), ...refs.map((r) => `[${r.n}] ${r.name}`)].join("\n");
+    const text = [plainAnswer(t), ...(refs.length ? ["", "Sources:", ...refs.map((r) => `- ${r.name}`)] : [])].join("\n");
     void navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }, () => {});
   };
   const running = streaming && !t.done;
   // Help chips name the real open changes when /api/reports answered; the stream's own list is the fallback.
-  const chips = t.suggestions?.kind === "help" && reports.data?.cases.length ? helpChips(reports.data.cases) : t.suggestions?.items ?? [];
-  const runs = cardRuns(t.tools);
+  // Help chips are the home screen's set (one source); an empty org gets the connect links instead.
+  const help = starters.chips.length ? starters.chips : starters.demo ? t.suggestions?.items ?? [] : ONBOARD_CHIPS;
+  const chips = t.suggestions?.kind === "help" ? help : t.suggestions?.items ?? [];
+  const runs = cardRuns(t.tools, earlier);
   return (
     <li className="space-y-4">
       <div className="flex justify-end">
@@ -422,7 +431,7 @@ function TurnView({ turn: t, streaming, readonly, onRetry, onPick }: { turn: Tur
         {t.exhausted && (
           <p className="rounded-[14px] border border-gap/30 bg-gap-soft px-3 py-2 text-sm text-strong">Live answers are paused for today. This is the cached tour of the demo company.</p>
         )}
-        {t.tools.length > 0 && <ToolChips live rows={t.tools.map(toolRow)} diffs={[]} summary={`Cypher used · ${t.tools.length} ${t.tools.length === 1 ? "query" : "queries"}`} />}
+        {t.tools.length > 0 && <ToolChips live collapsed rows={t.tools.map(toolRow)} diffs={[]} summary={traceSummary(t.tools.length)} />}
         {running && t.tokens.length === 0 && <div aria-hidden><ThinkingLive label={t.tools.some((x) => x.rows === undefined) ? "Looking it up…" : t.tools.length ? "Checking the answer…" : "Thinking…"} /></div>}
         {tokens.length > 0 && (
           <StreamingText
@@ -446,10 +455,8 @@ function TurnView({ turn: t, streaming, readonly, onRetry, onPick }: { turn: Tur
             ))}
           </ul>
         )}
-        {t.done && !t.suggestions && (t.rejected || (t.outcome && OUTCOME_NOTE[t.outcome])) && (
-          <p className="text-xs leading-normal text-faint">
-            {t.rejected ? "I rewrote my first draft because it mentioned something Ripple has no record of." : t.outcome && OUTCOME_NOTE[t.outcome]}
-          </p>
+        {t.done && !t.suggestions && t.outcome && OUTCOME_NOTE[t.outcome] && !/hasn.t learned/.test(plainAnswer(t)) && (
+          <p className="text-xs leading-normal text-faint">{OUTCOME_NOTE[t.outcome]}</p>
         )}
         {t.error && <p role="alert" className="text-sm text-conflict">{t.error}</p>}
       </div>

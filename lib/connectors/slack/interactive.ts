@@ -5,6 +5,7 @@ import { ackFromToken, type AckOutcome } from "../../ack";
 import type { Graph } from "../../graph/client";
 import type { PermViewer } from "../../permissions/redact";
 import type { StreamEvent } from "../../schemas";
+import { NOTHING_YET, slackCites, sourceTitles } from "./mention";
 
 export type InboundJob = { kind: "events" | "interactive" | "command"; accountId: string; orgId: string; teamId: string; data: Record<string, any> }; // eslint-disable-line @typescript-eslint/no-explicit-any
 /** A Slack `message` event (the evidence connector, #177, consumes these). */
@@ -102,11 +103,12 @@ async function onCommand(job: InboundJob, d: Deps) {
     if (ev.type === "text_delta") answer += ev.text;
     else if (ev.type === "citation") for (const s of ev.sources) sources.set(s.artifactId, s.quote);
   }
-  const cites = [...sources].slice(0, 8).map(([id, q]) => `• \`${id}\` ${q.slice(0, 160)}`).join("\n");
+  const titles = sources.size ? await sourceTitles(await d.graph(), [...sources.keys()]).catch(() => new Map<string, string>()) : new Map<string, string>();
+  const cites = slackCites(sources, titles);
   await d.respond(p.response_url, {
     response_type: "in_channel",
-    text: answer.trim() || "I could not find that in the graph.",
-    blocks: [section(answer.trim() || "I could not find that in the graph."), ...(cites ? [section(`*Sources*\n${cites}`)] : [])],
+    text: answer.trim() || NOTHING_YET,
+    blocks: [section(answer.trim() || NOTHING_YET), ...(cites ? [section(`*Sources*\n${cites}`)] : [])],
   });
 }
 
