@@ -9,6 +9,7 @@ import { getContext } from "@/lib/server/context";
 const MESSAGES: Record<string, string> = {
   bad_state: "The install link expired or belongs to another session. Try Connect GitHub again.",
   not_configured: "The GitHub App is not configured on this server.",
+  installation_taken: "That GitHub installation is already connected to another workspace.",
   unknown_installation: "GitHub doesn't know that installation for our app.",
 };
 

@@ -1,5 +1,5 @@
 import type { RippleEvent } from "../../events/types";
-import { githubEnv } from "./app-creds";
+import { githubEnv, webhookSecrets } from "./app-creds";
 import { BadSignature, type Account } from "../define";
 import { githubApp, verifySignature } from "./client";
 import type { Octo } from "./sync";
@@ -8,7 +8,7 @@ type Pr = { html_url: string; title: string; body: string | null; user?: { login
 type PrPayload = { action: string; number: number; pull_request: Pr; repository: { full_name: string } };
 
 // GitHub caps a PR's file list at 3000 files, 100 per page.
-async function changedPaths(octo: Octo, full: string, number: number): Promise<string[]> {
+export async function changedPaths(octo: Octo, full: string, number: number): Promise<string[]> {
   const [owner, repo] = full.split("/");
   const paths: string[] = [];
   for (let page = 1; page <= 30; page++) {
@@ -23,8 +23,9 @@ async function changedPaths(octo: Octo, full: string, number: number): Promise<s
 export async function githubWebhook(req: Request, acct: Account, octo?: Octo): Promise<RippleEvent[] | "ignored"> {
   const raw = await req.text();
   const ge = await githubEnv();
-  const secret = ge.GITHUB_APP_WEBHOOK_SECRET;
-  if (!secret || !(await verifySignature(secret, raw, req.headers.get("x-hub-signature-256")))) throw new BadSignature();
+  let ok = false;
+  for (const secret of await webhookSecrets()) ok ||= await verifySignature(secret, raw, req.headers.get("x-hub-signature-256"));
+  if (!ok) throw new BadSignature();
   if (req.headers.get("x-github-event") !== "pull_request") return "ignored";
   const p = JSON.parse(raw) as PrPayload;
   const opened = p.action === "opened" || p.action === "reopened";

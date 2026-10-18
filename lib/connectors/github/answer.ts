@@ -4,7 +4,10 @@ import { runAgent } from "../../agent/loop";
 import { pickModel } from "../../llm";
 import { graphFor, roQuery, type Graph } from "../../graph/client";
 import { prId } from "./map";
-import type { Answer, CheckJob, Impact, MentionJob } from "./mention";
+import { matchPath } from "./codeowners";
+import { impactSummary, type Answer, type CheckJob, type Impact, type MentionJob } from "./mention";
+import type { Octo } from "./sync";
+import { changedPaths } from "./webhook";
 
 export async function orgForInstallation(installation: number): Promise<{ orgId: string; graph: Graph }> {
   const [{ db }, { connectorAccounts, orgs }] = await Promise.all([import("../../db"), import("../../db/schema")]);
@@ -14,10 +17,8 @@ export async function orgForInstallation(installation: number): Promise<{ orgId:
   return { orgId: row.orgId, graph: await graphFor(row.graphName) };
 }
 
-/** Systems a PR is ABOUT, their owning teams, and a decision in flight that sunsets one of them (or something they depend on). */
-export async function prImpact(g: Graph, job: Pick<CheckJob, "repo" | "number">): Promise<Impact> {
-  const id = prId(job.repo, job.number);
-  const systems = await roQuery<{ id: string; name: string | null }>(g, "MATCH (:PR {id: $id})-[r:ABOUT]->(s:System) WHERE r.valid_to IS NULL RETURN DISTINCT s.id AS id, s.name AS name", { id });
+/** Owning teams and the decision in flight for a set of systems. */
+async function impactFor(g: Graph, systems: { id: string; name: string | null }[]): Promise<Impact> {
   if (!systems.length) return { systems: [], teams: [] };
   const ids = systems.map((s) => s.id);
   const [teams, dec] = await Promise.all([
@@ -25,6 +26,27 @@ export async function prImpact(g: Graph, job: Pick<CheckJob, "repo" | "number">)
     roQuery<{ id: string; title: string }>(g, "MATCH (d:Decision)-[sn:SUNSETS]->(:System)<-[:DEPENDS_ON*0..2]-(x:System) WHERE x.id IN $ids AND sn.valid_to IS NULL RETURN DISTINCT d.id AS id, d.title AS title LIMIT 1", { ids }),
   ]);
   return { systems: systems.map((s) => ({ id: s.id, name: s.name ?? s.id })), teams: teams.map((t) => t.name), decisionId: dec[0]?.id, decisionTitle: dec[0]?.title };
+}
+
+/** Systems a synced PR is ABOUT. */
+export async function prImpact(g: Graph, job: Pick<CheckJob, "repo" | "number">): Promise<Impact> {
+  return impactFor(g, await roQuery<{ id: string; name: string | null }>(g, "MATCH (:PR {id: $id})-[r:ABOUT]->(s:System) WHERE r.valid_to IS NULL RETURN DISTINCT s.id AS id, s.name AS name", { id: prId(job.repo, job.number) }));
+}
+
+const repoSystems = (g: Graph, repo: string) =>
+  roQuery<{ id: string; name: string | null; path: string | null }>(g, "MATCH (s:System) WHERE s.id = $repo OR s.id STARTS WITH $paths RETURN s.id AS id, s.name AS name, s.path AS path", { repo: `gh:${repo}`, paths: `gh:${repo}:` });
+
+/** Impact of a PR that may not be synced yet: its changed file paths (list files API) matched against the repo's CODEOWNERS path systems. */
+export async function pathImpact(g: Graph, octo: Octo, job: Pick<CheckJob, "repo" | "number">): Promise<Impact> {
+  const [files, systems] = await Promise.all([changedPaths(octo, job.repo, job.number), repoSystems(g, job.repo)]);
+  return impactFor(g, systems.filter((s) => s.id === `gh:${job.repo}` || (s.path && files.some((f) => matchPath(s.path!, f)))));
+}
+
+/** Public repo answer: only this repo's systems, owners and the change touching them. No agent, so no org-wide customers, contracts or deals. */
+export async function repoFacts(g: Graph, job: Pick<MentionJob, "repo">): Promise<Answer> {
+  const i = await impactFor(g, await repoSystems(g, job.repo));
+  const lines = [`Here is what Ripple knows about \`${job.repo}\`:`, impactSummary(i), "This repository is public, so Ripple only shares repository-level facts here."];
+  return { text: lines.join("\n\n"), decisionId: i.decisionId };
 }
 
 /** Ask agent over the org graph. Reads as a viewer with no team, so restricted text never reaches the model or the comment. */

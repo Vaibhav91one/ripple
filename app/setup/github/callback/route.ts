@@ -1,4 +1,5 @@
 import { finishSetup, checkState } from "@/lib/connectors/github/setup";
+import { setupStatus } from "@/lib/connectors/github/app-creds";
 import { safeMessage } from "@/lib/log";
 import { getContext } from "@/lib/server/context";
 import { redirectTo } from "@/lib/server/redirect";
@@ -10,7 +11,8 @@ export async function GET(req: Request) {
   if (ctx.readonly || v.kind !== "user" || v.role !== "admin") return Response.json({ error: "forbidden" }, { status: 403 });
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  if (!code || !checkState(url.searchParams.get("state"), v.userId)) return redirectTo("/setup/github?error=bad_state");
+  if (!code || !checkState(url.searchParams.get("state"), v.userId, "manifest", undefined, true)) return redirectTo("/setup/github?error=bad_state");
+  if ((await setupStatus()) !== "open") return redirectTo("/setup/github");
   try {
     const next = await finishSetup(code, ctx.org.id, v.userId);
     await ctx.audit({ action: "connector.connect", resourceType: "github_app", resourceId: "manifest", meta: { kind: "github" } });

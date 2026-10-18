@@ -20,19 +20,35 @@ export async function storedApp(): Promise<StoredApp | null> {
     cache = { at: Date.now(), app: row?.t ? (JSON.parse(decrypt(row.t)) as StoredApp) : null };
   } catch (e) {
     console.warn("[github] stored app lookup failed:", e instanceof Error ? e.message : e);
+    cache = { at: Date.now(), app: null }; // a down database is not retried on every delivery
     return null;
   }
   return cache.app;
 }
 
-/** env() with the stored app's id, key, secret and slug laid over it. Pass the result to githubApp(). */
+const envApp = (e: Env) => !!(e.GITHUB_APP_ID && e.GITHUB_APP_PRIVATE_KEY);
+
+/** One app per instance: "env" (env creds win, setup is closed), "stored" (one app already created here, a second is refused) or "open". */
+export async function setupStatus(): Promise<"env" | "stored" | "open"> {
+  if (envApp(env())) return "env";
+  clearStoredApp();
+  return (await storedApp()) ? "stored" : "open";
+}
+
+/** Secrets a webhook may be signed with: the env one and the single stored one (both accepted so a migration never drops deliveries). */
+export async function webhookSecrets(): Promise<string[]> {
+  return [env().GITHUB_APP_WEBHOOK_SECRET, (await storedApp())?.webhook_secret].filter((x): x is string => !!x);
+}
+
+/** env() as is when it holds an app; otherwise the stored app's id, key, secret and slug laid over it. Pass the result to githubApp(). */
 export async function githubEnv(): Promise<GithubEnv> {
   const e = env();
-  const s = await storedApp();
+  const s = envApp(e) ? null : await storedApp();
   return s ? { ...e, GITHUB_APP_ID: String(s.id), GITHUB_APP_PRIVATE_KEY: s.pem, GITHUB_APP_WEBHOOK_SECRET: s.webhook_secret, GITHUB_APP_SLUG: s.slug } : e;
 }
 
 export async function saveApp(orgId: string, app: StoredApp): Promise<void> {
+  if ((await setupStatus()) !== "open") throw new Error("a GitHub App is already configured on this server");
   const [{ db }, { connectorAccounts }] = await Promise.all([import("../../db"), import("../../db/schema")]);
   const tokenEnc = encrypt(JSON.stringify(app));
   await db().insert(connectorAccounts).values({ orgId, kind: APP_KIND, externalId: String(app.id), tokenEnc })

@@ -8,7 +8,7 @@ export const QUEUES = ["route-event", "agent", "agent-cron", "deliver", "sync", 
 export type QueueName = (typeof QUEUES)[number];
 
 /** singletonKey only dedupes on a non-standard policy. `short` = one queued job per key; route-event and deliver are always keyed. */
-export const POLICY: Partial<Record<QueueName, "short">> = { "route-event": "short", deliver: "short", reminder: "short", sync: "short", "slack-inbound": "short" };
+export const POLICY: Partial<Record<QueueName, "short">> = { "route-event": "short", deliver: "short", reminder: "short", sync: "short", "slack-inbound": "short", "github-reply": "short" };
 
 // PGBOSS_SCHEMA: tests set a unique schema so suites sharing one Postgres never steal each other's jobs. Unset = pg-boss default.
 export const bossOptions = (connectionString: string) => ({ connectionString, max: 3, ...(process.env.PGBOSS_SCHEMA && { schema: process.env.PGBOSS_SCHEMA }) });
