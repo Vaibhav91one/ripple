@@ -36,7 +36,7 @@ const within = <T,>(p: Promise<T>, ms = 2500) => Promise.race([p, new Promise<ne
 async function githubLabel(installation: string): Promise<string> {
   try {
     const [{ githubApp }, { githubEnv }] = await Promise.all([import("./github/client"), import("./github/app-creds")]);
-    const app = githubApp(await githubEnv());
+    const app = await githubApp(await githubEnv());
     if (app) {
       const r = await within(app.octokit.request("GET /app/installations/{installation_id}", { installation_id: Number(installation) }));
       const acct = r.data.account as { login?: string; name?: string } | null;
