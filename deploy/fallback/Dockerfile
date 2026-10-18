@@ -3,6 +3,8 @@
 FROM node:22-slim AS build
 WORKDIR /app
 RUN npm i -g pnpm@10.18.2
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 COPY . .
 # SKIP_ENV_VALIDATION is build-only: the runtime stages below do not inherit it.
 RUN SKIP_ENV_VALIDATION=1 pnpm install --frozen-lockfile && SKIP_ENV_VALIDATION=1 pnpm build \

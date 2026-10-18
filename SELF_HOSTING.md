@@ -19,9 +19,11 @@ The first build takes a few minutes. When `docker compose ps` shows `web` as `he
 curl http://localhost:3000/api/health   # {"ok":true,"falkordb":"up","graph":287,"llm":"fallback"}
 ```
 
-Open <http://localhost:3000>. You are in **local mode** (`RIPPLE_MODE=local`): one writable workspace called `local`, you are its admin, and no sign-in exists or is needed. On first use it is filled with the demo data (the same company graph as the public demo), so you can open a change, approve or reject a proposed action, and see the result. Approvals and writes persist in the `falkordb-data` and `postgres-data` volumes.
+Open <http://localhost:3000>. You are in **local mode** (`RIPPLE_MODE=local`, set by `.env.example`): one writable workspace called `local`, you are its admin, and no sign-in exists or is needed. **Local mode has no login.** That is why web is published on `127.0.0.1` only; never expose it to a network or the internet. On first use it is filled with the demo data (the same company graph as the public demo), so you can open a change, approve or reject a proposed action, and see the result. Approvals and writes persist in the `falkordb-data` and `postgres-data` volumes.
 
-Remove `RIPPLE_MODE` (or set `RIPPLE_MODE=`) to get the read-only public demo behaviour instead.
+For the read-only public demo instead, comment out `RIPPLE_MODE=local` in `.env` (or leave `.env` out) and run `docker compose up -d`. The demo graph is seeded at web start in both modes.
+
+`POST /api/reset` (header `x-reset-token: $RESET_TOKEN`) deletes and re-seeds the active graph: in local mode that is `t_local`. Approvals, audit and the rest in Postgres stay.
 
 Stop with `docker compose down`; add `-v` to also delete the data.
 
@@ -33,7 +35,7 @@ Stop with `docker compose down`; add `-v` to also delete the data.
 | `worker` | Same codebase, `worker` image target. Runs the queue handlers (agents, notifications, connector sync). Waits for `web` to be healthy. |
 | `falkordb` | The graph database. Append-only file on a named volume. |
 | `db` | Postgres 17 for approvals, memberships, audit, queue. Named volume. |
-| `caddy` | Optional HTTPS in front, behind the `tls` profile. |
+| `caddy` | Optional HTTPS in front, from `docker-compose.tls.yml`. |
 
 ## Optional: an LLM key
 
@@ -50,7 +52,15 @@ Then `docker compose up -d` (it recreates `web` and `worker` with the new values
 
 ## Optional: HTTPS on your own domain
 
-Point DNS at the box, set `RIPPLE_DOMAIN=ripple.example.com` and `APP_URL=https://ripple.example.com` in `.env`, then `docker compose --profile tls up -d`. Caddy fetches the certificate on first request. Change `ACK_TOKEN_SECRET` and `RESET_TOKEN` (`openssl rand -hex 32`) before exposing the box.
+> **Warning: local mode has no login and the default secrets are public.** Never put a local-mode stack on a public host: anyone could approve actions and wipe the workspace. The HTTPS override below refuses to start with default secrets and always turns local mode off, so a public host serves the read-only demo, or real sign-in with Clerk keys.
+
+Point DNS at the box, then in `.env` set `RIPPLE_DOMAIN`, `APP_URL=https://<domain>`, and real `FALKORDB_PASSWORD`, `POSTGRES_PASSWORD`, `ACK_TOKEN_SECRET`, `RESET_TOKEN` (`openssl rand -hex 32`; use letters and digits for the two passwords). Delete `RIPPLE_MODE=local`. Start:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+```
+
+Caddy fetches the certificate on first request. For sign-in, create a Clerk app and set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (inlined at **build** time, so set it before `--build`), `CLERK_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` in `.env`; point the Clerk webhook at `<APP_URL>/api/webhooks/clerk`. `RIPPLE_AUTH=off` forces the public demo even with keys.
 
 ## Optional: GitHub and Slack
 
@@ -79,7 +89,7 @@ For smee, use the smee channel URL as the GitHub App's webhook URL. Restart with
 - **`web` stays unhealthy**: `docker compose logs web`. Usual causes: FalkorDB or Postgres not up yet (wait, it retries), or port 3000 taken (set `WEB_PORT=3100` in `.env`).
 - **Build killed or out of memory**: give Docker at least 4 GB (Settings > Resources); the Next.js build is the heavy step.
 - **Changed `POSTGRES_PASSWORD` or `FALKORDB_PASSWORD` after first start**: the volumes keep the old password. Reset with `docker compose down -v` (deletes data) or change the password inside the databases.
-- **Page says read-only / approvals return 403**: `RIPPLE_MODE=local` is missing from `.env`, or Clerk keys are set (Clerk takes over; leave them unset for local mode).
+- **Page says read-only / approvals return 403**: `RIPPLE_MODE=local` is missing from `.env` (e.g. you did not copy `.env.example`), or Clerk keys are set (Clerk takes over; leave them unset for local mode).
 - **`/api/health` returns `falkordb: down`**: `docker compose logs falkordb`; the password in `.env` must match what the volume was created with.
-- **Reseed the demo data**: `curl -X POST localhost:3000/api/reset -H "x-reset-token: $RESET_TOKEN"` (the demo graph), or `docker compose down -v` for a full reset of the `local` workspace.
+- **Reseed the demo data**: `curl -X POST localhost:3000/api/reset -H "x-reset-token: $RESET_TOKEN"` (in local mode this wipes and re-seeds `t_local`; Postgres data stays), or `docker compose down -v` to delete everything.
 - **Use the MCP server**: `claude mcp add --transport http ripple http://localhost:3000/api/mcp`.
