@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fixtures from "@/lib/schemas/fixtures/reports.json";
 import { ReportDetail, ReportList, type ReportRow } from "@/lib/schemas/reports";
-import { teamsWorstFirst, coverageAfter, day, gaps, isReadOnlyError, listSentence, matches, noticedSentence, relDays, STATE, usd, worstFirst } from "./reports-ui";
+import { runChase, safeUrl, teamsWorstFirst, coverageAfter, day, gaps, isReadOnlyError, listSentence, matches, noticedSentence, relDays, STATE, usd, worstFirst } from "./reports-ui";
 
 const detail = ReportDetail.parse(fixtures.detail);
 const row = ReportList.parse(fixtures.list).cases[0];
@@ -51,8 +51,8 @@ describe("reports state mapping", () => {
   it("one gap card per open team, Legal first with the contract ARR", () => {
     const g = gaps(detail);
     expect(g.map((x) => x.name)).toEqual(["Legal", "Security", "DevRel"]);
-    expect(g[0]).toMatchObject({ figure: "-$180K", action: "Notify Legal", after: 60 });
-    expect(g[1]).toMatchObject({ figure: "+20 pts", action: "Notify Security" });
+    expect(g[0]).toMatchObject({ figure: "-$180K", action: "Chase Legal", after: 60 });
+    expect(g[1]).toMatchObject({ figure: "+20 pts", action: "Chase Security" });
   });
 
   it("the noticed sentence comes from typed contract rows, and says so when they are redacted", () => {
@@ -70,5 +70,31 @@ describe("reports state mapping", () => {
   it("recognises the shared demo's read-only refusal", () => {
     expect(isReadOnlyError(new Error("demo_readonly"))).toBe(true);
     expect(isReadOnlyError(new Error("boom"))).toBe(false);
+  });
+});
+
+describe("chase outcome", () => {
+  const prop = (status: string) => async () => ({ id: "a1", status });
+  const approved = vi.fn(async () => true);
+
+  it("approves pending and failed rows, and says already when an earlier call did", async () => {
+    expect(await runChase(prop("pending"), approved, true)).toBe("sent");
+    expect(await runChase(prop("failed"), approved, true)).toBe("sent");
+    expect(await runChase(prop("pending"), async () => false, true)).toBe("already");
+    expect(await runChase(prop("approved"), approved, true)).toBe("already");
+    expect(await runChase(prop("executed"), approved, true)).toBe("already");
+    expect(approved).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves it proposed for a viewer who cannot decide, and errors on rejected or expired", async () => {
+    const never = vi.fn(async () => true);
+    expect(await runChase(prop("pending"), never, false)).toBe("proposed");
+    expect(never).not.toHaveBeenCalled();
+    await expect(runChase(prop("rejected"), never, true)).rejects.toThrow(/rejected earlier/);
+    await expect(runChase(prop("expired"), never, true)).rejects.toThrow(/expired/);
+  });
+
+  it("links only http(s) urls", () => {
+    expect([safeUrl("https://github.com/a/b/issues/1"), safeUrl("http://x.io"), safeUrl("javascript:alert(1)"), safeUrl("data:text/html,x"), safeUrl(null)]).toEqual(["https://github.com/a/b/issues/1", "http://x.io", null, null, null]);
   });
 });

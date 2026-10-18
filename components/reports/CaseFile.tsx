@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, Bot, ChevronRight, CircleCheck, ExternalLink, FileText, Lock, Megaphone, Share2, ShieldAlert, Sparkles, UserX, X } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, NotFoundBlock } from "@/components/states/States";
@@ -18,39 +18,42 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { TargetBar } from "@/components/ui/target-bar";
 import { chaseTeam, decideApproval, getApprovals, getReport, isGraphDown, NotFoundError } from "@/lib/api";
-import { day, dayTime, daysLeft, eventTone, gaps, isReadOnlyError, KIND_LABEL, noticedSentence, STATE, TEAM_STATUS, teamDelta, teamsWorstFirst, usd, type Gap } from "@/lib/reports-ui";
+import { day, dayTime, daysLeft, eventTone, gaps, isReadOnlyError, runChase, safeUrl, type ChaseResult, KIND_LABEL, noticedSentence, STATE, TEAM_STATUS, teamDelta, teamsWorstFirst, usd, type Gap } from "@/lib/reports-ui";
 import type { ReportDetail, TimelineEvent } from "@/lib/schemas/reports";
-import { DemoTag, KIND_ICON, Segmented } from "./shared";
+import { DemoTag, KIND_ICON, Segmented, TabPanel } from "./shared";
 
 const TABS = ["overview", "timeline", "artifacts", "runs"] as const;
 const pill = "inline-flex h-10 items-center gap-2 rounded-control px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50";
 const primary = `${pill} bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.15)] hover:bg-body`;
 const DOT = { conflict: "bg-conflict", gap: "bg-gap", ink: "bg-strong" } as const;
 
-/** `readOnly` = the shared demo (no session, no local mode): actions render disabled with a hint instead of failing. */
-export function CaseFile({ id, readOnly: ro }: { id: string; readOnly: boolean }) {
+type Toast = { title: string; body: string };
+const TOAST: Record<ChaseResult, (team: string) => Toast> = {
+  sent: (t) => ({ title: `Reminder to ${t} approved`, body: `It is queued to send to the ${t} owner. Coverage moves when they acknowledge.` }),
+  already: (t) => ({ title: "Already sent", body: `A reminder to ${t} for this change was already approved. Nothing new was sent.` }),
+  proposed: (t) => ({ title: `Reminder to ${t} proposed`, body: "It waits in Approvals for an admin or lead to approve it." }),
+};
+
+/** `readOnly` = the shared demo: actions render disabled with a hint. `canDecide` = the viewer may approve send_reminder (admin or lead). */
+export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly: boolean; canDecide: boolean }) {
   const qc = useQueryClient();
   const [tab, setTab] = useQueryState("tab", parseAsStringLiteral(TABS).withDefault("overview"));
-  const [readOnly, setReadOnly] = useState(ro);
+  const [refused, setRefused] = useState(false); // a 403 demo_readonly from the server
+  const readOnly = ro || refused;
   const [open, setOpen] = useState<Gap | null>(null);
-  const [toast, setToast] = useState<Gap | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const { data, error, refetch } = useQuery({ queryKey: ["report", id], queryFn: () => getReport(id) });
   const approvals = useQuery({ queryKey: ["approvals", "open", id], queryFn: () => getApprovals("open", id) });
 
   const act = useMutation({
-    // Chase proposes a send_reminder; approving it right away is what "Approve and send" means here.
-    mutationFn: async (g: Gap) => {
-      const p = await chaseTeam(id, g.teamId);
-      if (p.status === "pending") await decideApproval(p.id, "approve");
-      return g;
-    },
-    onSuccess: (g) => {
+    mutationFn: async (g: Gap) => ({ g, res: await runChase(() => chaseTeam(id, g.teamId), async (a) => (await decideApproval(a, "approve")).results.some((x) => x.changed), canDecide) }),
+    onSuccess: ({ g, res }) => {
       setOpen(null);
-      setToast(g);
+      setToast(TOAST[res](g.name));
       void qc.invalidateQueries({ queryKey: ["report", id] });
       void qc.invalidateQueries({ queryKey: ["approvals"] });
     },
-    onError: (e) => { if (isReadOnlyError(e)) setReadOnly(true); },
+    onError: (e) => { if (isReadOnlyError(e)) setRefused(true); },
   });
 
   if (error instanceof NotFoundError) return <NotFoundBlock title="No case file for this change" href="/reports" cta="All reports">Ripple has no change with the id {id}.</NotFoundBlock>;
@@ -76,20 +79,22 @@ export function CaseFile({ id, readOnly: ro }: { id: string; readOnly: boolean }
       </PageHeader>
 
       <div className="mb-4 -mt-1 overflow-x-auto">
-        <Segmented label="Case file sections" value={tab} onChange={(v) => void setTab(v)} options={[{ id: "overview", label: "Overview" }, { id: "timeline", label: `Timeline ${data.timeline.length}` }, { id: "artifacts", label: "Artifacts" }, { id: "runs", label: "Agent runs" }]} />
+        <Segmented tabs="case" label="Case file sections" value={tab} onChange={(v) => void setTab(v)} options={[{ id: "overview", label: "Overview" }, { id: "timeline", label: `Timeline ${data.timeline.length}` }, { id: "artifacts", label: "Artifacts" }, { id: "runs", label: "Agent runs" }]} />
       </div>
 
+      <TabPanel tabs="case" id={tab}>
       {tab === "overview" && <Overview d={data} gaps={g} pending={pending} readOnly={readOnly} onAct={setOpen} onTimeline={() => void setTab("timeline")} />}
       {tab === "timeline" && <Card><CardHeader title="Every event" sub={`${data.timeline.length} events, oldest first. Seeded history is marked demo.`} /><EventList events={data.timeline} /></Card>}
       {tab === "artifacts" && <Artifacts d={data} />}
       {tab === "runs" && <Runs events={data.timeline} />}
+      </TabPanel>
 
-      {open && <ApproveModal d={data} gap={open} readOnly={readOnly} busy={act.isPending} error={act.error && !isReadOnlyError(act.error) ? act.error.message : null} onClose={() => { setOpen(null); act.reset(); }} onConfirm={() => act.mutate(open)} />}
+      {open && <ApproveModal d={data} gap={open} readOnly={readOnly} canDecide={canDecide} busy={act.isPending} error={act.error && !isReadOnlyError(act.error) ? act.error.message : null} onClose={() => { setOpen(null); act.reset(); }} onConfirm={() => act.mutate(open)} />}
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
           <ActionToast
-            title={`${toast.action.split(" ")[0] === "Chase" ? "Reminder" : "Notice"} to ${toast.name} approved`}
-            body={`It is queued to send. Coverage moves to ${toast.after}% when it lands.`}
+            title={toast.title}
+            body={toast.body}
             time="Just now"
             action="See case file"
             dismiss="Close"
@@ -113,11 +118,12 @@ function ShareButton() {
 
 /** Disabled with a "Read-only demo" hint in the shared demo; works in local mode and for signed-in orgs. */
 function ActButton({ readOnly, className, onClick, children }: { readOnly: boolean; className: string; onClick: () => void; children: React.ReactNode }) {
+  const hint = useId();
   if (!readOnly) return <button type="button" className={className} onClick={onClick}>{children}</button>;
   return (
     <span className="inline-flex flex-col items-start gap-1">
-      <button type="button" disabled aria-describedby="ro-hint" className={className}>{children}</button>
-      <span id="ro-hint" className="inline-flex items-center gap-1 text-xs text-faint"><Lock size={11} aria-hidden />Read-only demo</span>
+      <button type="button" disabled aria-describedby={hint} className={className}>{children}</button>
+      <span id={hint} className="inline-flex items-center gap-1 text-xs text-faint"><Lock size={11} aria-hidden />Read-only demo</span>
     </span>
   );
 }
@@ -284,7 +290,7 @@ function EventList({ events }: { events: TimelineEvent[] }) {
               <p className="text-md text-strong">{e.text} {e.demo && <DemoTag />}</p>
               <p className="text-sm text-faint">{dayTime(e.at)} · {KIND_LABEL[e.kind]} by {e.actor.name}</p>
             </div>
-            {e.url && <a href={e.url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-strong hover:underline">Open<ExternalLink size={13} aria-hidden /></a>}
+            {safeUrl(e.url) && <a href={safeUrl(e.url)!} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-strong hover:underline">Open<ExternalLink size={13} aria-hidden /></a>}
           </li>
         );
       })}
@@ -311,7 +317,7 @@ function Artifacts({ d }: { d: ReportDetail }) {
               {quote && <p className="mt-1 rounded-control border border-hairline bg-raised px-2 py-1 font-mono text-sm text-body">“{quote}”</p>}
               <p className="mt-1 text-sm text-faint">{meta}</p>
             </div>
-            {url && <a href={url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-strong hover:underline">Open<ExternalLink size={13} aria-hidden /></a>}
+            {safeUrl(url) && <a href={safeUrl(url)!} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-strong hover:underline">Open<ExternalLink size={13} aria-hidden /></a>}
           </li>
         ))}
       </ul>
@@ -329,42 +335,38 @@ function Runs({ events }: { events: TimelineEvent[] }) {
   );
 }
 
-/** Preview the effect before committing (margin's confirm modal): before/after coverage, the scope, the benefit. Native <dialog>. */
-function ApproveModal({ d, gap, readOnly, busy, error, onClose, onConfirm }: { d: ReportDetail; gap: Gap; readOnly: boolean; busy: boolean; error: string | null; onClose: () => void; onConfirm: () => void }) {
+/** Confirm before committing (margin's confirm modal): what the action really does, and the conditional effect. Native <dialog>. */
+function ApproveModal({ d, gap, readOnly, canDecide, busy, error, onClose, onConfirm }: { d: ReportDetail; gap: Gap; readOnly: boolean; canDecide: boolean; busy: boolean; error: string | null; onClose: () => void; onConfirm: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); }, []);
   const c = d.report.coverage;
-  const chase = gap.status === "told";
+  const ifAck = gap.status === "told" ? c.pct : gap.after;
   return (
     <dialog ref={ref} onClose={onClose} aria-labelledby="approve-title" className="m-auto w-[min(520px,calc(100vw-32px))] rounded-card border border-hairline bg-surface p-6 text-strong shadow-xl backdrop:bg-strong/30">
       <header className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gap-soft text-gap"><Megaphone size={17} aria-hidden /></span>
         <div className="min-w-0 flex-1">
-          <h2 id="approve-title" className="text-lg font-medium">{chase ? `Remind ${gap.name} about this change` : `Notify ${gap.name}`}</h2>
+          <h2 id="approve-title" className="text-lg font-medium">{gap.action}</h2>
           <p className="text-sm text-faint">{d.report.title} · {gap.name}</p>
         </div>
         <button type="button" onClick={() => ref.current?.close()} aria-label="Close" className="grid size-9 place-items-center rounded-full border border-hairline hover:bg-raised"><X size={15} aria-hidden /></button>
       </header>
       <p className="mt-4 text-md leading-relaxed text-body">{gap.body}</p>
       <div className="mt-4 rounded-inset bg-raised/70 p-4">
-        <p className="text-sm text-faint">Coverage for this change</p>
-        <div className="mt-2 flex items-end gap-4">
-          <span><span className="block text-xs text-faint">Now</span><span className="text-3xl font-light tabular-nums text-faint">{c.pct}%</span></span>
+        <p className="text-md font-medium text-strong">Sends a reminder to the {gap.name} owner. Coverage moves when they acknowledge.</p>
+        <div className="mt-3 flex items-end gap-4 border-t border-hairline pt-3">
+          <span><span className="block text-xs text-faint">Coverage now</span><span className="text-3xl font-light tabular-nums">{c.pct}%</span></span>
           <ArrowRight size={18} aria-hidden className="mb-2 text-faint" />
-          <span><span className="block text-xs text-faint">{chase ? "After the ack" : "After this notice"}</span><span className="text-3xl font-light tabular-nums">{gap.after}%</span></span>
-          <span className="mb-1.5 ml-auto hidden whitespace-nowrap rounded-full bg-gap-soft sm:inline px-2 py-0.5 text-xs font-medium text-gap">{c.affected - c.told} of {c.affected} teams untold</span>
+          <span><span className="block text-xs text-faint">If {gap.name} acknowledges</span><span className="text-3xl font-light tabular-nums text-faint">{ifAck}%</span></span>
         </div>
-        <p className="mt-3 border-t border-hairline pt-3 text-sm text-faint">Ripple sends it to the {gap.name} owner with the evidence, then waits for their ack.</p>
+        <p className="mt-2 text-sm text-faint">If {gap.name} acknowledges, coverage would be {ifAck}%. Sending the reminder alone does not change it.</p>
       </div>
-      <p className="mt-4 flex items-center gap-2 text-sm font-medium text-covered">
-        <CircleCheck size={16} aria-hidden />
-        {chase ? `Coverage stays ${c.pct}%; the ack closes ${gap.name}'s gap` : `Coverage ${c.pct}% -> ${gap.after}% after this notice`}{gap.arr ? `, about ${usd(gap.arr)} of ARR covered` : ""}
-      </p>
+      {!canDecide && !readOnly && <p className="mt-4 text-sm text-faint">Approving reminders needs the admin or lead role, so this one will wait in Approvals.</p>}
       {error && <p role="alert" className="mt-3 text-sm text-conflict">{error}</p>}
       <footer className="mt-6 flex items-center justify-end gap-2">
         {readOnly && <span className="mr-auto inline-flex items-center gap-1 text-xs text-faint"><Lock size={11} aria-hidden />Read-only demo: run Ripple locally to send</span>}
         <button type="button" onClick={() => ref.current?.close()} className={`${pill} bg-raised text-strong hover:bg-hairline`}>Cancel</button>
-        <button type="button" onClick={onConfirm} disabled={readOnly || busy} className={primary}>{busy ? "Sending" : "Approve and send"}</button>
+        <button type="button" onClick={onConfirm} disabled={readOnly || busy} className={primary}>{busy ? "Sending" : canDecide ? "Approve and send" : "Send for approval"}</button>
       </footer>
     </dialog>
   );

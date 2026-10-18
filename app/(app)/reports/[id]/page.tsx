@@ -1,21 +1,26 @@
 import { Suspense } from "react";
 import { CaseFile } from "@/components/reports/CaseFile";
 import { PageSkeleton } from "@/components/ui/skeleton";
-import { authEnabled, sessionViewer } from "@/lib/auth";
-import { env } from "@/lib/env";
+import { OWNER_ROLE } from "@/lib/actions/executors";
+import { getContext } from "@/lib/server/context";
 
 export default function ReportPage({ params }: PageProps<"/reports/[id]">) {
   return <Suspense fallback={<PageSkeleton />}><Report params={params} /></Suspense>;
 }
 
-/** Mirrors getContext: the shared demo (no session, not local mode, no graph override) is read-only. */
-async function readOnly(): Promise<boolean> {
-  const e = env();
-  if (e.RIPPLE_GRAPH || (!authEnabled() && e.RIPPLE_MODE === "local")) return false;
-  return !(await sessionViewer());
+/** The same rules the write routes apply: the shared demo is read-only; approving send_reminder needs a signed-in admin or its owner role (decide.ts). */
+async function viewerCan(): Promise<{ readOnly: boolean; canDecide: boolean }> {
+  try {
+    const ctx = await getContext();
+    const role = ctx.viewer.kind === "user" ? ctx.viewer.role : undefined;
+    return { readOnly: ctx.readonly, canDecide: !ctx.readonly && (role === "admin" || role === OWNER_ROLE.send_reminder) };
+  } catch {
+    return { readOnly: true, canDecide: false }; // graph down: the case file shows the banner anyway
+  }
 }
 
 async function Report({ params }: Pick<PageProps<"/reports/[id]">, "params">) {
   const { id } = await params;
-  return <CaseFile id={id} readOnly={await readOnly()} />;
+  const can = await viewerCan();
+  return <CaseFile id={id} {...can} />;
 }

@@ -15,9 +15,9 @@ import { HatchedBar } from "@/components/ui/hatched-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getActivity, getReports, isGraphDown } from "@/lib/api";
-import { daysLeft, day, dayTime, KIND_LABEL, listSentence, matches, relDays, STATE, usd, worstFirst } from "@/lib/reports-ui";
+import { daysLeft, day, dayTime, KIND_LABEL, listSentence, matches, relDays, safeUrl, STATE, usd, worstFirst } from "@/lib/reports-ui";
 import type { ReportRow } from "@/lib/schemas/reports";
-import { DemoTag, KIND_ICON, Segmented } from "./shared";
+import { DemoTag, KIND_ICON, Segmented, TabPanel } from "./shared";
 
 const TABS = ["cases", "activity"] as const;
 const STATES = ["all", "blocked", "waiting", "done"] as const;
@@ -33,9 +33,9 @@ export function ReportsScreen() {
   return (
     <>
       <PageHeader title="Reports" subtitle={data ? listSentence(data.summary.total, data.summary.needYou) : "Every change, and everything Ripple did for it."}>
-        <Segmented label="Reports view" value={tab} onChange={(v) => void setTab(v)} options={[{ id: "cases", label: "Cases" }, { id: "activity", label: "Activity" }]} />
+        <Segmented tabs="reports" label="Reports view" value={tab} onChange={(v) => void setTab(v)} options={[{ id: "cases", label: "Cases" }, { id: "activity", label: "Activity" }]} />
       </PageHeader>
-      {isGraphDown(error) ? <GraphDownBanner onRetry={() => void refetch()} /> : tab === "activity" ? <ActivityFeed /> : <Cases data={data} />}
+      {isGraphDown(error) ? <GraphDownBanner onRetry={() => void refetch()} /> : <TabPanel tabs="reports" id={tab}>{tab === "activity" ? <ActivityFeed /> : <Cases data={data} />}</TabPanel>}
     </>
   );
 }
@@ -49,7 +49,8 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
   if (!all.length)
     return <Card><EmptyState icon={FileText} title="No changes on record yet" action={{ label: "Ask the assistant", href: "/" }}>When a change is announced, its case file shows up here.</EmptyState></Card>;
 
-  const days = all.map((r) => (r.effectiveAt ? daysLeft(r.effectiveAt, data.now) : 0));
+  const dated = all.filter((r): r is ReportRow & { effectiveAt: number } => r.effectiveAt !== null); // undated cases have no place on the axis
+  const days = dated.map((r) => daysLeft(r.effectiveAt, data.now));
   const min = Math.min(0, ...days) - 10;
   const max = Math.max(60, ...days) + 10;
   const pos = (v: number) => ((v - min) / (max - min)) * 100; // DotStrip places values on a 0-100 axis
@@ -86,13 +87,14 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
             min={0} max={100} cols={60}
             selected={all[0].id}
             marker={{ value: pos(0), label: "Today" }}
-            dots={all.map((r, i) => ({ id: r.id, value: pos(days[i]), tone: DOT_TONE[r.state], label: `${r.title} · ${r.coverage.pct}% told` }))}
+            dots={dated.map((r, i) => ({ id: r.id, value: pos(days[i]), tone: DOT_TONE[r.state], label: `${r.title} · ${r.coverage.pct}% told` }))}
             ticks={[{ value: 0, label: `${-min} days ago` }, { value: 100, label: `in ${max} days` }]}
           />
         </div>
         <p className="mt-5 text-sm text-faint">
           <span className="font-medium text-strong">{all[0].title}</span> is the worst case: {all[0].coverage.pct}% of teams told
           {all[0].effectiveAt ? `, effective ${relDays(all[0].effectiveAt, data.now)}` : ""}.
+          {all.length > dated.length && ` ${all.length - dated.length} without an effective date ${all.length - dated.length === 1 ? "is" : "are"} not plotted.`}
         </p>
       </Card>
 
@@ -111,7 +113,7 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
             highlight={all[0].id}
             columns={[
               { key: "case", header: "Case", render: (r) => (
-                <Link href={`/reports/${r.id}`} className="block min-w-48 hover:underline">
+                <Link href={`/reports/${encodeURIComponent(r.id)}`} className="block min-w-48 hover:underline">
                   <span className="block font-medium">{r.title}</span>
                   <span className="block text-xs text-faint">{r.id.toUpperCase()} · announced {day(r.announcedAt)}</span>
                 </Link>
@@ -169,11 +171,11 @@ function ActivityFeed() {
                   <p className="text-md text-strong">{it.text} {it.demo && <DemoTag />}</p>
                   <p className="text-sm text-faint">
                     <span className="sm:hidden">{dayTime(it.at)} · </span>
-                    {KIND_LABEL[it.kind]} by {it.actor.name} · <Link href={`/reports/${it.caseId}`} className="text-body hover:underline">{it.caseTitle}</Link>
+                    {KIND_LABEL[it.kind]} by {it.actor.name} · <Link href={`/reports/${encodeURIComponent(it.caseId)}`} className="text-body hover:underline">{it.caseTitle}</Link>
                   </p>
                 </div>
-                {it.url && (
-                  <a href={it.url} target="_blank" rel="noreferrer" className="col-start-2 inline-flex items-center gap-1 text-sm font-medium text-strong hover:underline sm:col-start-auto">
+                {safeUrl(it.url) && (
+                  <a href={safeUrl(it.url)!} target="_blank" rel="noreferrer" className="col-start-2 inline-flex items-center gap-1 text-sm font-medium text-strong hover:underline sm:col-start-auto">
                     Open <ExternalLink size={13} aria-hidden />
                   </a>
                 )}

@@ -91,9 +91,9 @@ export function gaps(d: ReportDetail): Gap[] {
       return {
         teamId: t.teamId, name: t.name, status: t.status, after, arr,
         figure: arr ? `-${usd(arr)}` : told ? "Ack" : `+${after - c.pct} pts`,
-        figureNote: arr ? "ARR under contract" : told ? "waiting since they were told" : "coverage once told",
+        figureNote: arr ? "ARR under contract" : told ? "waiting since they were told" : "coverage if they acknowledge",
         body: `${t.name} ${t.why}${told ? " and has not acked yet." : " and has not been told."} ${t.expected}.`,
-        action: told ? `Chase ${t.name}` : `Notify ${t.name}`,
+        action: `Chase ${t.name}`,
       };
     });
 }
@@ -117,3 +117,25 @@ export function noticedSentence(d: ReportDetail): string | null {
 
 /** A failed write from the shared demo comes back as 403 demo_readonly. */
 export const isReadOnlyError = (e: unknown) => e instanceof Error && e.message === "demo_readonly";
+
+/** Only http(s) links from the API become anchors (no javascript: or data: URLs). */
+export const safeUrl = (u: string | null | undefined): string | null => (u && /^https?:\/\//i.test(u) ? u : null);
+
+export type ChaseResult = "sent" | "already" | "proposed";
+
+/**
+ * A chase proposes send_reminder (deduped: a repeat returns the existing row), then approves it when the viewer may.
+ * Success is only reported when this call approved or enqueued something; "already" when an earlier one did.
+ */
+export async function runChase(
+  propose: () => Promise<{ id: string; status: string }>,
+  approve: (id: string) => Promise<boolean>,
+  canDecide: boolean,
+): Promise<ChaseResult> {
+  const p = await propose();
+  if (p.status === "approved" || p.status === "executed") return "already";
+  if (p.status === "rejected") throw new Error("A reminder for this team was rejected earlier. Reopen it in Approvals to send one.");
+  if (p.status !== "pending" && p.status !== "failed") throw new Error(`The reminder is ${p.status}. Check it in Approvals.`);
+  if (!canDecide) return "proposed"; // waits in Approvals for an admin or lead
+  return (await approve(p.id)) ? "sent" : "already"; // pending -> approve; failed -> approve again (decide allows a retry)
+}
