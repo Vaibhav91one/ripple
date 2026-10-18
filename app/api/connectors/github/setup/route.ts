@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const installation = url.searchParams.get("installation_id") ?? "";
   if (!/^\d+$/.test(installation) || !checkState(url.searchParams.get("state"), v.userId, "install", ctx.org.id, true)) return back(req, "error=bad_state");
-  const app = githubApp(await githubEnv());
+  const app = await githubApp(await githubEnv());
   if (!app) return back(req, "error=not_configured");
   try { await app.octokit.request("GET /app/installations/{installation_id}", { installation_id: Number(installation) }); } // the installation must belong to our app
   catch (e) { console.warn("github installation check failed:", safeMessage(e)); return back(req, "error=unknown_installation"); }

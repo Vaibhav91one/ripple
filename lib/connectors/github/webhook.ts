@@ -31,7 +31,7 @@ export async function githubWebhook(req: Request, acct: Account, octo?: Octo): P
   const opened = p.action === "opened" || p.action === "reopened";
   if (!opened && !["synchronize", "edited", "closed"].includes(p.action)) return "ignored";
   const full = p.repository.full_name;
-  const client = octo ?? ((await githubApp(ge)?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
+  const client = octo ?? ((await (await githubApp(ge))?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
   if (!client) throw new Error("GitHub App is not configured");
   return [{
     type: opened ? "pr.opened" : "pr.updated", orgId: acct.orgId, subject: { kind: "pr", id: `gh:${full}#${p.number}` },

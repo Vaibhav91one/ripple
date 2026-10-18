@@ -21,4 +21,9 @@ describe("redactSecrets", () => {
     expect(safeMessage(new Error("bad ghs_zzz"))).toBe("bad [redacted]");
     expect(redactSecrets(`{"token_enc":"x","kind":"slack"}`)).toContain(`"kind":"slack"`);
   });
+  it("reads pg-boss's plain error objects instead of [object Object]", () => {
+    expect(safeMessage({ message: "connection terminated ghs_zzz", stack: "x", queue: "github-reply", code: "57P01" })).toBe("connection terminated [redacted] (queue github-reply) [57P01]");
+    expect(safeMessage({ a: 1 })).toBe('{"a":1}');
+    expect(safeMessage("plain")).toBe("plain");
+  });
 });

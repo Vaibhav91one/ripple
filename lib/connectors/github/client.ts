@@ -1,23 +1,28 @@
 // The one GitHub App client. @octokit/app mints the JWT and caches installation tokens; @octokit/webhooks verifies signatures.
-import { App } from "@octokit/app";
-import { Webhooks } from "@octokit/webhooks";
+import type { App } from "@octokit/app";
 import { env, type Env } from "../../env";
 
 type AppEnv = Partial<Pick<Env, "GITHUB_APP_ID" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_APP_WEBHOOK_SECRET">>;
 let cached: { key: string; app: App } | undefined;
 
+// @octokit/* are ESM-only (exports have just an "import" condition). The worker runs under tsx as CommonJS, where a static
+// import dies with ERR_PACKAGE_PATH_NOT_EXPORTED and takes the whole github-reply handler with it, so they load with import().
 /** null when the app isn't configured. Kept per (id, key) so the installation-token cache survives between calls. */
-export function githubApp(e: AppEnv = env()): App | null {
+export async function githubApp(e: AppEnv = env()): Promise<App | null> {
   const { GITHUB_APP_ID: appId, GITHUB_APP_PRIVATE_KEY: pem, GITHUB_APP_WEBHOOK_SECRET: secret } = e;
   if (!appId || !pem) return null;
   const key = `${appId}:${pem}:${secret ?? ""}`;
-  if (cached?.key !== key) cached = { key, app: new App({ appId, privateKey: pem.replaceAll("\\n", "\n"), webhooks: { secret: secret ?? "unset" } }) };
-  return cached.app;
+  if (cached?.key === key) return cached.app;
+  const { App } = await import("@octokit/app");
+  const app = new App({ appId, privateKey: pem.replaceAll("\\n", "\n"), webhooks: { secret: secret ?? "unset" } });
+  cached = { key, app };
+  return app;
 }
 
 /** True only for a correct X-Hub-Signature-256 over the raw body. */
 export async function verifySignature(secret: string, rawBody: string, signature: string | null): Promise<boolean> {
   if (!signature) return false;
+  const { Webhooks } = await import("@octokit/webhooks");
   return new Webhooks({ secret }).verify(rawBody, signature).catch(() => false);
 }
 
