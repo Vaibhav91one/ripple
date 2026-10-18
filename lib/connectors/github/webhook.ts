@@ -1,5 +1,5 @@
 import type { RippleEvent } from "../../events/types";
-import { env } from "../../env";
+import { githubEnv } from "./app-creds";
 import { BadSignature, type Account } from "../define";
 import { githubApp, verifySignature } from "./client";
 import type { Octo } from "./sync";
@@ -22,14 +22,15 @@ async function changedPaths(octo: Octo, full: string, number: number): Promise<s
 /** pull_request opened/reopened -> pr.opened; synchronize/edited/closed -> pr.updated (changed paths fetched); other actions and events are ignored. `octo` is a test seam. */
 export async function githubWebhook(req: Request, acct: Account, octo?: Octo): Promise<RippleEvent[] | "ignored"> {
   const raw = await req.text();
-  const secret = env().GITHUB_APP_WEBHOOK_SECRET;
+  const ge = await githubEnv();
+  const secret = ge.GITHUB_APP_WEBHOOK_SECRET;
   if (!secret || !(await verifySignature(secret, raw, req.headers.get("x-hub-signature-256")))) throw new BadSignature();
   if (req.headers.get("x-github-event") !== "pull_request") return "ignored";
   const p = JSON.parse(raw) as PrPayload;
   const opened = p.action === "opened" || p.action === "reopened";
   if (!opened && !["synchronize", "edited", "closed"].includes(p.action)) return "ignored";
   const full = p.repository.full_name;
-  const client = octo ?? ((await githubApp()?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
+  const client = octo ?? ((await githubApp(ge)?.getInstallationOctokit(Number(acct.token))) as Octo | undefined);
   if (!client) throw new Error("GitHub App is not configured");
   return [{
     type: opened ? "pr.opened" : "pr.updated", orgId: acct.orgId, subject: { kind: "pr", id: `gh:${full}#${p.number}` },

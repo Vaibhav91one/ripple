@@ -7,6 +7,8 @@ import { load } from "../graph/queries";
 import type { ActionKind } from "../agent/define";
 import { applyProposal } from "../connectors/apply";
 import { githubApp } from "../connectors/github/client";
+import { postComment } from "../connectors/github/mention";
+import type { Octo } from "../connectors/github/sync";
 import { safeMessage } from "../log";
 
 /** approver: who approved the action (user id or "policy"). runId: the agent run that proposed it. */
@@ -94,6 +96,18 @@ export async function createIssue(e: GithubEnv, title: string, body: string): Pr
   }
 }
 
+export const PrComment = z.object({ repo: z.string().regex(/^[^/\s]+\/[^/\s]+$/, "repo must be owner/name"), number: z.number().int().positive(), body: z.string().min(1) });
+
+/** Approved pr_comment -> a comment on that PR (or issue) as the GitHub App. Installation = the org's connected one, else GITHUB_APP_INSTALLATION_ID. */
+export async function prComment(e: GithubEnv, installation: string | undefined, p: z.infer<typeof PrComment>): Promise<{ status: "created" | "skipped"; url?: string }> {
+  const app = githubApp(e);
+  const id = installation ?? e.GITHUB_APP_INSTALLATION_ID;
+  if (!app || !id) return { status: "skipped" };
+  const octo = (await app.getInstallationOctokit(Number(id))) as unknown as Octo;
+  const res = await postComment(octo, p.repo, p.number, p.body);
+  return { status: "created", url: (res.data as { html_url?: string }).html_url };
+}
+
 /** Agent memory (#210): one conclusion, linked ABOUT every entity it concerns. */
 export const RecordFinding = z.object({
   id: z.string().min(1), text: z.string().min(1), entityIds: z.array(z.string().min(1)).min(1), sources: z.array(z.string()),
@@ -145,6 +159,13 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
     const r = await createIssue(env(), title, body);
     if (r.status === "failed") throw new Error(r.error ?? "create issue failed");
     return r;
+  },
+  pr_comment: async (payload, { org }) => {
+    const p = PrComment.parse(payload);
+    const { githubEnv } = await import("../connectors/github/app-creds");
+    const [{ db }, { connectorAccounts }, { and, eq }, { decrypt }] = await Promise.all([import("../db"), import("../db/schema"), import("drizzle-orm"), import("../crypto")]);
+    const [acct] = await db().select({ t: connectorAccounts.tokenEnc }).from(connectorAccounts).where(and(eq(connectorAccounts.orgId, org.id), eq(connectorAccounts.kind, "github"))).limit(1);
+    return prComment(await githubEnv(), acct?.t ? decrypt(acct.t) : undefined, p);
   },
   graph_merge: async (payload, { org, writer, now }) => {
     if (payload && typeof payload === "object" && "op" in payload) {

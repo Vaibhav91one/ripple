@@ -1,5 +1,6 @@
 import { decrypt, encrypt } from "@/lib/crypto";
 import { GITHUB_SCOPES } from "@/lib/connectors/github";
+import { githubEnv } from "@/lib/connectors/github/app-creds";
 import { githubApp } from "@/lib/connectors/github/client";
 import { safeMessage } from "@/lib/log";
 import { enqueue } from "@/lib/queue";
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   let st: { o?: string; u?: string; exp?: number } = {};
   try { st = JSON.parse(decrypt(url.searchParams.get("state") ?? "")); } catch { /* bad or missing state */ }
   if (!/^\d+$/.test(installation) || st.o !== ctx.org.id || st.u !== v.userId || (st.exp ?? 0) < Date.now() / 1000) return back(req, "error=bad_state");
-  const app = githubApp();
+  const app = githubApp(await githubEnv());
   if (!app) return back(req, "error=not_configured");
   try { await app.octokit.request("GET /app/installations/{installation_id}", { installation_id: Number(installation) }); } // the installation must belong to our app
   catch (e) { console.warn("github installation check failed:", safeMessage(e)); return back(req, "error=unknown_installation"); }

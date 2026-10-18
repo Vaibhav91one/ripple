@@ -20,3 +20,12 @@ export async function verifySignature(secret: string, rawBody: string, signature
   if (!signature) return false;
   return new Webhooks({ secret }).verify(rawBody, signature).catch(() => false);
 }
+
+export type Conversion = { id: number; slug: string; pem: string; webhook_secret: string; client_id?: string; client_secret?: string; html_url: string };
+
+/** POST /app-manifests/{code}/conversions (no auth; the code is single-use and lasts an hour). `fetcher` is a test seam. */
+export async function convertManifest(code: string, fetcher: typeof fetch = fetch): Promise<Conversion> {
+  const res = await fetcher(`https://api.github.com/app-manifests/${encodeURIComponent(code)}/conversions`, { method: "POST", headers: { accept: "application/vnd.github+json", "user-agent": "ripple" } });
+  if (!res.ok) throw new Error(`GitHub conversion failed (${res.status})`);
+  return (await res.json()) as Conversion;
+}

@@ -12,10 +12,11 @@ import routeEvent from "./handlers/route-event";
 import ingest from "./handlers/ingest";
 import sync from "./handlers/sync";
 import slackInbound from "./handlers/slack-inbound";
+import githubReply from "./handlers/github-reply";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Handlers = Record<string, (jobs: Job<any>[]) => Promise<unknown>>;
-export const handlers: Handlers = { noop, "route-event": routeEvent, deliver, reminder, agent, "agent-cron": agentCron, "execute-action": executeAction, ingest, sync, "slack-inbound": slackInbound };
+export const handlers: Handlers = { noop, "route-event": routeEvent, deliver, reminder, agent, "agent-cron": agentCron, "execute-action": executeAction, ingest, sync, "slack-inbound": slackInbound, "github-reply": githubReply };
 
 /** Start a worker against `url`; returns the graceful stop function. */
 export async function startWorker(url: string, use: Handlers = handlers) {

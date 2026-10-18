@@ -4,7 +4,7 @@ import { PgBoss, type SendOptions } from "pg-boss";
 import { safeMessage } from "./log";
 import { env } from "./env";
 
-export const QUEUES = ["route-event", "agent", "agent-cron", "deliver", "sync", "slack-inbound", "reminder", "digest", "execute-action", "ingest", "noop"] as const;
+export const QUEUES = ["route-event", "agent", "agent-cron", "deliver", "sync", "slack-inbound", "github-reply", "reminder", "digest", "execute-action", "ingest", "noop"] as const;
 export type QueueName = (typeof QUEUES)[number];
 
 /** singletonKey only dedupes on a non-standard policy. `short` = one queued job per key; route-event and deliver are always keyed. */
