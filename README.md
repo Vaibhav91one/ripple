@@ -1,4 +1,6 @@
-# Ripple
+<p align="center"><img src="app/icon.svg" width="72" height="72" alt="Ripple logo" /></p>
+
+<h1 align="center">Ripple</h1>
 
 **A company brain on FalkorDB: change one decision and see every team, customer and contract it ripples into, with the receipts.**
 
