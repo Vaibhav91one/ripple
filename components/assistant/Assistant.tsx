@@ -17,8 +17,10 @@ import { parseStream } from "@/components/ask/parseStream";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
 import { InsightCard } from "@/components/ui/insight-card";
 import { NeedsYou, type NeedsYouRow } from "@/components/ui/needs-you";
+import type { Suggestion } from "@/lib/schemas";
 import { chatStream, getApprovals, getReports, getRipple, getSource, NotFoundError } from "@/lib/api";
 import { AGENT_SAMPLES, STARTER_PROMPTS } from "@/lib/assistant/prompts";
+import { helpChips } from "@/lib/assistant/smalltalk";
 import { cardRuns, ResultCard } from "./cards";
 import {
   AGENTS, agentName, answerText, applyEvent, COMMANDS, expandCommand, loadThreads, newTurn, saveThreads, threadsKey, titleOf, toMessages, turnsFromMessages, upsertThread,
@@ -31,9 +33,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const COL = "mx-auto w-full max-w-[720px]";
 
 const OUTCOME_NOTE: Partial<Record<NonNullable<Turn["outcome"]>, string>> = {
-  not_in_graph: "Not in the graph: nothing connects to this, which is not the same as no impact.",
-  unknown_entity: "Unknown entity: that name does not resolve, so no traversal ran.",
-  memory: "Answered from memory, not from a live traversal.",
+  not_in_graph: "Nothing Ripple knows is connected to that yet. That doesn't mean it has no impact, only that it hasn't been recorded.",
+  unknown_entity: "I don't recognise that name, so I haven't looked anything up.",
+  memory: "Answered from what Ripple remembered, not from a fresh look.",
 };
 
 const toolRow = (t: ToolRun): ToolRowData => ({
@@ -278,7 +280,7 @@ export function Assistant({ lens, readonly }: { lens?: string; readonly: boolean
           <button type="button" onClick={() => setSheet(true)} className="inline-flex h-10 items-center gap-2 rounded-control px-2 text-sm text-body hover:bg-raised"><History size={16} aria-hidden />Chats</button>
           <button type="button" onClick={newChat} className="inline-flex h-10 items-center gap-2 rounded-control px-2 text-sm text-body hover:bg-raised"><Plus size={16} aria-hidden />New chat</button>
         </div>
-        <p role="status" className="sr-only">{busy ? (last.tools.some((x) => x.rows === undefined) || !last.tokens.length ? "Querying the graph…" : "Writing the answer…") : last.done && !last.error ? "Answer ready" : ""}</p>
+        <p role="status" className="sr-only">{busy ? (last.tools.some((x) => x.rows === undefined) || !last.tokens.length ? "Looking it up…" : "Writing the answer…") : last.done && !last.error ? "Answer ready" : ""}</p>
         <ol className={`${COL} flex-1 space-y-10 pb-8`}>
           {turns.map((t, i) => (
             <TurnView
@@ -286,6 +288,7 @@ export function Assistant({ lens, readonly }: { lens?: string; readonly: boolean
               turn={t}
               streaming={busy && i === turns.length - 1}
               readonly={readonly}
+              onPick={(s) => (s.href ? router.push(s.href) : s.prompt && void send(s.prompt))}
               onRetry={i === turns.length - 1 && !busy && !persist ? () => void send(t.question, { agent: t.agent }, turns.slice(0, -1)) : undefined}
             />
           ))}
@@ -366,7 +369,8 @@ function Home({ hello, bar, agent, onAsk, recent, onOpen, onAll }: {
 }
 
 // ── one exchange ─────────────────────────────────────────────────────────────────────────────────
-function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; streaming: boolean; readonly: boolean; onRetry?: () => void }) {
+function TurnView({ turn: t, streaming, readonly, onRetry, onPick }: { turn: Turn; streaming: boolean; readonly: boolean; onRetry?: () => void; onPick: (s: Suggestion) => void }) {
+  const reports = useQuery({ queryKey: ["reports"], queryFn: getReports, retry: false, enabled: t.suggestions?.kind === "help" });
   const panel = useSourcePanel();
   const titles = useQueries({ queries: t.sources.map((s) => ({ queryKey: ["source", s.artifactId], queryFn: () => getSource(s.artifactId), staleTime: Infinity, retry: false })) });
   const refs: SourceRef[] = t.sources.map((s, i) => {
@@ -381,6 +385,8 @@ function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; strea
     void navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }, () => {});
   };
   const running = streaming && !t.done;
+  // Help chips name the real open changes when /api/reports answered; the stream's own list is the fallback.
+  const chips = t.suggestions?.kind === "help" && reports.data?.cases.length ? helpChips(reports.data.cases) : t.suggestions?.items ?? [];
   const runs = cardRuns(t.tools);
   return (
     <li className="space-y-4">
@@ -394,13 +400,13 @@ function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; strea
         <p className="flex items-center gap-2 text-sm text-faint">
           <Mark size={18} />
           <span className="font-medium text-strong">{agentName(t.agent) ?? "Ripple"}</span>
-          {t.cached && t.done && <span>· cached answer</span>}
+          {t.cached && t.done && !t.suggestions && <span>· cached answer</span>}
         </p>
         {t.exhausted && (
           <p className="rounded-[14px] border border-gap/30 bg-gap-soft px-3 py-2 text-sm text-strong">Live answers are paused for today. This is the cached tour of the demo company.</p>
         )}
         {t.tools.length > 0 && <ToolChips live rows={t.tools.map(toolRow)} diffs={[]} summary={`Cypher used · ${t.tools.length} ${t.tools.length === 1 ? "query" : "queries"}`} />}
-        {running && t.tokens.length === 0 && <div aria-hidden><ThinkingLive label={t.tools.some((x) => x.rows === undefined) ? "Querying the graph…" : t.tools.length ? "Checking the answer against the graph…" : "Thinking…"} /></div>}
+        {running && t.tokens.length === 0 && <div aria-hidden><ThinkingLive label={t.tools.some((x) => x.rows === undefined) ? "Looking it up…" : t.tools.length ? "Checking the answer…" : "Thinking…"} /></div>}
         {tokens.length > 0 && (
           <StreamingText
             tokens={tokens}
@@ -414,10 +420,18 @@ function TurnView({ turn: t, streaming, readonly, onRetry }: { turn: Turn; strea
         )}
         {copied && <p role="status" className="text-xs text-faint">Copied</p>}
         {runs.map((r, i) => <ResultCard key={`${r.tool}-${i}`} run={r} readonly={readonly} />)}
-        {t.done && (t.rejected || (t.outcome && OUTCOME_NOTE[t.outcome])) && (
+        {t.done && chips.length > 0 && (
+          <ul className="flex flex-wrap gap-2 pt-1" aria-label={t.suggestions?.kind === "choose" ? "Choose a change" : "Suggestions"}>
+            {chips.map((s) => (
+              <li key={s.label}>
+                <button type="button" onClick={() => onPick(s)} className="rounded-full border border-hairline bg-surface px-3.5 py-2 text-left text-sm text-body transition-colors hover:border-strong/20 hover:text-strong">{s.label}</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {t.done && !t.suggestions && (t.rejected || (t.outcome && OUTCOME_NOTE[t.outcome])) && (
           <p className="text-xs leading-normal text-faint">
-            {t.rejected && "Rewritten from the graph rows: the draft named something the graph didn't return. "}
-            {t.outcome && OUTCOME_NOTE[t.outcome]}
+            {t.rejected ? "I rewrote my first draft because it mentioned something Ripple has no record of." : t.outcome && OUTCOME_NOTE[t.outcome]}
           </p>
         )}
         {t.error && <p role="alert" className="text-sm text-conflict">{t.error}</p>}

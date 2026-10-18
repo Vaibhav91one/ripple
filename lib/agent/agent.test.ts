@@ -129,7 +129,7 @@ describe("answer validation in the loop (#211)", () => {
     const spy = new Proxy(g, { get: (tg, p) => (p === "roQuery" ? (q: string, o: unknown) => (seen.push(q), tg.roQuery(q, o as never)) : Reflect.get(tg, p, tg) instanceof Function ? (Reflect.get(tg, p, tg) as (...a: unknown[]) => unknown).bind(tg) : Reflect.get(tg, p, tg)) });
     const ev = await ask(spy, [["who_knows", { systemId: "fax-gateway" }], ["ripple", { decisionId: "fax-gateway" }]], "Retiring the fax-gateway breaks billing.");
     expect(ev.at(-1)).toMatchObject({ outcome: { outcome: "unknown_entity", rowCount: 0 }, rejected: expect.any(Array) });
-    expect(said(ev)).toContain('does not know "fax-gateway');
+    expect(said(ev)).toContain('I don\'t recognise "fax-gateway');
     expect(seen).not.toContain(load("ripple").text);
   });
 });

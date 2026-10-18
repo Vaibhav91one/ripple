@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countRows, invalidIds, validateAnswer, type Names } from "./validate";
+import { ASK_WHICH, changeChoices, countRows, invalidIds, needsSource, NOTHING_CONNECTED, validateAnswer, type Names } from "./validate";
 
 const names: Names = new Map([
   ["legal", { name: "Legal", kind: "Team" }],
@@ -29,7 +29,8 @@ describe("validateAnswer", () => {
   it("rejects no-impact on an empty traversal as not_in_graph", () => {
     const v = validateAnswer("No impact, it is safe.", [empty], names);
     expect(v).toMatchObject({ ok: false, outcome: { outcome: "not_in_graph" } });
-    expect(v.answer).toContain("does not mean no impact");
+    expect(v.answer).toBe(NOTHING_CONNECTED);
+    expect(v.answer).not.toMatch(/graph|unverified/i);
   });
   it("tells an unknown entity from an empty one", () => {
     const unknown = { tool: "who_knows", args: { systemId: "fax" }, rows: [{ found: false, knownSystems: [{ id: "api-v1" }] }] };
@@ -63,5 +64,34 @@ describe("invalidIds", () => {
   });
   it("accepts ids from the rows and from the input", () => {
     expect(invalidIds({ teamId: "legal", systemId: "s1" }, [hit], { systemId: "s1" })).toEqual([]);
+  });
+});
+
+describe("plain-language outcomes (#268)", () => {
+  it("shows the no-source notice for factual claims only", () => {
+    expect(needsSource("Hi! What can I look up for you?", [])).toBe(false);
+    expect(needsSource("Sure, happy to help.", [])).toBe(false);
+    expect(needsSource("Which change do you mean?", [hit])).toBe(false);
+    expect(needsSource("Legal owns it.", [hit])).toBe(true);
+    expect(needsSource("The sunset is Jan 31.", [])).toBe(true);
+  });
+  it("turns an unknown change into a clarification with the real changes as choices", () => {
+    const unknown = { tool: "ripple", args: { decisionId: "sunset" }, rows: [{ found: false, knownDecisions: [{ id: "d-1", title: "Sunset API v1" }, { id: "d-2", title: "Rotate keys" }] }] };
+    const v = validateAnswer("Sunset affects Legal.", [unknown], names);
+    expect(v.outcome.outcome).toBe("unknown_entity");
+    expect(v.answer).toBe(ASK_WHICH);
+    expect(v.answer).not.toMatch(/decision id/i);
+    expect(changeChoices([unknown], "Who is affected?")).toEqual([
+      { label: "Sunset API v1", prompt: 'About "Sunset API v1": Who is affected' },
+      { label: "Rotate keys", prompt: 'About "Rotate keys": Who is affected' },
+    ]);
+  });
+  it("reads choices from a list_decisions result", () => {
+    const list = { tool: "list_decisions", args: {}, rows: [{ id: "d-1", title: "Sunset API v1", status: "accepted" }] };
+    expect(changeChoices([list], "")).toEqual([{ label: "Sunset API v1", prompt: "What does Sunset API v1 touch?" }]);
+  });
+  it("words an unknown system without internals", () => {
+    const unknown = { tool: "who_knows", args: { systemId: "fax" }, rows: [{ found: false, knownSystems: [{ id: "api-v1" }] }] };
+    expect(validateAnswer("Fax is hit.", [unknown], names).answer).toBe('I don\'t recognise "fax", so I haven\'t looked anything up. Check the name and ask again.');
   });
 });

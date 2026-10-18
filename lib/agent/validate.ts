@@ -3,7 +3,7 @@
 // a flatter, correct answer beats a confident, wrong one. Pure functions; only entityNames touches the graph.
 import { roQuery, graphName, type Graph } from "../graph/client";
 import { load } from "../graph/queries";
-import type { Outcome } from "../schemas";
+import type { Outcome, Suggestion } from "../schemas";
 
 export type Row = Record<string, unknown>;
 /** One tool call of a run: what was asked, what came back (already redacted), how long it took. */
@@ -40,6 +40,27 @@ export function countRows(rows: Row[]): number {
   const r0 = real[0];
   if (real.length === 1 && Array.isArray(r0.teams)) return r0.teams.length + (Array.isArray(r0.conflicts) ? r0.conflicts.length : 0);
   return real.length;
+}
+
+export const ASK_WHICH = "Which change do you mean?";
+export const NOTHING_CONNECTED = "Nothing Ripple knows is connected to that yet. That doesn't mean it has no impact, only that it hasn't been recorded.";
+export const NO_SOURCE = "I couldn't find a source for that in what Ripple knows, so treat it as a guess.";
+
+/** The no-source notice is for factual claims only: a greeting, a question back or a clarification is not one. ponytail: a tool call or a digit counts as a claim; swap for a classifier if it misfires. */
+export function needsSource(answer: string, calls: Call[]): boolean {
+  const t = answer.replace(/\[\[[^\]]*\]\]/g, "").trim();
+  return !!t && !/\?\s*$/.test(t) && (calls.length > 0 || /\d/.test(t));
+}
+
+/** The changes the person could mean: a failed change lookup's `knownDecisions`, or a list_decisions result. Each becomes a chip that re-asks the question about that change. */
+export function changeChoices(calls: Call[], question: string, max = 6): Suggestion[] {
+  const seen = new Map<string, string>();
+  for (const r of calls.flatMap((c) => c.rows)) {
+    const list = Array.isArray(r.knownDecisions) ? (r.knownDecisions as Row[]) : r.kind === undefined && typeof r.id === "string" && typeof r.title === "string" && "status" in r ? [r] : [];
+    for (const d of list) if (typeof d.id === "string" && typeof d.title === "string") seen.set(d.id, d.title);
+  }
+  const q = question.replace(/[?.!\s]+$/, "");
+  return [...seen.values()].slice(0, max).map((title) => ({ label: title, prompt: q ? `About "${title}": ${q}` : `What does ${title} touch?` }));
 }
 
 /** The thing an unknown-id row says it could not resolve; undefined when every id resolved. */
@@ -81,13 +102,12 @@ function evidence(calls: Call[]): string {
 function build(calls: Call[], names: Names, oc: Outcome["outcome"]): { text: string; paths: string[] } {
   const label = (id: unknown) => (typeof id === "string" ? names.get(id)?.name ?? id : String(id));
   if (oc === "unknown_entity") {
+    const has = (k: string) => calls.some((c) => c.rows.some((r) => Array.isArray(r[k])));
+    if (has("knownDecisions") && !has("knownSystems")) return { text: ASK_WHICH, paths: [] }; // an unknown change id: the UI offers the real ones
     const what = calls.map(unresolved).filter(Boolean).join(", ");
-    return { text: `Ripple does not know "${what}", so no traversal ran. Check the name against your org graph and ask again.`, paths: [] };
+    return { text: `I don't recognise "${what}", so I haven't looked anything up. Check the name and ask again.`, paths: [] };
   }
-  if (oc !== "path") {
-    const what = calls.flatMap((c) => Object.values((c.args ?? {}) as Record<string, unknown>).filter((v): v is string => typeof v === "string")).join(", ");
-    return { text: `Ripple found nothing in the graph${what ? ` for ${what}` : ""}. That does not mean no impact: the dependency may not be modelled.`, paths: [] };
-  }
+  if (oc !== "path") return { text: NOTHING_CONNECTED, paths: [] };
   const teams = new Map<string, string[]>();
   const other: string[] = [];
   for (const r of calls.flatMap((c) => c.rows)) {
