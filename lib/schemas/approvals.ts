@@ -57,6 +57,8 @@ export type DecideResult = z.infer<typeof DecideResult>;
 
 export const AgentInfo = z.object({
   name: z.string(),
+  displayName: z.string(),
+  tagline: z.string(),
   group: z.string(),
   job: z.string(),
   team: z.string(),

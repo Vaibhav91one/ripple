@@ -26,6 +26,8 @@ export const ImpactReport = z.object({
 
 export const impact = defineAgent({
   name: "impact",
+  displayName: "Impact Analyst",
+  tagline: "Shows every team a change touches, with the evidence path behind each one.",
   group: "understand",
   team: "change-owner",
   model: "reasoning",

@@ -34,4 +34,7 @@ export const ROUTES: string[] = [
   "/connectors/csv",
   // Assistant at / (#237): ?agent= preselects an agent
   "/?agent=contract",
+  // agents gallery (#235)
+  "/agents?team=legal",
+  "/styleguide/agents",
 ];

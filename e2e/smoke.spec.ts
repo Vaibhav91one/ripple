@@ -59,3 +59,17 @@ test("New chat mid-stream drops the running answer instead of writing into the n
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByText(/Sources \(\d+\)/)).toHaveCount(0);
 });
+
+// Agents gallery (#235): ?team= filters the cards, search narrows them, the switch is read-only without an admin.
+test("/agents filters by team and search", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/agents?team=legal", { waitUntil: "networkidle" });
+  await expect(page.getByRole("button", { name: "Contract Sentinel" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Impact Analyst" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Legal", pressed: true })).toBeVisible();
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.getByRole("searchbox", { name: /search agents/i }).fill("tickets");
+  await expect(page.getByRole("button", { name: "Support Desk" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Contract Sentinel" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Chat with this agent" })).toHaveAttribute("href", "/?agent=support");
+});

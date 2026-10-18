@@ -598,12 +598,12 @@ vi.mock("../agent/registry", async () => {
   const { z } = await import("zod");
   const { defineAgent } = await import("../agent/define");
   const a = defineAgent({
-    name: "t-all", group: "understand", team: "eng", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
+    name: "t-all", displayName: "T", tagline: "t", group: "understand", team: "eng", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
     system: () => "test", tools: ["search", "ripple", "who_knows", "trace_decision", "bottleneck", "why_affected"], budget: { maxSteps: 4, maxTokens: 100_000 },
   });
   // t-legal reads every restricted kind, to prove an Ask hand-off (run_agent) reads as the caller
   const b = defineAgent({
-    name: "t-legal", group: "understand", team: "legal", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
+    name: "t-legal", displayName: "T", tagline: "t", group: "understand", team: "legal", model: "reasoning", writes: [], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }),
     system: () => "test", tools: ["contract_clauses", "deals_at_risk", "customer_usage", "contract_conflicts", "ripple"], budget: { maxSteps: 4, maxTokens: 100_000 },
   });
   return { agents: () => [a, b], agent: (n: string) => [a, b].find((x) => x.name === n) };

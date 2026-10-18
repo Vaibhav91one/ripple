@@ -25,6 +25,8 @@ export const ExposureReport = z.object({
 
 export const exposure = defineAgent({
   name: "exposure",
+  displayName: "Customer Exposure",
+  tagline: "Finds the customers, deals and renewals a change puts at risk.",
   group: "understand",
   team: "sales",
   model: "reasoning",

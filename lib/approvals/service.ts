@@ -80,7 +80,7 @@ export async function listAgents(orgId: string | null): Promise<AgentInfo[]> {
   return agents().map((a) => {
     const l = last.find((r) => r.agent === a.name);
     return {
-      name: a.name, group: a.group, job: jobOf(a), team: a.team, triggers: triggersOf(a.trigger), tools: [...a.tools], writes: [...a.writes],
+      name: a.name, displayName: a.displayName, tagline: a.tagline, group: a.group, job: jobOf(a), team: a.team, triggers: triggersOf(a.trigger), tools: [...a.tools], writes: [...a.writes],
       enabled: settings.find((s) => s.agent === a.name)?.enabled ?? true,
       autoApprove: Object.fromEntries(a.writes.map((k) => [k, policy.find((p) => p.actionKind === k)?.autoApprove ?? false])),
       lastRun: l ? { id: l.id, status: l.status, startedAt: l.startedAt.toISOString() } : null,

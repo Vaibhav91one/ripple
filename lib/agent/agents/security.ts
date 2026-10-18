@@ -18,6 +18,8 @@ export const SecurityReport = z.object({
 
 export const security = defineAgent({
   name: "security",
+  displayName: "Security Reviewer",
+  tagline: "Checks the controls a change touches and plans the evidence.",
   group: "act",
   team: "security",
   model: "reasoning",

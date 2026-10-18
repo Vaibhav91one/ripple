@@ -15,6 +15,8 @@ export const SupportReport = z.object({
 
 export const support = defineAgent({
   name: "support",
+  displayName: "Support Desk",
+  tagline: "Finds the open tickets a change touches and drafts the reply.",
   group: "act",
   team: "support",
   model: "reasoning",

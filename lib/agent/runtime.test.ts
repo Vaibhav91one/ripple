@@ -11,7 +11,7 @@ vi.mock("../queue", () => ({ enqueue }));
 // Two test agents instead of the real registry: a narrow allowlist and a tiny token budget.
 vi.mock("./registry", async () => {
   const { defineAgent } = await import("./define");
-  const base = { group: "understand", team: "eng", model: "reasoning", writes: [] as never[], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }), system: () => "test" } as const;
+  const base = { displayName: "T", tagline: "t", group: "understand", team: "eng", model: "reasoning", writes: [] as never[], trigger: {}, input: z.object({}), output: z.object({ answer: z.string() }), system: () => "test" } as const;
   const list = [
     defineAgent({ ...base, name: "t-who", tools: ["who_knows"], budget: { maxSteps: 4, maxTokens: 10_000 } }),
     defineAgent({ ...base, name: "t-ids", tools: ["who_knows"], output: z.object({ answer: z.string(), teamId: z.string() }), budget: { maxSteps: 4, maxTokens: 10_000 } }),
