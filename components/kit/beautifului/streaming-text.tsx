@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 const WORD_MS = 55;
 const HOLD_MS = 3400;
 
-export type SourceRef = { name: string; domain: string; /** Full label for title/aria when `domain` is a short display form. */ title?: string; href?: string; onClick?: () => void };
+export type SourceRef = { name: string; domain: string; /** Citation number: renders a numbered marker instead of the name chip. */ n?: number; /** Full label for title/aria when `domain` is a short display form. */ title?: string; href?: string; onClick?: () => void };
 export type Token = { text: string; cite?: SourceRef };
 
 const SOURCES = [
@@ -40,6 +40,19 @@ const FOLLOW_UPS = [
 
 
 function SourceChip({ source }: { source: SourceRef }) {
+  if (source.n !== undefined)
+    return (
+      <button
+        type="button"
+        title={source.title ?? source.name}
+        aria-label={`Source ${source.n}: ${source.title ?? source.name}`}
+        onClick={source.onClick}
+        className="mr-1 inline-grid h-[18px] min-w-[18px] translate-y-[-2px] place-items-center rounded-full bg-raised px-1 align-middle font-mono text-[10.5px] font-medium text-body shadow-[var(--kit-shadow-hairline)] transition-colors duration-150 hover:bg-ripple-soft hover:text-ripple"
+        style={{ animation: "pop-in 250ms cubic-bezier(0.23,1,0.32,1) both" }}
+      >
+        {source.n}
+      </button>
+    );
   return (
     <a
       href={source.href ?? "#"}
@@ -77,6 +90,9 @@ export default function StreamingText({
   followUps = FOLLOW_UPS,
   streaming,
   showActions = true,
+  onCopy,
+  onRetry,
+  textClassName = "text-[13px] leading-relaxed",
 }: {
   tokens?: Token[];
   sources?: SourceRef[];
@@ -84,6 +100,10 @@ export default function StreamingText({
   /** Controlled mode: tokens arrive from outside; no replay loop. */
   streaming?: boolean;
   showActions?: boolean;
+  /** Real actions: when either is set, the row shows only Copy and Regenerate. */
+  onCopy?: () => void;
+  onRetry?: () => void;
+  textClassName?: string;
 }) {
   const controlled = streaming !== undefined;
   const [replay, setCount] = useState(0);
@@ -102,7 +122,7 @@ export default function StreamingText({
 
   return (
     <div className={`w-full ${controlled ? "" : "min-h-[15.5rem] max-w-95"}`}>
-      <p className="text-[13px] leading-relaxed text-strong">
+      <p className={`${textClassName} text-strong`}>
         {tokens.slice(0, count).map((token, i) =>
           token.cite ? (
             <SourceChip key={i} source={token.cite} />
@@ -124,18 +144,20 @@ export default function StreamingText({
         )}
       </p>
 
-      {showActions && sources.length > 0 && (
+      {showActions && (sources.length > 0 || onCopy || onRetry) && (
       <>
       {/* action icons row */}
       <div
         className="mt-2 flex items-center gap-0.5 transition-opacity duration-400"
         style={{ opacity: done ? 1 : 0, pointerEvents: done ? "auto" : "none" }}
       >
-        {ACTION_ICONS.map((icon, i) => (
+        {(onCopy || onRetry ? ([[ACTION_ICONS[0], "Copy", onCopy], [ACTION_ICONS[1], "Regenerate", onRetry]] as const).filter((a) => a[2]) : ACTION_ICONS.map((icon) => [icon, "Action", undefined] as const)).map(([icon, label, act], i) => (
           <button
             key={i}
             type="button"
-            aria-label="Action"
+            aria-label={label}
+            title={label === "Action" ? undefined : label}
+            onClick={act}
             className="flex size-6 items-center justify-center rounded-[6px] text-faint
               transition-colors duration-100 hover:bg-overlay hover:text-body"
           >
@@ -144,7 +166,7 @@ export default function StreamingText({
             </svg>
           </button>
         ))}
-        <button
+        {sources.length > 0 && <button
           type="button"
           aria-expanded={sourcesOpen}
           onClick={() => setSourcesOpen((current) => !current)}
@@ -152,11 +174,11 @@ export default function StreamingText({
         >
           <span className="flex -space-x-1">
             {sources.map((source) => (
-              <span key={source.domain} aria-hidden className="grid size-3.5 place-items-center rounded-full bg-ripple-soft text-[8px] font-bold text-ripple shadow-[0_0_0_1.5px_var(--page)]">{source.name[0]}</span>
+              <span key={source.domain} aria-hidden className="grid size-3.5 place-items-center rounded-full bg-ripple-soft text-[8px] font-bold text-ripple shadow-[0_0_0_1.5px_var(--page)]">{source.n ?? source.name[0]}</span>
             ))}
           </span>
-          <span className="text-[12px] text-body">{sources.length} {sources.length === 1 ? "source" : "sources"}</span>
-        </button>
+          <span className="text-[12px] text-body">Sources ({sources.length})</span>
+        </button>}
       </div>
 
       <div
@@ -183,7 +205,7 @@ export default function StreamingText({
                 }}
                 className="flex items-center gap-2 rounded-[6px] px-1.5 py-1 text-[12px] text-body transition-colors duration-150 hover:bg-raised hover:text-strong"
               >
-                <span aria-hidden className="grid size-4 place-items-center rounded-[4px] bg-ripple-soft text-[9px] font-bold text-ripple">{source.name[0]}</span>
+                <span aria-hidden className="grid size-4 place-items-center rounded-[4px] bg-ripple-soft text-[9px] font-bold text-ripple">{source.n ?? source.name[0]}</span>
                 <span className="animated-underline">{source.name}</span>
                 <span className="ml-auto font-mono text-[10.5px] text-faint">{source.domain}</span>
               </a>

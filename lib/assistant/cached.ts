@@ -1,5 +1,6 @@
 // Cached answers for the starter prompts and agent samples (the demo graph is fixed), plus the "budget used up" tour.
 // Every quote is checked against the seed artifact at import time, like lib/mock/ledgerly.ts.
+import { load } from "../graph/queries";
 import { artifacts, askEvents } from "../mock/ledgerly";
 import type { Source, StreamEvent } from "../schemas";
 import { AGENT_SAMPLES, normPrompt, STARTER_PROMPTS } from "./prompts";
@@ -18,10 +19,21 @@ const ticket = src("art-tkt-1", "429 errors from API v1");
 const dealMsg = src("art-msg-deal-1", "API v1 stays available through 2027");
 
 type Part = string | Source[];
+/** One graph query as it ran on the demo graph: the real Cypher file, so the chat's "Cypher used" chip shows what the live tool runs. */
+const ran = (tool: string, query: string, rows: Record<string, unknown>[], ms: number): StreamEvent[] => [
+  { type: "tool_call", tool, args: { decisionId: "d-1" }, cypher: load(query).text },
+  { type: "tool_result", tool, rows, sourceIds: [], ms, rowCount: rows.length },
+];
+const d1Counts = { teamsAffected: 5, notTold: 3, conflicts: 1, customers: 40, tickets: 12, deals: 3, contracts: 2, arrAtRisk: 180000 };
+const rippleRun = ran("ripple", "ripple", [{ decision: { id: "d-1", title: "Sunset API v1 on Jan 31" }, counts: d1Counts, gap: ["security", "legal", "devrel"] }], 41);
+const conflictRun = ran("contract_conflicts", "conflicts-list", [{ id: "conf-d-1-api-v1", severity: "high", status: "open", decisionId: "d-1", contractIds: ["ctr-1", "ctr-2"] }], 18);
+const dealsRun = ran("deals_at_risk", "deals-at-risk", [{ decisionId: "d-1", deals: 3 }], 23);
+
 /** Text and citations in order, closed with a `done`. */
-function answer(parts: Part[], entities: string[], rowCount: number): StreamEvent[] {
+function answer(parts: Part[], entities: string[], rowCount: number, tools: StreamEvent[] = []): StreamEvent[] {
   let n = 0;
   return [
+    ...tools,
     ...parts.map((p): StreamEvent => (typeof p === "string" ? { type: "text_delta", text: p } : { type: "citation", claimId: `claim-${++n}`, sources: p })),
     { type: "done", outcome: { outcome: "path", entities, paths: [], rowCount } },
   ];
@@ -29,19 +41,19 @@ function answer(parts: Part[], entities: string[], rowCount: number): StreamEven
 
 const impact = answer(
   ["Sunsetting API v1 touches 5 teams, 40 customers, 12 open tickets, 3 open deals and 2 contracts. ", [sunset], "Eng, Support and Sales have acknowledged it; Legal, Security and DevRel have not. ", [authDesign]],
-  ["API v1", "Legal", "Security", "DevRel"], 6,
+  ["API v1", "Legal", "Security", "DevRel"], 6, rippleRun,
 );
 const gap = answer(
   ["Three affected teams have not been told: Legal (2 contracts guarantee v1), Security (auth-service verifies v1 tokens) and DevRel (public docs and SDKs default to /v1). ", [northwind, authDesign, sdkDocs]],
-  ["Legal", "Security", "DevRel"], 3,
+  ["Legal", "Security", "DevRel"], 3, rippleRun,
 );
 const conflict = answer(
   ["Yes, one conflict is open. The v1 shutdown on Jan 31, 2027 contradicts two MSAs that guarantee v1 until 2027-06-30: Northwind Capital and Halden Bank. ", [sunset, northwind, halden]],
-  ["Northwind Capital", "Halden Bank"], 2,
+  ["Northwind Capital", "Halden Bank"], 2, conflictRun,
 );
 const exposure = answer(
   ["Northwind Capital and Halden Bank carry the most risk: their contracts guarantee v1 until 2027-06-30, about $180,000 of ARR. Three open deals also promise v1 through 2027. ", [northwind, halden, dealMsg]],
-  ["Northwind Capital", "Halden Bank"], 5,
+  ["Northwind Capital", "Halden Bank"], 5, dealsRun,
 );
 const access = answer(
   ["auth-service verifies v1 tokens, so every v1 credential stops working when v1 shuts down. Security has not been told, so token and key rotation is not planned yet. ", [authDesign, sunset]],

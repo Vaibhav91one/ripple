@@ -1,5 +1,5 @@
 // Blast Radius mark: a centre dot and two full rings. The outer ring has one short break, drawn in amber (the team that wasn't told).
-// Geometry (viewBox 32) is shared with the landing illustration (RippleHero) and mirrored in app/icon.svg. Colours come from tokens.
+// Geometry (viewBox 32) is mirrored in app/icon.svg. Colours come from tokens.
 export const MARK = {
   c: 16,
   dotR: 3,
