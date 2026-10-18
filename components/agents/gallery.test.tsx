@@ -6,14 +6,14 @@ import { describe, expect, it } from "vitest";
 import { agents } from "@/lib/agent/registry";
 import type { AgentInfo } from "@/lib/schemas";
 import { AGENT_ART } from "./art";
-import { agentStatus, AgentGrid, filterAgents, isTeamFilter, runWords } from "./gallery";
+import { agentStatus, AgentGrid, filterAgents, isTeamFilter, parseTeam, runTone, runWords } from "./gallery";
 
 const info = (a: ReturnType<typeof agents>[number], over: Partial<AgentInfo> = {}): AgentInfo => ({
   name: a.name, displayName: a.displayName, tagline: a.tagline, group: a.group, job: "", team: a.team, triggers: [], tools: [], writes: [],
   enabled: true, autoApprove: {}, lastRun: null, runs24h: 0, ...over,
 });
 const all = agents().map((a) => info(a));
-const render = (list: AgentInfo[]) => renderToStaticMarkup(createElement(AgentGrid, { agents: list, now: 0, readOnly: true, onOpen: () => {}, onToggle: () => {} }));
+const render = (list: AgentInfo[]) => renderToStaticMarkup(createElement(AgentGrid, { agents: list, now: 0, lock: "Read-only demo", busy: null, onOpen: () => {}, onToggle: () => {} }));
 
 describe("agent meta", () => {
   it("every registered agent has a display name, tagline, team and illustration", () => {
@@ -64,11 +64,23 @@ describe("gallery filter", () => {
     expect(html).toContain("disabled");
   });
 
-  it("is neutral when idle; amber only when a run needs a look", () => {
-    expect(agentStatus({ enabled: true, lastRun: null }).tone).toBe("neutral");
-    expect(agentStatus({ enabled: true, lastRun: { id: "r", status: "done", startedAt: "" } }).tone).toBe("neutral");
-    expect(agentStatus({ enabled: false, lastRun: { id: "r", status: "failed", startedAt: "" } })).toEqual({ tone: "neutral", label: "Off" });
-    expect(agentStatus({ enabled: true, lastRun: { id: "r", status: "failed", startedAt: "" } }).tone).toBe("gap");
+  it("reads ?team= case-insensitively and flags unknown teams", () => {
+    expect(parseTeam("Legal")).toEqual({ team: "legal", unknown: false });
+    expect(parseTeam("eng")).toEqual({ team: null, unknown: true });
+    expect(parseTeam(null)).toEqual({ team: null, unknown: false });
+  });
+
+  it("one status rule: neutral idle, amber for over budget and recent failures only", () => {
+    const H = 3_600_000, now = 10 * 24 * H, run = (status: string, hAgo: number) => ({ id: "r", status, startedAt: new Date(now - hAgo * H).toISOString() });
+    expect(agentStatus({ enabled: true, lastRun: null }, now).tone).toBe("neutral");
+    expect(agentStatus({ enabled: true, lastRun: run("done", 1) }, now).tone).toBe("neutral");
+    expect(agentStatus({ enabled: false, lastRun: run("failed", 1) }, now)).toEqual({ tone: "neutral", label: "Off" });
+    expect(agentStatus({ enabled: true, lastRun: run("failed", 2) }, now)).toEqual({ tone: "gap", label: "Needs a look" });
+    expect(agentStatus({ enabled: true, lastRun: run("failed", 72) }, now)).toEqual({ tone: "neutral", label: "Last run failed 3d ago" });
+    expect(agentStatus({ enabled: true, lastRun: run("budget", 200) }, now)).toEqual({ tone: "gap", label: "Over budget" });
+    expect(runTone("budget", run("budget", 200).startedAt, now)).toBe("gap");
+    expect(runTone("failed", run("failed", 30).startedAt, now)).toBe("neutral");
+    expect(runTone("running", run("running", 0).startedAt, now)).toBe("ripple");
     expect(runWords({ lastRun: null, runs24h: 0 }, 0)).toBe("Hasn't run yet · no runs in the last day");
     expect(runWords({ lastRun: { id: "r", status: "done", startedAt: new Date(0).toISOString() }, runs24h: 3 }, 7_200_000)).toBe("Last ran 2h ago · 3 runs in the last day");
   });

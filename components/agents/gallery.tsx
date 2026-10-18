@@ -12,6 +12,14 @@ export const TEAM_FILTERS = [
 ] as const;
 export type TeamFilter = (typeof TEAM_FILTERS)[number][0];
 export const isTeamFilter = (t: string | null | undefined): t is TeamFilter => TEAM_FILTERS.some(([id]) => id === t);
+/** ?team= from the URL, case-insensitive. `unknown` is true when a value was given that matches no team (the gallery then shows all). */
+export function parseTeam(raw: string | null): { team: TeamFilter | null; unknown: boolean } {
+  const t = raw?.trim().toLowerCase() || null;
+  return isTeamFilter(t) ? { team: t, unknown: false } : { team: null, unknown: t !== null };
+}
+
+/** Tooltip for a locked switch, by the reason /api/agents gives. */
+export const LOCK_REASON = { demo: "Read-only demo", db: "Needs a database", role: "Only admins can change this" } as const;
 
 /** The Impact Analyst works for whoever owns a change, so it sits under Everyone. */
 const filterOf = (team: string) => (team === "change-owner" ? "everyone" : team);
@@ -30,13 +38,28 @@ export function filterAgents<T extends Pick<AgentInfo, "name" | "displayName" | 
   }).sort((a, b) => rank(a.name) - rank(b.name));
 }
 
-/** Neutral unless something is really happening: running is teal, a failed or over-budget last run is amber. */
-export function agentStatus(a: Pick<AgentInfo, "enabled" | "lastRun">): { tone: StatusTone; label: string } {
+const DAY = 86_400_000;
+
+/**
+ * The one status rule for runs (cards and drawer). Running is teal. Over budget is amber (attention).
+ * A failure is amber only within the last day; an older one is neutral history. Everything else is neutral.
+ */
+export function runTone(status: string, startedAt: string, now: number): StatusTone {
+  if (status === "running") return "ripple";
+  if (status === "budget") return "gap";
+  if (status === "failed") return now - Date.parse(startedAt) < DAY ? "gap" : "neutral";
+  return "neutral";
+}
+
+export function agentStatus(a: Pick<AgentInfo, "enabled" | "lastRun">, now: number): { tone: StatusTone; label: string } {
   if (!a.enabled) return { tone: "neutral", label: "Off" };
-  const s = a.lastRun?.status;
-  if (s === "running") return { tone: "ripple", label: "Running" };
-  if (s === "failed" || s === "budget") return { tone: "gap", label: "Needs a look" };
-  return { tone: "neutral", label: "Idle" };
+  const l = a.lastRun;
+  if (!l) return { tone: "neutral", label: "Idle" };
+  const tone = runTone(l.status, l.startedAt, now);
+  if (l.status === "running") return { tone, label: "Running" };
+  if (l.status === "budget") return { tone, label: "Over budget" };
+  if (l.status === "failed") return { tone, label: tone === "gap" ? "Needs a look" : `Last run failed ${ago(l.startedAt, now)}` };
+  return { tone, label: "Idle" };
 }
 
 export function runWords(a: Pick<AgentInfo, "lastRun" | "runs24h">, now: number): string {
@@ -45,29 +68,26 @@ export function runWords(a: Pick<AgentInfo, "lastRun" | "runs24h">, now: number)
   return `${last} · ${n === 0 ? "no runs" : n === 1 ? "1 run" : `${n} runs`} in the last day`;
 }
 
-export function Switch({ on, label, disabled, onChange }: { on: boolean; label: string; disabled?: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)}
-      className={`relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50 ${on ? "bg-strong" : "bg-hairline"}`}>
-      <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-surface shadow-sm transition-transform ${on ? "translate-x-4" : ""}`} />
-    </button>
-  );
-}
+/** `lock` is the tooltip when editing is not allowed (a disabled button gets no hover events, so the title sits on the wrapper). */
+export type Lock = string | null;
 
-/** Switch with the read-only reason as a tooltip (a disabled button gets no hover events, so the title sits on the wrapper). */
-export function AgentSwitch({ a, readOnly, onToggle }: { a: AgentInfo; readOnly: boolean; onToggle: (on: boolean) => void }) {
+/** Busy switches stay focusable (aria-busy) and ignore clicks, so keyboard focus survives a pending save. */
+export function Switch({ on, label, lock, busy, onChange }: { on: boolean; label: string; lock: Lock; busy?: boolean; onChange: (v: boolean) => void }) {
   return (
-    <span title={readOnly ? "Read-only demo" : undefined} className="inline-flex">
-      <Switch on={a.enabled} label={`${a.displayName} on`} disabled={readOnly} onChange={onToggle} />
+    <span title={lock ?? undefined} className="inline-flex">
+      <button type="button" role="switch" aria-checked={on} aria-label={label} aria-busy={busy || undefined} disabled={!!lock} onClick={() => !busy && onChange(!on)}
+        className={`relative h-5 w-9 shrink-0 rounded-full outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70 ${on ? "bg-strong" : "bg-hairline"}`}>
+        <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-surface shadow-sm transition-transform ${on ? "translate-x-4" : ""}`} />
+      </button>
     </span>
   );
 }
 
 export const chatBtn = "inline-flex h-9 items-center justify-center gap-1.5 rounded-control border border-hairline bg-surface px-3 text-sm font-medium text-strong outline-none hover:bg-raised focus-visible:outline-2 focus-visible:outline-ripple";
 
-export function AgentTile({ a, now, readOnly, onOpen, onToggle }: { a: AgentInfo; now: number; readOnly: boolean; onOpen: () => void; onToggle: (on: boolean) => void }) {
+export function AgentTile({ a, now, lock, busy, onOpen, onToggle }: { a: AgentInfo; now: number; lock: Lock; busy: boolean; onOpen: () => void; onToggle: (on: boolean) => void }) {
   const Art = AGENT_ART[a.name];
-  const st = agentStatus(a);
+  const st = agentStatus(a, now);
   return (
     <li className="flex min-w-0 gap-4 rounded-card border border-hairline bg-surface p-3 sm:flex-col sm:pb-4">
       {Art && <Art className="w-[104px] shrink-0 self-start sm:w-full" />}
@@ -78,7 +98,7 @@ export function AgentTile({ a, now, readOnly, onOpen, onToggle }: { a: AgentInfo
               {a.displayName}
             </button>
           </h3>
-          <AgentSwitch a={a} readOnly={readOnly} onToggle={onToggle} />
+          <Switch on={a.enabled} label={`${a.displayName} on`} lock={lock} busy={busy} onChange={onToggle} />
         </div>
         <p className="mt-1 text-sm leading-5 text-body">{a.tagline}</p>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -94,10 +114,10 @@ export function AgentTile({ a, now, readOnly, onOpen, onToggle }: { a: AgentInfo
   );
 }
 
-export function AgentGrid({ agents, now, readOnly, onOpen, onToggle }: { agents: AgentInfo[]; now: number; readOnly: boolean; onOpen: (name: string) => void; onToggle: (name: string, on: boolean) => void }) {
+export function AgentGrid({ agents, now, lock, busy, onOpen, onToggle }: { agents: AgentInfo[]; now: number; lock: Lock; busy: string | null; onOpen: (name: string) => void; onToggle: (name: string, on: boolean) => void }) {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {agents.map((a) => <AgentTile key={a.name} a={a} now={now} readOnly={readOnly} onOpen={() => onOpen(a.name)} onToggle={(on) => onToggle(a.name, on)} />)}
+      {agents.map((a) => <AgentTile key={a.name} a={a} now={now} lock={lock} busy={busy === a.name} onOpen={() => onOpen(a.name)} onToggle={(on) => onToggle(a.name, on)} />)}
     </ul>
   );
 }
