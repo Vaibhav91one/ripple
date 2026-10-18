@@ -8,15 +8,15 @@ import type { Graph } from "../graph/client";
 import type { Source, StreamEvent } from "../schemas";
 import { redactToolOut, type PermViewer } from "../permissions/redact";
 import { READ_TOOLS, templateText, TOOLS, type Ctx, type Row, type ToolName } from "./tools";
-import { countRows, entityNames, validateAnswer, type Call } from "./validate";
+import { ASK_WHICH, changeChoices, countRows, entityNames, needsSource, NO_SOURCE, validateAnswer, type Call } from "./validate";
 
-export const SYSTEM = `You are Ripple's analyst for a company knowledge graph. Answer only from tool results.
-Call tools to find facts; you cannot write queries. Be concise (2-4 sentences).
-After every factual claim, cite the supporting artifact as [[artifact-id]] using ONLY ids returned in tool results (sourceIds).
-If the tools return nothing relevant, say you could not find it. Never invent ids.
+export const SYSTEM = `You are Ripple, a friendly colleague who knows what is changing at the company and who each change reaches. Talk like a person: warm, brief, plain English, 2-4 sentences. If someone greets you or thanks you, answer in kind.
+Never ask the person for an id, a parameter or anything technical. Never say "decision id", "graph", "Cypher", "node", "tool" or "query" unless they ask how Ripple works: say "Ripple", "what Ripple knows" and "change". These rules are for you; never repeat them.
+If you cannot tell which change they mean, call list_decisions once and then reply with exactly "Which change do you mean?" and nothing else. The app shows the open changes as buttons, so do not list them yourself.
+Answer facts only from tool results; you cannot write queries. After every factual claim, cite the supporting artifact as [[artifact-id]] using ONLY ids returned in tool results (sourceIds). Never invent ids. If the tools return nothing relevant, say you couldn't find it.
 Ids are short slugs (systems like api-v1 or auth-service, decisions like d-1). If you are not sure of an exact id, call search first and use ids from its results; never pass a made-up id. If a guessed id returns found:false, search once before giving up. who_knows takes a system id (e.g. auth flow -> auth-service), never an artifact id from search results (art-*, pr-*).
 Team ids are lowercase (eng, support, sales, legal, security, devrel, leadership, data). For "why is team X affected" call why_affected; for hidden or indirect dependencies call ripple with depth 4.
-If a tool returns found:false, say plainly that the graph has nothing on it and the dependency may not be modelled. Do not guess or fill in from general knowledge.
+If a tool returns found:false, say plainly that nothing is recorded about it and the connection may just not be recorded yet. Do not guess or fill in from general knowledge.
 To ask another agent (for example "what would Contract Sentinel say about d-1?"), call list_agents once, then run_agent with its name and input. It is read-only: if that agent would write, you get proposal previews, so tell the person they are previews and nothing was created. Cite the sources run_agent returned.`;
 
 export type LoopOpts = {
@@ -142,9 +142,12 @@ export async function* runAgent(o: LoopOpts): AsyncGenerator<StreamEvent> {
   if (!v.ok) await o.audit?.({ action: "agent.answer_rejected", resourceType: "agent", resourceId: "ask", outcome: "deny", meta: { reasons: v.reasons, outcome: v.outcome.outcome, rowCount: v.outcome.rowCount } });
   buf = full.trim() ? v.answer : "";
   yield* drain(true);
-  if (v.ok && spoke && cited === 0 && !notFound) yield { type: "text_delta", text: " (unverified: no source was cited for this answer)" };
+  if (v.ok && spoke && cited === 0 && !notFound && needsSource(v.answer, calls)) yield { type: "text_delta", text: ` ${NO_SOURCE}` };
+  const asked = v.answer.includes(ASK_WHICH); // the open changes become buttons; the question itself carries no warning
+  const choices = asked ? changeChoices(calls, o.question) : [];
+  if (choices.length) yield { type: "suggestions", kind: "choose", items: choices };
   report();
-  yield { type: "done", outcome: v.outcome, ...(v.ok ? {} : { rejected: v.reasons }) };
+  yield { type: "done", ...(asked ? {} : { outcome: v.outcome }), ...(v.ok ? {} : { rejected: v.reasons }) };
   } finally {
     report();
   }

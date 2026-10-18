@@ -120,3 +120,17 @@ describe("turnsFromMessages", () => {
     expect(turns.map((t) => [t.question, answerText(t), t.done])).toEqual([["q1", "Hi[1]", true], ["q2", "plain answer", true]]);
   });
 });
+
+describe("suggestions (#268)", () => {
+  it("keeps chips on the turn, with no outcome, and survives a save and load", () => {
+    const t = run([
+      { type: "text_delta", text: "Which change do you mean?" },
+      { type: "suggestions", kind: "choose", items: [{ label: "Sunset API v1", prompt: 'About "Sunset API v1": Who is affected' }] },
+      { type: "done" },
+    ]);
+    expect(t).toMatchObject({ done: true, outcome: undefined, suggestions: { kind: "choose", items: [{ label: "Sunset API v1" }] } });
+    const mem = new Map<string, string>();
+    saveThreads([{ id: "a", title: "t", updatedAt: 1, turns: [t] }], { setItem: (k, v) => void mem.set(k, v) });
+    expect(loadThreads({ getItem: (k) => mem.get(k) ?? null })[0].turns[0].suggestions?.items[0].label).toBe("Sunset API v1");
+  });
+});

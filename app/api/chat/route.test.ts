@@ -47,8 +47,27 @@ describe("POST /api/chat", () => {
     expect(meta(cached)).toMatchObject({ cached: true, exhausted: false, persist: false, remaining: null });
     expect(cached.slice(1)).toEqual(askEvents);
     const other = await events(await post({ messages: [user("What is for lunch?")] }));
-    expect(text(other)).toContain("No model key");
+    expect(text(other)).toContain("no AI model is connected");
     expect(other.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("answers small talk with a reply and suggestions: no model, tools, citations or warning", async () => {
+    for (const hi of ["hi", "Thanks!", "what can you do?"]) {
+      const ev = await events(await post({ messages: [user(hi)] }));
+      expect(meta(ev)).toMatchObject({ cached: true, exhausted: false });
+      expect(text(ev).length).toBeGreaterThan(10);
+      expect(ev.find((e) => e.type === "suggestions")).toMatchObject({ kind: "help", items: expect.arrayContaining([expect.objectContaining({ href: "/graph" })]) });
+      expect(ev.some((e) => e.type === "citation" || e.type === "tool_call")).toBe(false);
+      expect(text(ev)).not.toMatch(/unverified|decision id|graph/i);
+      expect(ev.at(-1)).toEqual({ type: "done" });
+    }
+    expect(seen).toHaveLength(0);
+  });
+
+  it("sends a greeting plus a real question to the agent", async () => {
+    model = {};
+    await events(await post({ messages: [user("hi, who isn't told about v1?")] }));
+    expect(seen).toHaveLength(1);
   });
 
   it("sets the visitor cookie once", async () => {
@@ -140,7 +159,7 @@ describe("chat hardening", () => {
   it("an agent only gets its own canned sample; the agent param is case-insensitive", async () => {
     const ev = await events(await post({ messages: [user("Who knows the v1 auth flow?")], agent: "Support" }));
     expect(meta(ev)).toMatchObject({ cached: false, agent: "support" });
-    expect(text(ev)).toContain("No model key");
+    expect(text(ev)).toContain("no AI model is connected");
   });
   it("real orgs (local, Clerk) get no quota, no canned answers and no tour", async () => {
     isDemo = false;

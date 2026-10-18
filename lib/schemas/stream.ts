@@ -12,6 +12,10 @@ export const Outcome = z.object({
 });
 export type Outcome = z.infer<typeof Outcome>;
 
+/** A chip under a reply: `prompt` is sent as the next message, `href` navigates. */
+export const Suggestion = z.object({ label: z.string(), prompt: z.string().optional(), href: z.string().optional() });
+export type Suggestion = z.infer<typeof Suggestion>;
+
 export const StreamEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("tool_call"),
@@ -49,6 +53,8 @@ export const StreamEvent = z.discriminatedUnion("type", [
     conversationId: z.string().optional(),
     agent: z.string().optional(),
   }),
+  /** Clickable follow-ups: `help` after small talk (the client swaps in the real open changes), `choose` = "Which change do you mean?". */
+  z.object({ type: z.literal("suggestions"), kind: z.enum(["help", "choose"]), items: z.array(Suggestion) }),
   z.object({ type: z.literal("done"), outcome: Outcome.optional(), /** Why validation replaced the model's answer, when it did. */ rejected: z.array(z.string()).optional() }),
 ]);
 

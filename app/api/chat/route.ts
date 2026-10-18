@@ -6,6 +6,7 @@ import { runAgent } from "@/lib/agent/loop";
 import { READ_TOOLS, type Ctx } from "@/lib/agent/tools";
 import { sessionViewer } from "@/lib/auth";
 import { cachedAnswer, tour } from "@/lib/assistant/cached";
+import { classify, helpChips, reply } from "@/lib/assistant/smalltalk";
 import { env } from "@/lib/env";
 import { pickModel } from "@/lib/llm";
 import type { StreamEvent } from "@/lib/schemas";
@@ -81,7 +82,10 @@ export async function POST(req: Request): Promise<Response> {
   const store = owner ? await import("@/lib/assistant/store") : null;
 
   // --- decide cached / live / exhausted before streaming, so the first event can carry the budget. Quota, token cap and canned answers are the public demo's; real orgs (Clerk, local) are never limited or given canned answers. ---
-  const cached = demo ? cachedAnswer(question, def?.name) : undefined;
+  const talk = def ? undefined : classify(question); // "hi", "thanks", "what can you do?": a reply with no model, tools, citations or quota
+  const cached: StreamEvent[] | undefined = talk
+    ? [{ type: "text_delta", text: reply(talk) }, { type: "suggestions", kind: "help", items: helpChips() }, { type: "done" }]
+    : demo ? cachedAnswer(question, def?.name) : undefined;
   const model = cached ? null : pickModel("agent");
   let quota: Quota = { ok: true, remaining: null, limit: null };
   let exhausted = false;
@@ -106,7 +110,8 @@ export async function POST(req: Request): Promise<Response> {
     if (cached) return yield* cached;
     if (exhausted) return yield* tour();
     if (!model) {
-      yield { type: "text_delta", text: "No model key is configured on this server, so only the cached prompts work. Try one of the starter prompts." };
+      yield { type: "text_delta", text: "I can only answer the suggested questions right now, because no AI model is connected to this server. Try one of these." };
+      yield { type: "suggestions", kind: "help", items: helpChips() };
       return yield { type: "done" };
     }
     try {

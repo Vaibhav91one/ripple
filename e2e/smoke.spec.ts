@@ -42,6 +42,19 @@ test("the Assistant answers a starter prompt with sources and an inline card", a
   await expect(page.getByText("Cypher used · 1 query")).toBeVisible();
 });
 
+// #268: small talk is answered without a model, so it needs no LLM key either.
+test("saying hi gets a friendly reply and chips, with no warning", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+  const box = page.getByRole("combobox").first();
+  await box.fill("hi");
+  await box.press("Enter");
+  await expect(page.getByText(/I'm Ripple|Good to see you|Where shall we start/)).toBeVisible({ timeout: 15_000 });
+  const chips = page.getByRole("list", { name: "Suggestions" });
+  await expect(chips.getByRole("button", { name: "Any contract conflicts?" })).toBeVisible();
+  await expect(chips.getByRole("button", { name: "Show the graph" })).toBeVisible();
+  await expect(page.getByText(/unverified|decision id|Not in the graph|Cypher used/i)).toHaveCount(0);
+});
+
 test("?agent= preselects the agent and the old ?ask=1 drawer lands on the Assistant", async ({ page }) => {
   await page.goto("/?agent=contract", { waitUntil: "networkidle" });
   await expect(page.getByRole("button", { name: "Stop asking Contract Sentinel" })).toBeVisible();

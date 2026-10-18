@@ -2,7 +2,7 @@
 import { addText } from "@/components/ask/parseStream";
 import { z } from "zod";
 import { STARTER_PROMPTS } from "@/lib/assistant/prompts";
-import { OUTCOMES, type Outcome, type StreamEvent } from "@/lib/schemas";
+import { OUTCOMES, Suggestion, type Outcome, type StreamEvent } from "@/lib/schemas";
 
 /** A numbered source: one number per artifact, in first-cited order. */
 export type Cite = { n: number; artifactId: string; quote: string };
@@ -20,6 +20,8 @@ export type Turn = {
   glue?: boolean;
   outcome?: Outcome["outcome"];
   rejected?: boolean;
+  /** Chips under the reply (small talk / help, or "Which change do you mean?"). */
+  suggestions?: { kind: "help" | "choose"; items: Suggestion[] };
   cached?: boolean;
   exhausted?: boolean;
   error?: string;
@@ -57,6 +59,8 @@ export function applyEvent(t: Turn, e: StreamEvent): Turn {
       }
       return { ...t, sources, tokens: [...t.tokens, ...marks.map((n) => ({ text: "", cite: n }))], glue: false };
     }
+    case "suggestions":
+      return { ...t, suggestions: { kind: e.kind, items: e.items } };
     case "done":
       return { ...t, done: true, outcome: e.outcome?.outcome, rejected: !!e.rejected?.length };
   }
@@ -140,6 +144,7 @@ const ThreadSchema = z.object({
     glue: z.boolean().optional(),
     outcome: z.enum(OUTCOMES).optional(),
     rejected: z.boolean().optional(),
+    suggestions: z.object({ kind: z.enum(["help", "choose"]), items: z.array(Suggestion) }).optional(),
     cached: z.boolean().optional(),
     exhausted: z.boolean().optional(),
     error: z.string().optional(),
