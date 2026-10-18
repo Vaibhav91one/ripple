@@ -1,5 +1,6 @@
 "use client";
 
+import { useHydrated } from "@/lib/use-hydrated";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -120,7 +121,8 @@ export function AgentsScreen() {
   const inTeam = filterAgents(list, "", team).length;
   const on = list.filter((a) => a.enabled).length;
   const ran = list.filter((a) => a.runs24h > 0).length;
-  const pending = approvals.data && !approvals.data.sample ? approvals.data.open : 0;
+  const hydrated = useHydrated(); // the shell may have filled the shared approvals query before this page hydrates
+  const pending = hydrated && approvals.data && !approvals.data.sample ? approvals.data.open : 0;
   const setTeam = (id: TeamFilter | null) => router.replace(id ? `${path}?team=${id}` : path, { scroll: false });
   const current = list.find((a) => a.name === open);
 
