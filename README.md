@@ -16,8 +16,8 @@ The demo company, **Ledgerly**, has decided to sunset API v1. Ripple finds 40 cu
 
 ## Demo walkthrough
 
-<!-- docs/demo.gif is recorded for the submission (H3); until it is committed the live URL is the demo -->
-![Demo walkthrough](docs/demo.gif)
+<!-- H3: when docs/demo.gif is committed, add ![Demo walkthrough](docs/demo.gif) here -->
+The walkthrough GIF is coming; until then the live demo is the demo: <https://web-2fa0-3000.prg1.zerops.app>.
 
 Prefer to click: open the [live demo](https://web-2fa0-3000.prg1.zerops.app), ask the Assistant "We're removing API v1. What breaks, and who doesn't know yet?", then follow the case file. The three-minute path is in [docs/demo-script.md](docs/demo-script.md).
 
@@ -25,12 +25,12 @@ Prefer to click: open the [live demo](https://web-2fa0-3000.prg1.zerops.app), as
 
 | | |
 |---|---|
-| ![Assistant](docs/screens/237/1440-answer.jpg) **Assistant** (`/`): ask in plain language; the model picks one of a fixed set of Cypher-backed tools and never writes Cypher. | ![Case file](docs/screens/227/reports-1440.jpg) **Reports and case files** (`/reports`, `/changes/d-1`): the ripple, the gap, the conflict, each claim with its source quote. |
-| ![Analytics](docs/screens/234/ripple-1440-top.jpg) **Analytics** (`/analytics`): forecast, leakage and the embedded graph explorer, all read from the same graph. | ![Agents](docs/screens/227/agents-1440.jpg) **Agents** (`/agents`): templates that run read-only against the graph; anything that would write returns a preview for approval. |
+| ![Assistant](docs/screens/237/1440-answer.jpg) **Assistant** (`/`): ask in plain language; the model picks one of a fixed set of Cypher-backed tools and never writes Cypher. | ![Case file](docs/screens/233/case-1440.jpg) **Reports and case files** (`/reports`, `/reports/d-1`): the ripple, the gap, the conflict, each claim with its source quote. |
+| ![Analytics](docs/screens/234/ripple-1440-top.jpg) **Analytics** (`/analytics`): forecast, leakage and the embedded graph explorer, all read from the same graph. | ![Agents](docs/screens/235/agents-1440.jpg) **Agents** (`/agents`): templates that run read-only against the graph; anything that would write returns a preview for approval. |
 
 - **Connections** (`/connections`): GitHub, Slack, CSV and file upload feed artifacts into the graph; extraction keeps only edges whose quote is verbatim in the source.
 - **Integrations** (`/integrations`): copy-paste setup for every AI client, filled with the deployment's own URL, plus API keys. See [Use Ripple from your AI tools](#use-ripple-from-your-ai-tools).
-- **Team workspaces** (`/teams/<team>`): seven pages (Eng, Support, Sales, Legal, Security, DevRel, Leadership), each modelled on the tool that team already uses, each ending with the v1 sunset angle from the same graph.
+- **Settings and Profile** (`/settings`, `/profile`): members, notifications and API keys, plus your own profile.
 - **Acknowledgements.** Each brief carries a signed link; one click ("seen", "concern", "not relevant") writes an `ACKED` edge and the gap closes.
 
 ## The graph
@@ -356,7 +356,7 @@ The skill ships in `.agents/skills/ripple-impact`; Codex reads `.agents/skills` 
 
 **ChatGPT** (demo only). Developer mode connector, no auth, URL `https://web-2fa0-3000.prg1.zerops.app/api/mcp`.
 
-**Slack and GitHub.** `/ripple` and @Ripple in Slack, @ripple-company-brain on pull requests; set up from `/connections/slack` and `/connections/github` (manifests: `slack-manifest.yaml`, `github-app-manifest.json`).
+**Slack and GitHub.** `/ripple` and @Ripple in Slack, @ripple-company-brain on pull requests. See `/integrations` for setup (manifests: `slack-manifest.yaml`, `github-app-manifest.json`).
 
 **Your own org.** An org admin creates an API key on `/integrations` (shown once, only its sha256 is stored, revocable). It acts as the admin who created it, so restricted text is redacted exactly as in their session. Send `Authorization: Bearer rpl_<prefix>_<secret>` (`claude mcp add ... --header "Authorization: Bearer rpl_<prefix>_<secret>"`) or export `RIPPLE_API_KEY`. Local stdio: `claude mcp add ripple -e FALKORDB_HOST=localhost -e FALKORDB_PORT=6379 -- pnpm --silent mcp`.
 
