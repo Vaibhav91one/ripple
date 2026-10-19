@@ -1,6 +1,8 @@
 // Eval sets by agent name. A new agent adds its set here (AGENTS.md: every agent has one, plus the injection set).
 import { accessScenarios } from "./access/scenarios";
 import { askScenarios } from "./ask/scenarios";
+import { commsScenarios } from "./comms/scenarios";
+import { courierScenarios } from "./courier/scenarios";
 import { contractScenarios } from "./contract/scenarios";
 import { digestScenarios } from "./digest/scenarios";
 import { exposureScenarios } from "./exposure/scenarios";
@@ -27,6 +29,7 @@ const withRecall = (name: string, set: Scenario[]): Scenario[] => {
 const SETS: Record<string, Scenario[]> = {
   ask: askScenarios, impact: impactScenarios, contract: contractScenarios, exposure: exposureScenarios, access: accessScenarios, digest: digestScenarios,
   docs: docsScenarios, security: securityScenarios, support: supportScenarios, advisor: advisorScenarios,
+  comms: commsScenarios, courier: courierScenarios,
 };
 
 export const EVAL_SETS: Record<string, Scenario[]> = Object.fromEntries(Object.entries(SETS).map(([n, set]) => [n, withRecall(n, set)]));

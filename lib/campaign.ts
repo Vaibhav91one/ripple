@@ -20,7 +20,7 @@ export function foldTeam(ledger: LedgerEntry[], teamId: string): Pick<CampaignTe
   return { told: pick("sentAt"), delivered: pick("deliveredAt"), clicked: pick("clickedAt"), acked: pick("ackedAt"), discussed: [...seen.values()].sort((a, b) => a.at - b.at) };
 }
 
-export async function computeCampaign(ctx: Context, changeId: string): Promise<Campaign> {
+export async function computeCampaign(ctx: Pick<Context, "graph" | "now" | "org">, changeId: string): Promise<Campaign> {
   const { graph: g, now, org } = ctx;
   const r = await ripple(g, changeId, now); // NotFound -> 404
   const [people, taskRows, sunset, meta] = await Promise.all([

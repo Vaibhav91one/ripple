@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 test("Notifications in the sidebar opens the Activity tab", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "networkidle" }); // idle = hydrated, so the drawer button works
   const menu = page.getByRole("button", { name: "Open menu" });
-  if (await menu.isVisible()) await menu.click(); // phone: the sidebar is a drawer
+  if (await menu.isVisible()) {
+    await menu.click(); // phone: the sidebar is a drawer
+    await expect(menu).toHaveAttribute("aria-expanded", "true");
+  }
   await page.getByRole("link", { name: /^Notifications/ }).click();
   await expect(page).toHaveURL(/\/reports\?tab=activity/);
   await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute("aria-selected", "true");

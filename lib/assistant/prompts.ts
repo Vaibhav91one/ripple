@@ -21,6 +21,8 @@ export const AGENT_SAMPLES: Record<string, string> = {
   support: "What are customers asking Support about API v1?",
   advisor: "Should we keep the Jan 31 date for the v1 sunset?",
   digest: "What changed this week?",
+  comms: "Who needs to be told about the v1 sunset, and by when?",
+  courier: "How is the v1 sunset campaign going?",
 };
 
 export const normPrompt = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();

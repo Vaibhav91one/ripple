@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "../../graph/client";
 import { seed } from "../../ingest/seed";
 import { access } from "../agents/access";
@@ -9,7 +9,9 @@ import { ask } from "../agents/ask";
 import { docs } from "../agents/docs";
 import { security } from "../agents/security";
 import { support } from "../agents/support";
+import { comms } from "../agents/comms";
 import { contract } from "../agents/contract";
+import { courier } from "../agents/courier";
 import { digest } from "../agents/digest";
 import { TOOLS } from "../tools";
 import { exposure } from "../agents/exposure";
@@ -19,6 +21,9 @@ import { detectConflicts } from "../../graph/queries";
 import { defineAgent } from "../define";
 import { EVAL_SETS } from "./index";
 import { EVAL_VIEWER, replayModel, runEval, type Scenario } from "./run";
+
+// Offline evals never touch Postgres: with DATABASE_URL set (CI) campaignStatus would read the ledger from a database these tests do not own.
+vi.stubEnv("DATABASE_URL", "");
 
 const name = `test_e_${randomUUID().replaceAll("-", "")}`;
 const NOW = Math.floor(Date.parse("2026-10-17T09:00:00Z") / 1000);
@@ -197,6 +202,21 @@ describe("Customer Exposure and Access Planner eval sets, offline", () => {
   });
 });
 
+describe("Comms Planner and Courier eval sets, offline", () => {
+  for (const [name, def] of [["comms", comms], ["courier", courier]] as const)
+    for (const s of EVAL_SETS[name])
+      t(`${name}: ${s.name}`, async () => {
+        const r = await run(def, s);
+        expect(r.failures).toEqual([]);
+        expect(r.metrics).toMatchObject({ proposalRecall: 1 });
+      });
+  it("comms only plans; courier only proposes Slack actions", () => {
+    expect(comms.writes).toEqual(["campaign_plan"]);
+    expect(courier.writes).toEqual(["slack_channel_create", "slack_post"]);
+    expect(comms.tools.filter((x) => /send|email|slack/.test(x))).toEqual([]);
+  });
+});
+
 describe("team specialists and the Decision Advisor, offline", () => {
   const defs = { docs, security, support, advisor };
   for (const [agent, def] of Object.entries(defs))
@@ -321,7 +341,7 @@ describe("Ask hand-off, offline", () => {
 
   t("list_agents names every agent but Ask, with whether it would write", async () => {
     const out = await TOOLS.list_agents.run({ g, now: NOW, demo: false }, {});
-    expect(out.rows.map((r) => r.name).sort()).toEqual(["access", "advisor", "contract", "digest", "docs", "exposure", "impact", "security", "support"]);
+    expect(out.rows.map((r) => r.name).sort()).toEqual(["access", "advisor", "comms", "contract", "courier", "digest", "docs", "exposure", "impact", "security", "support"]);
     expect(out.rows.find((r) => r.name === "contract")).toMatchObject({ previewOnly: true, writes: ["draft_doc", "create_task"] });
     expect(out.rows.find((r) => r.name === "digest")).toMatchObject({ previewOnly: false });
   });

@@ -26,7 +26,7 @@ const filterOf = (team: string) => (team === "change-owner" ? "everyone" : team)
 export const teamLabel = (team: string) => (!team ? "" : team === "change-owner" ? "Change owners" : TEAM_FILTERS.find(([id]) => id === team)?.[1] ?? team);
 
 /** Gallery order: the flagship first, then roughly the order a change travels through Ripple. */
-const ORDER = ["impact", "ask", "contract", "exposure", "advisor", "support", "docs", "security", "access", "digest"];
+const ORDER = ["impact", "ask", "contract", "exposure", "advisor", "support", "docs", "security", "access", "comms", "courier", "digest"];
 const rank = (name: string) => (ORDER.indexOf(name) + 1 || ORDER.length + 1);
 
 export function filterAgents<T extends Pick<AgentInfo, "name" | "displayName" | "tagline" | "team">>(list: readonly T[], q: string, team: TeamFilter | null): T[] {

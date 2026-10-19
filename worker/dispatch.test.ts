@@ -8,7 +8,7 @@ describe("route-event -> agent jobs", () => {
   it("change.confirmed queues Impact, Contract Sentinel, Customer Exposure, Access Planner and the Docs, Security and Support specialists with the decision id", async () => {
     const enqueue = vi.fn(async (_n: string, _d: object) => "job");
     const names = await dispatchAgents({ type: "change.confirmed", orgId: "o1", payload: { changeId: "d-1" } }, enqueue);
-    expect(names.sort()).toEqual(["access", "contract", "docs", "exposure", "impact", "security", "support"]);
+    expect(names.sort()).toEqual(["access", "comms", "contract", "docs", "exposure", "impact", "security", "support"]);
     expect(enqueue.mock.calls.map((c) => c[1])).toEqual(expect.arrayContaining([
       { orgId: "o1", agent: "impact", trigger: "event:change.confirmed", input: { reason: "change.confirmed", decisionId: "d-1", contractId: null } },
       { orgId: "o1", agent: "contract", trigger: "event:change.confirmed", input: { reason: "change.confirmed", decisionId: "d-1", contractId: null } },

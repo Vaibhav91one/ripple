@@ -362,6 +362,11 @@ const ARGS: Record<string, Record<string, unknown>> = {
   decision_costs: { decisionId: "d-1" }, // arrAtRisk for leadership and Sales, customer arr for Sales only, contract detail Legal-only
   recall: { entityIds: ["d-1", "legal", "cust-1", "api-v1"] }, // the SENTINEL_AGENT_FINDING row is Legal's: its text is blanked for everyone else
   record_finding: { text: "t", entityIds: ["legal"], sources: [], confidence: 0.5, supersedes: [] },
+  campaign_preview: { decisionId: "d-1" }, // topology only: team ids, owners, dates, counts
+  propose_campaign_plan: { decisionId: "d-1" },
+  campaign_status: { decisionId: "d-1" }, // flags and counts per team
+  propose_slack_channel_create: { decisionId: "d-1" },
+  propose_slack_post: { decisionId: "d-1" },
   propose_doc: { kind: "audit_note", decisionId: "d-1", pageId: null, title: "t", body: "b" },
 };
 const usage = {

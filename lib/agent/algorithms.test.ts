@@ -92,7 +92,7 @@ describe("edge weights", () => {
 describe("bounded limits", () => {
   // Tools whose output is one record, a fixed small set, or a write: no list to bound. A new read tool must be added to one of the two lists.
   // recall caps its own limit at 5 (#210)
-  const EXEMPT = ["ripple", "trace_decision", "bottleneck", "why_affected", "weighted_path", "edge_freshness", "contract_conflicts", "decision_costs", "list_decisions", "list_agents", "run_agent", "recall"];
+  const EXEMPT = ["ripple", "trace_decision", "bottleneck", "why_affected", "weighted_path", "edge_freshness", "contract_conflicts", "decision_costs", "list_decisions", "list_agents", "run_agent", "recall", "campaign_preview", "campaign_status"];
   const LISTS = ["search", "who_knows", "customer_usage", "deals_at_risk", "critical_systems", "team_clusters", "affected_tickets", "docs_pages", "contract_renewals", "contract_clauses", "access_gap", "affected_controls"];
 
   it("every list-returning read tool caps `limit` at 20 in its zod input", () => {

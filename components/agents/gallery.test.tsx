@@ -17,7 +17,7 @@ const render = (list: AgentInfo[]) => renderToStaticMarkup(createElement(AgentGr
 
 describe("agent meta", () => {
   it("every registered agent has a display name, tagline, team and illustration", () => {
-    expect(all).toHaveLength(10);
+    expect(all).toHaveLength(12);
     for (const a of agents()) {
       expect(a.displayName.trim(), a.name).not.toBe("");
       expect(a.displayName, a.name).not.toBe(a.name);
@@ -42,8 +42,8 @@ describe("gallery filter", () => {
     expect(isTeamFilter("legal")).toBe(true);
     expect(isTeamFilter("eng")).toBe(false);
     expect(filterAgents(all, "", "legal").map((a) => a.name)).toEqual(["contract"]);
-    expect(filterAgents(all, "", "everyone").map((a) => a.name)).toEqual(["impact", "ask", "digest"]);
-    expect(filterAgents(all, "", null)).toHaveLength(10);
+    expect(filterAgents(all, "", "everyone").map((a) => a.name)).toEqual(["impact", "ask", "comms", "courier", "digest"]);
+    expect(filterAgents(all, "", null)).toHaveLength(12);
   });
 
   it("searches name, tagline and team label, all words must match", () => {

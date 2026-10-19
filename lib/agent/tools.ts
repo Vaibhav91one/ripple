@@ -5,6 +5,9 @@ import { roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, weightedPath, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import { claimsBody, claimsFor } from "../briefs";
 import { redactForTeam } from "../permissions/redact";
+import { courierNext } from "../campaigns/run";
+import { buildPlan } from "../campaigns/plan";
+import { campaignStatus } from "../campaigns/status";
 import type { ActionKind } from "./define";
 import type { Source } from "../schemas";
 import type { RestrictedSummary } from "../schemas/common";
@@ -78,6 +81,13 @@ async function accessGap(g: Graph, now: number, decisionId: string, only?: strin
   const fresh = (t: number | null) => t !== null && t >= now - STALE_DAYS * 86400;
   const all = rows.filter((x) => !only || x.personId === only).map(({ heldAt, lastIdentity, ...x }) => ({ ...x, status: heldAt !== null ? (fresh(heldAt) ? "has" : "unknown") : fresh(lastIdentity) ? "missing" : "unknown" }) as Omit<GapRow, "status"> & { status: GapRow["status"] | "has" });
   return { gaps: all.filter((x): x is GapRow => x.status !== "has"), checked: all.length, change, cypher: [gc, cc] };
+}
+
+/** teamId -> people who lack required software or access (status missing only: unknown is not a gap). */
+async function missingByTeam(g: Graph, now: number, decisionId: string) {
+  const m = new Map<string, number>();
+  for (const x of (await accessGap(g, now, decisionId))?.gaps ?? []) if (x.status === "missing") m.set(x.teamId, (m.get(x.teamId) ?? 0) + 1);
+  return m;
 }
 
 export const TOOLS = {
@@ -331,6 +341,66 @@ export const TOOLS = {
         expiresAt: now + (a.expiryDays ?? 90) * 86400, approvers: [...new Set([...(res?.owners ?? []), "it"])],
       };
       return { rows: [{ teamId: hit.teamId, personId: a.personId, resourceId: a.resourceId, ...(await propose("access_request", payload, { change: gap.change, gap: hit })) }], sources: [], cypher: [rc] };
+    },
+  }),
+  // ---- Comms Planner and Courier (#188) ----
+  campaign_preview: def({
+    description: "The campaign the change needs, one entry per affected team: owner (team lead), due date (change date minus the team type's lead time), brief needed, people still missing access, tasks, and whether a shared Slack channel is needed (2+ teams or a conflict). Computed, not guessed: propose it with propose_campaign_plan.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["ripple", "gap", "access-gap", "access-change"],
+    run: async ({ g, now }, { decisionId }) => {
+      const plan = await buildPlan(g, decisionId, now, await missingByTeam(g, now, decisionId));
+      return { rows: plan ? [plan] : await unknownDecision(g, decisionId), sources: [], cypher: [] };
+    },
+  }),
+  propose_campaign_plan: def({
+    description: "Propose the campaign for a change (the same plan campaign_preview returns). The change owner approves it; only then are the campaign, per-team items and tasks created and the briefs sent. Nothing is sent by this call.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["ripple", "gap", "access-gap", "access-change"],
+    proposes: "campaign_plan",
+    run: async ({ g, now, readonly, propose }, { decisionId }) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      const plan = await buildPlan(g, decisionId, now, await missingByTeam(g, now, decisionId));
+      if (!plan) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
+      return { rows: [{ campaignId: plan.id, teams: plan.teams.map((t) => t.teamId), channel: plan.channel?.name ?? null, ...(await propose("campaign_plan", plan, { teams: plan.teams.map((t) => t.teamId) })) }], sources: [], cypher: [] };
+    },
+  }),
+  campaign_status: def({
+    description: "Where each affected team stands on an approved campaign: told, delivered, clicked, acked, discussed in Slack, tasks done, access granted, overdue. Counts and flags only. Also the next step the Courier would take.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["ripple", "gap"],
+    run: async ({ g, now, org }, { decisionId }) => {
+      const o = org ?? { id: "demo" };
+      const s = await campaignStatus(g, o, decisionId, now).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
+      if (!s) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
+      return { rows: [{ changeId: s.changeId, title: s.title, done: s.done, channelId: s.channelId, next: (await courierNext(g, o, decisionId, now)).action, teams: s.teams }], sources: [], cypher: [] };
+    },
+  }),
+  propose_slack_channel_create: def({
+    description: "Propose the change's Slack channel #chg-<slug> (owners invited, tracker posted and pinned, one thread per team). Only when the campaign is approved, the change hits 2+ teams or has a conflict, and no channel exists yet; otherwise it says why not.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["ripple"],
+    proposes: "slack_channel_create",
+    run: async ({ g, now, readonly, propose, org }, { decisionId }) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      const step = await courierNext(g, org ?? { id: "demo" }, decisionId, now);
+      if (step.action !== "slack_channel_create") return { rows: [{ proposed: false, reason: step.action === "none" ? step.reason : "channel_exists" }], sources: [], cypher: [] };
+      return { rows: [{ ...(await propose("slack_channel_create", step.payload)), decisionId }], sources: [], cypher: [] };
+    },
+  }),
+  propose_slack_post: def({
+    description: "Propose the next post in the change's channel: refresh the pinned tracker when an ack, task or access changed, or close it (tracker update, then archive) when every team is done. Says why not when the campaign is unapproved, has no channel yet, or nothing changed.",
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1") }),
+    templates: ["ripple", "gap"],
+    proposes: "slack_post",
+    run: async ({ g, now, readonly, propose, org }, { decisionId }) => {
+      if (readonly) throw new Error("demo_readonly");
+      if (!propose) return { rows: [{ proposed: false, reason: "approvals_unavailable" }], sources: [], cypher: [] };
+      const step = await courierNext(g, org ?? { id: "demo" }, decisionId, now);
+      if (step.action !== "slack_post") return { rows: [{ proposed: false, reason: step.action === "none" ? step.reason : "no_channel_yet" }], sources: [], cypher: [] };
+      return { rows: [{ ...(await propose("slack_post", step.payload)), op: step.payload.op, decisionId }], sources: [], cypher: [] };
     },
   }),
   // ---- team specialists (#189): Docs, Security, Support, Decision Advisor ----
