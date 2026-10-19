@@ -145,6 +145,14 @@ async function recordFinding(payload: unknown, { writer, now, runId }: ActionCtx
 
 export const SendReminder = z.object({ decisionId: z.string().min(1), teamId: z.string().min(1), title: z.string().optional() });
 
+/** The org's Slack client, or an error the action records (it can be approved again once Slack is connected). */
+async function orgSlack(orgId: string) {
+  const [{ slackToken }, { slackClient }, { decrypt }] = await Promise.all([import("../connectors/slack/store"), import("../connectors/slack/client"), import("../crypto")]);
+  const enc = await slackToken(orgId);
+  if (!enc) throw new Error("slack is not connected for this org");
+  return slackClient(decrypt(enc));
+}
+
 export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: ActionCtx) => Promise<unknown>>> = {
   create_task: async (payload, { writer, now }) =>
     query(writer(), load("create-tasks").text, { rows: [CreateTask.parse(payload)], now }),
@@ -161,6 +169,25 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
     return { emitted: r.inserted, changeId: p.decisionId, teamId: p.teamId };
   },
   access_request: async (payload, ctx) => openAccessRequest(payload, ctx),
+  // Approval by the change owner: Campaign node + items + tasks, then brief.sent per team (the notification engine sends) and a Courier run.
+  campaign_plan: async (payload, { org, writer, now, approver }) => {
+    const [{ db }, { emit }, { enqueue }, { applyCampaignPlan }] = await Promise.all([import("../db"), import("../events/emit"), import("../queue"), import("../campaigns/run")]);
+    return applyCampaignPlan({
+      g: writer(), org, now, approver: approver ?? null,
+      emitBrief: (b) => emit(db(), { type: "brief.sent", orgId: org.id, subject: { kind: "decision", id: b.decisionId }, payload: { briefId: `brief-${b.decisionId}-${b.teamId}`, userId: b.userId }, dedupeKey: `brief.sent:${b.decisionId}:${b.teamId}` }),
+      kickCourier: (decisionId) => enqueue("agent", { orgId: org.id, agent: "courier", trigger: "event:campaign.approved", input: { reason: "campaign.approved", decisionId } }),
+    }, payload);
+  },
+  slack_channel_create: async (payload, { org, writer, now }) => {
+    const [{ createChangeChannel }, { setChangeChannel }] = await Promise.all([import("../campaigns/run"), import("../connectors/slack/store")]);
+    const slack = await orgSlack(org.id);
+    const slackTeamId = (await slack.call<{ team_id: string }>("auth.test")).team_id;
+    return createChangeChannel({ g: writer(), org, now, slack, saveChannel: (c) => setChangeChannel({ orgId: org.id, slackTeamId, ...c }) }, payload);
+  },
+  slack_post: async (payload, { org, writer, now }) => {
+    const { postToChannel } = await import("../campaigns/run");
+    return postToChannel({ g: writer(), org, now, slack: await orgSlack(org.id) }, payload);
+  },
   record_finding: async (payload, ctx) => recordFinding(payload, ctx),
   create_issue: async (payload, { org }) => {
     const { title, body } = CreateIssue.parse(payload);
@@ -204,4 +231,5 @@ export const EXECUTORS: Partial<Record<ActionKind, (payload: unknown, ctx: Actio
 /** Who may approve each kind besides an admin. */
 export const OWNER_ROLE: Record<ActionKind, "lead" | "change_owner"> = {
   create_task: "lead", create_issue: "lead", graph_merge: "change_owner", send_slack: "lead", send_email: "lead", pr_comment: "lead", access_request: "lead", draft_doc: "lead", send_reminder: "lead", record_finding: "lead",
+  campaign_plan: "change_owner", slack_channel_create: "change_owner", slack_post: "change_owner",
 };

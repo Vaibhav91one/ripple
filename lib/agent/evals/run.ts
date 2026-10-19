@@ -71,7 +71,9 @@ export type EvalOpts = { model: LanguageModel; g: Graph; now: number; viewer?: V
 async function payloadSchemas(): Promise<Partial<Record<ActionKind, z.ZodType>>> {
   try {
     const { AccessRequest, CreateIssue, CreateTask, DraftDoc, GraphMerge, RecordFinding } = await import("../../actions/executors");
-    return { create_task: CreateTask, graph_merge: GraphMerge, create_issue: CreateIssue, draft_doc: DraftDoc, access_request: AccessRequest, record_finding: RecordFinding };
+    const { CampaignPlan } = await import("../../campaigns/plan");
+    const { SlackChannelCreate, SlackPost } = await import("../../campaigns/run");
+    return { create_task: CreateTask, graph_merge: GraphMerge, create_issue: CreateIssue, draft_doc: DraftDoc, access_request: AccessRequest, record_finding: RecordFinding, campaign_plan: CampaignPlan, slack_channel_create: SlackChannelCreate, slack_post: SlackPost };
   } catch {
     return {};
   }

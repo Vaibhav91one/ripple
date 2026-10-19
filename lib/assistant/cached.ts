@@ -68,6 +68,9 @@ const advisor = answer(
 );
 const digest = answer(["This week: the v1 sunset decision is accepted, three teams still have not been told (Legal, Security, DevRel) and one conflict with two contracts is open. ", [sunset, northwind]], ["d-1"], 3);
 
+const comms = answer(["Five teams are affected by the v1 sunset on Jan 31, 2027. Legal is due first (30 days before), then Security and DevRel; the contract conflict calls for a shared channel. ", [sunset]], ["Legal", "Security", "DevRel"], 1);
+const courier = answer(["No campaign has been approved yet, so nothing has been sent. Once the change owner approves the plan, the briefs go out and the change channel is opened. ", [sunset]], ["d-1"], 1);
+
 const BY_TEXT: Record<string, StreamEvent[]> = {
   [STARTER_PROMPTS[0]]: askEvents,
   [STARTER_PROMPTS[1]]: impact,
@@ -80,6 +83,8 @@ const BY_TEXT: Record<string, StreamEvent[]> = {
   [AGENT_SAMPLES.support]: support,
   [AGENT_SAMPLES.advisor]: advisor,
   [AGENT_SAMPLES.digest]: digest,
+  [AGENT_SAMPLES.comms]: comms,
+  [AGENT_SAMPLES.courier]: courier,
 };
 const cache = new Map(Object.entries(BY_TEXT).map(([k, v]) => [normPrompt(k), v]));
 
