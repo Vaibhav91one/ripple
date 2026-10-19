@@ -26,6 +26,10 @@ export async function applyClerkEvent({ type, data }: ClerkEvent, d = db()): Pro
       await d.insert(orgs).values({ id: orgId, slug, graphName: graphNameFor(orgId) }).onConflictDoNothing(); // membership can arrive before organization.created
       const role = data.role === "org:admin" ? "admin" : "member";
       await d.insert(memberships).values({ orgId, userId, teamId: ALL_TEAMS, role }).onConflictDoUpdate({ target: [memberships.orgId, memberships.userId, memberships.teamId], set: { role } });
+      // A membership that already maps to teams (a returning member) counts as joining them; the dedupe key makes repeats no-ops.
+      const rows = await d.select().from(memberships).where(and(eq(memberships.orgId, orgId), eq(memberships.userId, userId)));
+      const personId = rows.find((r) => r.personId)?.personId;
+      if (personId) await (await import("./events/emit")).emitMemberAdded(d, orgId, personId, rows.filter((r) => r.teamId !== ALL_TEAMS).map((r) => r.teamId), userId);
     }
   } else return false;
   return true;

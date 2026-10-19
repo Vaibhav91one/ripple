@@ -66,7 +66,7 @@ const dedupe = (xs: Source[]) => [...new Map(xs.map((s) => [s.artifactId, s])).v
 type GapRow = { personId: string; name: string | null; teamId: string; resourceId: string; resourceName: string; resourceKind: "group" | "software"; systemId: string; status: "missing" | "unknown" };
 type GapChange = { id: string; title: string | null; effectiveAt: number | null; src: string | null; quote: string | null };
 /** Affected teams' people minus the software and access groups the change's systems REQUIRE. Held and fresh = has; no identity data newer than 90 days = unknown, never missing. */
-async function accessGap(g: Graph, now: number, decisionId: string) {
+async function accessGap(g: Graph, now: number, decisionId: string, only?: string) {
   const r = await ripple(g, decisionId, now).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
   if (!r) return null;
   const gc = load("access-gap");
@@ -76,7 +76,7 @@ async function accessGap(g: Graph, now: number, decisionId: string) {
     roQuery<GapChange>(g, cc.text, { id: decisionId }),
   ]);
   const fresh = (t: number | null) => t !== null && t >= now - STALE_DAYS * 86400;
-  const all = rows.map(({ heldAt, lastIdentity, ...x }) => ({ ...x, status: heldAt !== null ? (fresh(heldAt) ? "has" : "unknown") : fresh(lastIdentity) ? "missing" : "unknown" }) as Omit<GapRow, "status"> & { status: GapRow["status"] | "has" });
+  const all = rows.filter((x) => !only || x.personId === only).map(({ heldAt, lastIdentity, ...x }) => ({ ...x, status: heldAt !== null ? (fresh(heldAt) ? "has" : "unknown") : fresh(lastIdentity) ? "missing" : "unknown" }) as Omit<GapRow, "status"> & { status: GapRow["status"] | "has" });
   return { gaps: all.filter((x): x is GapRow => x.status !== "has"), checked: all.length, change, cypher: [gc, cc] };
 }
 
@@ -277,10 +277,10 @@ export const TOOLS = {
   }),
   access_gap: def({
     description: "For a change: the people in the affected teams who lack software or an access group its systems REQUIRE. status missing = fresh identity data and not held; unknown = identity data older than 90 days or none, so do not request on it. Also returns the change's date and sentence for the justification.",
-    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), limit: Limit }),
+    input: z.object({ decisionId: z.string().describe("Decision id, e.g. d-1"), personId: z.string().optional().describe("Only this person (a new joiner)"), limit: Limit }),
     templates: ["ripple", "access-gap", "access-change", "artifact-text"],
-    run: async ({ g, now }, { decisionId, limit = DEFAULT_LIMIT }) => {
-      const a = await accessGap(g, now, decisionId);
+    run: async ({ g, now }, { decisionId, personId, limit = DEFAULT_LIMIT }) => {
+      const a = await accessGap(g, now, decisionId, personId);
       if (!a) return { rows: await unknownDecision(g, decisionId), sources: [], cypher: [] };
       const s = await sourcesFor(g, a.change?.src ? [a.change.src] : []);
       if (!a.checked) return { rows: [{ found: false, note: `No system decision ${decisionId} touches REQUIRES software or an access group, or no one in the affected teams was found.` }], sources: s.sources, cypher: [...a.cypher, s.cypher] };

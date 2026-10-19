@@ -37,6 +37,7 @@ export type MemberPatch = { userId: string; role?: Role; teamIds?: string[]; per
 export async function updateMember(orgId: string, { userId, role, teamIds, personId }: MemberPatch, d = db()): Promise<boolean> {
   const cur = await getMember(orgId, userId, d);
   if (!cur) return false;
+  let added: string[] = [];
   const mine = and(eq(memberships.orgId, orgId), eq(memberships.userId, userId));
   await d.transaction(async (tx) => {
     const set = { ...(role && { role }), ...(personId !== undefined && { personId }) };
@@ -46,11 +47,14 @@ export async function updateMember(orgId: string, { userId, role, teamIds, perso
       const drop = cur.teamIds.filter((t) => !want.includes(t));
       if (drop.length) await tx.delete(memberships).where(and(mine, inArray(memberships.teamId, drop)));
       const add = want.filter((t) => !cur.teamIds.includes(t));
+      added = add;
       if (add.length) {
         const role2 = role ?? cur.role, person = personId === undefined ? cur.personId : personId;
         await tx.insert(memberships).values(add.map((teamId) => ({ orgId, userId, teamId, role: role2, personId: person })));
       }
     }
   });
+  const who = personId === undefined ? cur.personId : personId; // after commit, so the worker finds the rows
+  if (added.length && who) await (await import("./events/emit")).emitMemberAdded(d, orgId, who, added, userId);
   return true;
 }

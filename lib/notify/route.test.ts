@@ -204,6 +204,7 @@ const table: Row[] = [
   ],
   ["impact.ready: change owner, low, inbox only", ev("impact.ready", { changeId: "c1", runId: "r1" }), [["p-priya", "low", INBOX, "change_owner"]]],
   ["contract.added: nobody (the agent queue reads it)", ev("contract.added", { contractId: "ctr-1" }, { kind: "contract", id: "ctr-1" }), []],
+  ["team.member_added: nobody (Access Planner reads it from the agent queue)", ev("team.member_added", { teamId: "support", personId: "p-nia" }, { kind: "team", id: "support" }), []],
   ["evidence.recorded: nobody is notified", ev("evidence.recorded", { changeId: "c1", channelId: "C1" }), []],
   ["slack.inbound: plumbing, nobody", ev("slack.inbound", { kind: "event", teamId: "T1", body: {} }, { kind: "slack", id: "Ev1" }), []],
 ];
