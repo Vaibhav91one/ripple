@@ -8,6 +8,7 @@ import { ChevronRight, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
 import { ActionToast } from "@/components/ui/action-toast";
+import { play } from "@/lib/sound";
 import { Pill } from "@/components/ui/tone";
 import { decideApproval, getApprovals, isGraphDown } from "@/lib/api";
 import type { ApprovalRow } from "@/lib/schemas";
@@ -54,6 +55,7 @@ export function ApprovalsScreen({ changeId, drawerOnly }: { changeId?: string; d
 
   const decide = useMutation({
     mutationFn: ({ id, ...d }: Decision & { id: string }) => decideApproval(id, d.decision, { note: d.note, bulk: d.bulk }),
+    onError: () => play("error"),
     onSuccess: (res, v) => {
       const done = res.results.filter((r) => r.changed).length;
       const verb = v.decision === "approve" ? "Approved" : "Rejected";

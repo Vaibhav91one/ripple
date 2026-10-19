@@ -1,6 +1,7 @@
 "use client";
 import { Dialog } from "radix-ui";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { play } from "@/lib/sound";
 
 /** The one drawer: Radix Dialog (aria-modal, focus trap, Escape, scroll lock) with one motion recipe:
  *  40px slide + fade, 240ms (duration.drawer) on ease.drawer, enter and exit; strong/20 scrim. */
@@ -13,6 +14,8 @@ export function Drawer({ open, onOpenChange, title, side = "right", className = 
   className?: string;
   children: ReactNode;
 }) {
+  const was = useRef(open);
+  useEffect(() => { if (was.current !== open) play(open ? "open" : "close"); was.current = open; }, [open]);
   const slide = side === "right"
     ? "right-0 border-l data-[state=open]:slide-in-from-right-10 data-[state=closed]:slide-out-to-right-10"
     : "left-0 border-r data-[state=open]:slide-in-from-left-10 data-[state=closed]:slide-out-to-left-10";
