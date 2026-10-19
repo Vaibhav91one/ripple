@@ -10,6 +10,7 @@ import { buildPlan } from "./plan";
 import { applyCampaignPlan, courierNext, createChangeChannel, postToChannel } from "./run";
 
 vi.mock("server-only", () => ({}));
+vi.stubEnv("DATABASE_URL", ""); // Postgres-free by design: with it set (CI), campaignStatus would read the ledger from a database this test does not own
 
 const name = `test_camp_${randomUUID().replaceAll("-", "")}`;
 const NOW = Math.floor(Date.parse("2026-10-17T09:00:00Z") / 1000);

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeClient, graphFor, query, type Graph } from "../../graph/client";
 import { seed } from "../../ingest/seed";
 import { access } from "../agents/access";
@@ -21,6 +21,9 @@ import { detectConflicts } from "../../graph/queries";
 import { defineAgent } from "../define";
 import { EVAL_SETS } from "./index";
 import { EVAL_VIEWER, replayModel, runEval, type Scenario } from "./run";
+
+// Offline evals never touch Postgres: with DATABASE_URL set (CI) campaignStatus would read the ledger from a database these tests do not own.
+vi.stubEnv("DATABASE_URL", "");
 
 const name = `test_e_${randomUUID().replaceAll("-", "")}`;
 const NOW = Math.floor(Date.parse("2026-10-17T09:00:00Z") / 1000);
