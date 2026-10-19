@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react";
+import type { ReactNode } from "react";
 
 export type Chip = { text: string; tone?: "conflict" | "covered" };
 export type ChipGroup = { label: string; chips: Chip[]; caption: string };
@@ -9,10 +10,12 @@ const CHIP = {
   covered: "border-covered/30 bg-covered-soft text-covered-ink",
 } as const;
 
-export function EvidenceDiff({ title, found, action, onAction, docLine, groups }: {
+export function EvidenceDiff({ title, found, action, onAction, actionNode, docLine, groups }: {
   title: string; found: string; action: string;
   /** Called by the header action button. */
   onAction?: () => void;
+  /** Replaces the header action button (a gated button in the read-only demo). */
+  actionNode?: ReactNode;
   /** The highlighted line inside the document thumbnail. */
   docLine: string;
   groups: ChipGroup[];
@@ -25,9 +28,11 @@ export function EvidenceDiff({ title, found, action, onAction, docLine, groups }
           <h3 className="text-md font-medium text-strong">{title}</h3>
           <p className="flex items-center gap-3 text-2xs text-faint">
             {found}
-            <button type="button" onClick={onAction} className="inline-flex items-center gap-0.5 rounded-control text-xs font-medium text-strong focus-visible:outline-2 focus-visible:outline-ripple">
-              {action}<ChevronRight aria-hidden className="size-3.5" />
-            </button>
+            {actionNode ?? (
+              <button type="button" onClick={onAction} className="inline-flex items-center gap-0.5 rounded-control text-xs font-medium text-strong focus-visible:outline-2 focus-visible:outline-ripple">
+                {action}<ChevronRight aria-hidden className="size-3.5" />
+              </button>
+            )}
           </p>
         </header>
         <div className="mt-5 flex gap-5">

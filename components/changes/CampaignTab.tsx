@@ -10,9 +10,10 @@ import { Pill } from "@/components/ui/tone";
 import { chaseTeam } from "@/lib/api";
 import { teamName } from "@/lib/permissions/classify";
 import type { Campaign, CampaignTeam } from "@/lib/schemas";
+import { fmtDate } from "@/lib/date";
 
 const iso = (ts: number) => new Date(ts * 1000).toISOString().slice(0, 10);
-const day = (ts: number | null) => (ts ? new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }) : null);
+const day = (ts: number | null) => (ts ? fmtDate(ts) : null);
 const DAY = 86_400;
 
 const STAGES = [

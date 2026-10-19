@@ -75,3 +75,11 @@ describe("redaction", () => {
     expect(r.hits[1]).toMatchObject({ restricted: false, title: "Northwind MSA SECRET.pdf", href: "/items/doc/art-msa" });
   });
 });
+
+describe("ties", () => {
+  it("ranks an open change above a closed one, then the newer one first", () => {
+    const c = (id: string, live: boolean, at: number) => ({ ...h(id, "change", "Sunset API v1 on Jan 31"), live, at });
+    const out = rank([c("old-closed", false, 1), c("old-open", true, 1), c("new-open", true, 9), c("new-closed", false, 9)], "v1");
+    expect(out.map((x) => x.id)).toEqual(["new-open", "old-open", "new-closed", "old-closed"]);
+  });
+});

@@ -1,7 +1,7 @@
 import { hatch } from "./hatch";
 
-export type BarTone = "ink" | "ripple" | "gap" | "conflict" | "neutral";
-export const toneVar: Record<BarTone, string> = { ink: "var(--strong)", ripple: "var(--ripple)", gap: "var(--gap)", conflict: "var(--conflict)", neutral: "var(--faint)" };
+export type BarTone = "ink" | "ripple" | "gap" | "conflict" | "neutral" | "covered";
+export const toneVar: Record<BarTone, string> = { covered: "var(--covered)", ink: "var(--strong)", ripple: "var(--ripple)", gap: "var(--gap)", conflict: "var(--conflict)", neutral: "var(--faint)" };
 /** Position of v on [min, max] as a percent, clamped to 0..100. */
 export const pct = (v: number, min: number, max: number) => Math.min(100, Math.max(0, ((v - min) / (max - min)) * 100));
 

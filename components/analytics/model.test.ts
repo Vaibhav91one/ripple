@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Analytics, type Scenario } from "@/lib/schemas/analytics";
 import fixture from "@/lib/schemas/fixtures/analytics.json";
-import { actFirst, coverageSentence, exposedArr, forecastPoints, defaultOn, fmtHours, fmtUsd, forecastWith, heatmapGrid, heatmapSentence, scenarioLabel, timeSentence, waterfallAxis } from "./model";
+import { systemGap, actFirst, coverageSentence, exposedArr, forecastPoints, defaultOn, fmtHours, fmtUsd, forecastWith, heatmapGrid, heatmapSentence, scenarioLabel, timeSentence, waterfallAxis } from "./model";
 
 const a = Analytics.parse(fixture);
 
@@ -13,7 +13,7 @@ describe("formatting", () => {
     expect([fmtHours(36), fmtHours(47), fmtHours(600)]).toEqual(["36 h", "47 h", "25 days"]);
   });
   it("writes the coverage sentence from the data", () => {
-    expect(coverageSentence(a)).toBe("40% of affected teams told. 3 teams and $180K ARR still exposed before Jan 31.");
+    expect(coverageSentence(a)).toBe("40% of affected teams told. 3 teams and $180K ARR still exposed before Jan 31, 2027.");
   });
   it("starts the waterfall axis under the actual", () => {
     expect(waterfallAxis(40).ticks.map((t) => t.value)).toEqual([40, 60, 80, 100]);
@@ -41,7 +41,7 @@ describe("heatmap", () => {
     expect(exposedArr(a)).toBe(180_000);
     const restricted = { ...a, heatmap: { ...a.heatmap, cells: a.heatmap.cells.map((c) => ({ ...c, arrAtRisk: null })) } };
     expect(exposedArr(restricted)).toBeNull();
-    expect(coverageSentence(restricted)).toBe("40% of affected teams told. 3 teams still exposed before Jan 31.");
+    expect(coverageSentence(restricted)).toBe("40% of affected teams told. 3 teams still exposed before Jan 31, 2027.");
   });
   it("never sums ARR: it only appears on the cell that owns it", () => {
     const { rows, columns } = heatmapGrid(a.heatmap);
@@ -91,5 +91,25 @@ describe("forecast toggles", () => {
     const none = forecastPoints({ ...a, forecast: { ...a.forecast!, effectiveAt: null, daysLeft: null } })!;
     expect(none.projected).toBe(false);
     expect(none.actual.at(-1)?.[0]).toBe(1); // the axis ends today
+  });
+});
+
+describe("system gaps and waiting days", () => {
+  const nodes = [
+    { id: "api-v1", kind: "system", title: "API v1", status: "neutral" as const },
+    { id: "auth", kind: "system", title: "auth-service", status: "neutral" as const },
+    { id: "sec", kind: "team", title: "Security", status: "gap" as const },
+    { id: "sup", kind: "team", title: "Support", status: "covered" as const },
+    { id: "c-contracts", kind: "contracts", title: "Contracts", status: "conflict" as const },
+  ];
+  const edges = [{ from: "sec", to: "auth" }, { from: "sup", to: "api-v1" }, { from: "c-contracts", to: "api-v1" }, { from: "auth", to: "api-v1" }];
+  it("a system with a conflicting contract is a conflict; one owned by an untold team is a gap", () => {
+    expect(systemGap("api-v1", nodes, edges)).toEqual({ status: "conflict", teams: [] });
+    expect(systemGap("auth", nodes, edges)).toEqual({ status: "gap", teams: ["Security"] });
+    expect(systemGap("nothing", nodes, edges).status).toBe("neutral");
+  });
+  it("counts whole days waited, so 635 h is 26 days everywhere", () => {
+    expect(fmtHours(635)).toBe("26 days");
+    expect(fmtHours(47.6)).toBe("48 h");
   });
 });

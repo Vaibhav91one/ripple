@@ -33,7 +33,7 @@ export function LeadershipDashboard() {
   const blockers = [...d.blockers].sort((a, b) => a.since - b.since);
   const notTold = (id: string) => overview.data?.openDecisions.find((o) => o.decision.id === id)?.notTold.length ?? 0;
   const open = d.decisions.filter((x) => x.status !== "superseded");
-  const age = (since: number) => `${Math.max(1, Math.round((d.now - since) / DAY))}d`;
+  const age = (since: number) => `${Math.max(1, Math.floor((d.now - since) / DAY))}d`;
   // Blocked goals read "Goal title" → team; a blocker's target may be a decision, finding or task.
   const target = (id: string) => {
     if (id.startsWith("d-")) return d.decisions.find((x) => x.id === id)?.title ?? id;

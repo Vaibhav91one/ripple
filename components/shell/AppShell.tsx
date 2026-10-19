@@ -49,6 +49,7 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
   }, [open]);
   return (
     <div className="flex min-h-dvh bg-page text-body">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-control focus:bg-strong focus:px-3 focus:py-2 focus:text-sm focus:text-ink-on-strong">Skip to content</a>
       {/* phone and tablet: top bar + drawer */}
       <div inert={open} className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-page/90 px-4 backdrop-blur lg:hidden">
         <Brand />
@@ -127,7 +128,7 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
         </div>
       </aside>
       <CommandMenu open={searching} onOpenChange={setSearching} />
-      <main inert={open} className="min-w-0 flex-1 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-7">{children}</main>
+      <main id="main" tabIndex={-1} inert={open} className="min-w-0 outline-none flex-1 px-4 pb-12 pt-20 sm:px-6 lg:px-8 lg:pt-7">{children}</main>
     </div>
   );
 }

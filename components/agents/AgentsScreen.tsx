@@ -132,7 +132,7 @@ export function AgentsScreen() {
       {isGraphDown(agents.error) && <GraphDownBanner onRetry={() => void agents.refetch()} />}
       <PageHeader title="Agents" subtitle={!agents.data ? "Who works for your org, and what they do." : team
           ? `${inTeam} ${inTeam === 1 ? "agent works" : "agents work"} for ${teamLabel(team)}, out of ${list.length} in your org.`
-          : `${list.length} agents work for your org. ${on} are on and ${ran === 0 ? "none" : ran} ran in the last day.`}>
+          : `${list.length} agents work for your org. ${lock === LOCK_REASON.demo ? "In this demo " : ""}${on} ${lock === LOCK_REASON.demo ? "show as on" : "are on"} and ${ran === 0 ? "none" : ran} ran in the last day.`}>
         <label className={`${pill} w-full border border-hairline bg-surface text-faint focus-within:outline-2 focus-within:outline-ripple sm:w-64`}>
           <Search size={15} aria-hidden />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search agents" aria-label="Search agents by name, team or job"

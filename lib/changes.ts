@@ -1,7 +1,8 @@
 // One sentence per graph edge, so no screen shows raw edge names like WAITING_ON. Pure: safe in the browser.
 import type { Edge } from "./schemas";
+import { fmtDate } from "./date";
 
-const day = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const day = fmtDate;
 
 /** [verb phrase between "<from>" and "<to>", whether to append "since <date>"] per edge type. */
 const PHRASE: Partial<Record<Edge["type"], [string, boolean?]>> = {

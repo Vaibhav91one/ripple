@@ -9,7 +9,7 @@ for (const route of ["/reports", "/agents"]) {
     page.on("pageerror", (err) => problems.push(`pageerror: ${err.message}`));
     await page.route("**/api/approvals?scope=open*", (r) => r.fulfill({ json: { approvals: [], open: 3 } }));
     await page.goto(route, { waitUntil: "networkidle" });
-    await expect(page.locator('a[href="/reports?view=activity"]').first()).toContainText("3"); // the sidebar is a closed drawer on mobile: check DOM text, not visibility
+    await expect(page.locator('a[href="/reports?tab=activity"]').first()).toContainText("3"); // the sidebar is a closed drawer on mobile: check DOM text, not visibility
     expect(problems).toEqual([]);
   });
 }

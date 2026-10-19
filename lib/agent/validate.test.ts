@@ -99,7 +99,7 @@ describe("plain-language outcomes (#268)", () => {
 describe("#274: plain answers and follow-ups", () => {
   const names: Names = new Map([["northwind", { name: "Northwind Capital", kind: "Customer" }], ["d-1", { name: "Sunset API v1 on Jan 31", kind: "Decision" }]]);
   it("writes dates in words and swaps raw ids for names, leaving citation markers alone", () => {
-    expect(plainText("Guaranteed until 2027-06-30 by the MSA (art-msa-northwind). [[art-msa-northwind]]", names)).toBe("Guaranteed until 30 Jun 2027 by the MSA. [[art-msa-northwind]]");
+    expect(plainText("Guaranteed until 2027-06-30 by the MSA (art-msa-northwind). [[art-msa-northwind]]", names)).toBe("Guaranteed until Jun 30, 2027 by the MSA. [[art-msa-northwind]]");
     expect(plainText("The change d-1 is open.", names)).toBe("The change Sunset API v1 on Jan 31 is open.");
   });
   it("a nothing-found answer gets no 'treat it as a guess' notice, and the fallback says what to do next", () => {

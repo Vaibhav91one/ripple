@@ -22,6 +22,9 @@ export type Inspected = {
 };
 
 /** Everything the side panel shows for the node (or cluster item) with this id. */
+/** An edge type in plain words: MANAGED_BY -> "managed by". */
+export const plainEdge = (type: string) => type.toLowerCase().replaceAll("_", " ");
+
 export function inspect(view: GraphView, id: string, fmt: (ts: number) => string): Inspected | null {
   const titles = new Map(view.nodes.map((n) => [n.id, n.title]));
   const node = view.nodes.find((n) => n.id === id);
@@ -31,7 +34,7 @@ export function inspect(view: GraphView, id: string, fmt: (ts: number) => string
       title: node.title, kind: KIND_LABEL[node.kind], status: node.status,
       href: ["decision", "system", "team"].includes(node.kind) ? `/items/${node.kind}/${id}` : undefined,
       props: [
-        ["Kind", node.kind], ["Status", STATUS_LABEL[node.status] || "Neutral"],
+        ["Type", KIND_LABEL[node.kind] === "Evidence" ? "Evidence group" : KIND_LABEL[node.kind]], ["Status", STATUS_LABEL[node.status] || "Neutral"],
         ...(node.items.length ? ([["Items", String(node.items.length)]] as [string, string][]) : []),
         ["First linked", fmt(node.validFrom)],
       ],
@@ -49,8 +52,8 @@ export function inspect(view: GraphView, id: string, fmt: (ts: number) => string
   const out = view.edges.find((e) => e.from === cluster.id && titles.has(e.to) && view.nodes.find((n) => n.id === e.to)?.kind === "system");
   return {
     title: item.label, kind: SINGULAR[cluster.kind as keyof typeof SINGULAR], href: `/items/${SINGULAR[cluster.kind as keyof typeof SINGULAR]}/${item.id}`, status: item.conflict ? "conflict" : "neutral",
-    props: [["Kind", SINGULAR[cluster.kind as keyof typeof SINGULAR]], ["Cluster", cluster.title], ["First linked", fmt(item.validFrom)], ["Conflict", item.conflict ? "Yes" : "No"]],
-    neighbours: [{ id: cluster.id, title: cluster.title, type: "IN" }],
-    sourced: item.src ? [{ edge: `${item.label} → ${out ? titles.get(out.to) : "system"}`, type: out?.type ?? "EVIDENCE", sources: [item.src] }] : [],
+    props: [["Type", "Evidence"], ["Group", cluster.title], ["First linked", fmt(item.validFrom)], ["Conflict", item.conflict ? "Yes" : "No"]],
+    neighbours: [{ id: cluster.id, title: cluster.title, type: "part of" }],
+    sourced: item.src ? [{ edge: `${item.label} → ${out ? titles.get(out.to) : "system"}`, type: out?.type ?? "evidence", sources: [item.src] }] : [],
   };
 }

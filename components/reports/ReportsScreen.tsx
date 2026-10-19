@@ -133,7 +133,7 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
               { key: "cov", header: "Coverage", render: (r) => (
                 <span className="flex items-center gap-3">
                   <span className={`w-10 text-right ${r.coverage.affected ? coverageTone(r.coverage.pct) : "text-faint"}`}>{r.coverage.affected ? `${r.coverage.pct}%` : "–"}</span>
-                  <span className="relative w-20"><HatchedBar plan={100} actual={r.coverage.pct} max={100} tone={r.coverage.pct < 100 ? "ink" : "ripple"} label={`${r.coverage.told} of ${r.coverage.affected} teams told`} /></span>
+                  <span className="relative w-20"><HatchedBar plan={100} actual={r.coverage.pct} max={100} tone={r.coverage.pct < 100 ? "ink" : "covered"} label={`${r.coverage.told} of ${r.coverage.affected} teams told`} /></span>
                   <span aria-hidden className="h-4 w-0.5 rounded-full bg-strong" />
                 </span>
               ) },

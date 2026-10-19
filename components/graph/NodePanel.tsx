@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { ExternalLink, X } from "lucide-react";
 import { useSourcePanel } from "@/components/panels/SourcePanel";
+import { sourceLabel } from "@/lib/reports-ui";
 import { teamName } from "@/lib/permissions/classify";
 import { duration, ease, sec } from "@/lib/motion";
-import { STATUS_LABEL, type Inspected } from "./model";
+import { plainEdge, STATUS_LABEL, type Inspected } from "./model";
 
 const BADGE = { conflict: "bg-conflict-soft text-conflict-ink", gap: "bg-gap-soft text-gap-ink", covered: "bg-covered-soft text-covered-ink", neutral: "bg-raised text-faint" } as const;
 
@@ -70,13 +71,13 @@ export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { inf
             </section>
 
             <section>
-              <h3 className="mb-2 font-mono text-xs uppercase text-faint">Neighbours</h3>
+              <h3 className="mb-2 font-mono text-xs uppercase text-faint">Connected to</h3>
               <ul className="space-y-1">
                 {info.neighbours.map((n) => (
                   <li key={`${n.id}-${n.type}`}>
                     <button onClick={() => onSelect(n.id)} className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-1 text-left text-sm hover:bg-raised focus-visible:outline-2 focus-visible:outline-ripple transition-colors">
                       <span className="truncate text-strong">{n.title}</span>
-                      <span className="shrink-0 font-mono text-xs text-faint">{n.type}</span>
+                      <span className="shrink-0 font-mono text-xs text-faint">{plainEdge(n.type)}</span>
                     </button>
                   </li>
                 ))}
@@ -84,13 +85,13 @@ export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { inf
             </section>
 
             <section>
-              <h3 className="mb-2 font-mono text-xs uppercase text-faint">Sourced edges</h3>
-              {info.sourced.length === 0 && <p className="text-sm text-faint">No source is attached to these edges.</p>}
+              <h3 className="mb-2 font-mono text-xs uppercase text-faint">Where this comes from</h3>
+              {info.sourced.length === 0 && <p className="text-sm text-faint">No source is attached to these links.</p>}
               <ul className="space-y-3">
                 {info.sourced.map((s) => (
                   <li key={s.edge + s.type} className="space-y-1.5">
                     <p className="text-sm text-strong">
-                      {s.edge} <span className="font-mono text-xs text-faint">{s.type}</span>
+                      {s.edge} <span className="font-mono text-xs text-faint">{plainEdge(s.type)}</span>
                     </p>
                     {s.sources.map((src) => (
                       <button
@@ -98,7 +99,7 @@ export function NodePanel({ info, onSelect, onClose, top = "top-[64px]" }: { inf
                         onClick={() => source.open(src.artifactId, src.quote)}
                         className="block w-full rounded-md border border-hairline bg-page p-2 text-left hover:border-ripple focus-visible:outline-2 focus-visible:outline-ripple transition-colors"
                       >
-                        <span className="font-mono text-xs text-ripple-ink">{src.artifactId}</span>
+                        <span className="font-mono text-xs text-ripple-ink">{sourceLabel(src.artifactId)}</span>
                         <span className="mt-0.5 line-clamp-2 block text-xs text-body">{src.restricted ? `Restricted to ${teamName(src.restricted)}` : `“${src.quote}”`}</span>
                       </button>
                     ))}

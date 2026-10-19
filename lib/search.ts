@@ -79,14 +79,14 @@ export function fulltextQuery(q: string): string | null {
   return words.length ? words.map((w) => `${w}*`).join(" ") : null;
 }
 
-type Rankable = { id: string; group: Group; title: string; score?: number };
+type Rankable = { id: string; group: Group; title: string; score?: number; /** tie-break: open before closed, then newer first */ live?: boolean; at?: number };
 /** Rank by match quality (then the source's own score), dedupe by group+id, cap each group and the total. Keeps group order. */
 export function rank<T extends Rankable>(hits: T[], q: string, perGroup = PER_GROUP, max = MAX_HITS): T[] {
   const seen = new Set<string>();
   const scored = hits
     .map((h) => ({ h, s: Math.max(matchScore(h.title, q), h.score ? 20 : 0) + Math.min(h.score ?? 0, 10) / 10 }))
     .filter(({ h, s }) => s > 0 && !seen.has(`${h.group}:${h.id}`) && !!seen.add(`${h.group}:${h.id}`))
-    .sort((a, b) => b.s - a.s || GROUPS.indexOf(a.h.group) - GROUPS.indexOf(b.h.group) || a.h.title.localeCompare(b.h.title));
+    .sort((a, b) => b.s - a.s || Number(b.h.live ?? false) - Number(a.h.live ?? false) || (b.h.at ?? 0) - (a.h.at ?? 0) || GROUPS.indexOf(a.h.group) - GROUPS.indexOf(b.h.group) || a.h.title.localeCompare(b.h.title));
   const per = new Map<Group, number>();
   const kept = scored.filter(({ h }) => {
     const n = per.get(h.group) ?? 0;
@@ -121,7 +121,7 @@ export const PAGES: { id: string; title: string; href: string; keywords?: string
   { id: "agents", title: "Agents", href: "/agents" },
   { id: "connections", title: "Connections", href: "/connections", keywords: "sources" },
   { id: "integrations", title: "Integrations", href: "/integrations" },
-  { id: "notifications", title: "Notifications", href: "/reports?view=activity", keywords: "activity inbox" },
+  { id: "notifications", title: "Notifications", href: "/reports?tab=activity", keywords: "activity inbox" },
   { id: "settings", title: "Settings", href: "/settings", keywords: "preferences keys" },
   { id: "help", title: "Help", href: "/help", keywords: "docs support" },
   { id: "profile", title: "Profile", href: "/profile", keywords: "me account" },

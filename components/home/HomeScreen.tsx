@@ -15,11 +15,12 @@ import { ackBrief, getHome, getNames, isGraphDown } from "@/lib/api";
 import { proposalTitle } from "@/lib/approvals/title";
 import { describeEdge } from "@/lib/changes";
 import type { HomeBrief } from "@/lib/schemas";
+import { fmtDate } from "@/lib/date";
 
 type Row = ComponentProps<typeof NeedsYou>["rows"][number];
 
 const DAY = 86_400_000;
-const date = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const date = fmtDate;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const STATUS = { conflict: "Conflict", gap: "Not acknowledged", covered: "Acknowledged" } as const;
 

@@ -107,7 +107,7 @@ describe("GET /api/analytics", () => {
     expect(a.heatmap.cells.some((c) => c.teamId === "legal" && c.gap === "contract_conflict")).toBe(true);
     expect(a.heatmap.cells.filter((c) => c.arrAtRisk !== null)).toHaveLength(1); // ARR sits on one cell only
     expect(a.coverage!.trend).toHaveLength(26);
-    expect(a.waterfall!.takeaway).toBe("Legal and DevRel explain 67% of the 60 point gap.");
+    expect(a.waterfall!.takeaway).toBe("Legal, DevRel and Security explain 100% of the 60 point gap.");
     expect(a.forecast).toMatchObject({ currentPct: 40 });
     // the current path plus pending actions only: derived scenarios are not real actions, and it never reads below the path
     expect(a.forecast!.withApprovalsPct).toBe(a.forecast!.projectedPct);

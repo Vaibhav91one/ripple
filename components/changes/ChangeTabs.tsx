@@ -9,13 +9,14 @@ import { getChanges, getNames } from "@/lib/api";
 import { describeEdge } from "@/lib/changes";
 import type { EdgeType, RippleResult } from "@/lib/schemas";
 import { filterChanges, nameOf as nameFrom, typeCounts } from "./helpers";
+import { fmtDate } from "@/lib/date";
 
 const RESULT: Record<Choice, string> = {
   acknowledge: "Legal acknowledged the conflict. The gap shrinks once the ack is written.",
   move_date: "Proposal sent to Eng: move the sunset after Jun 30.",
   negotiate: "Task created for Legal: negotiate clause 7.2 with both customers.",
 };
-const day = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const day = fmtDate;
 const empty = (text: string) => <p className="rounded-xl bg-surface px-4 py-16 text-center text-sm text-faint shadow-[var(--kit-shadow-card)]">{text}</p>;
 
 /** The conflict detail screen as a tab. `?conflict=<id>` puts that conflict first; `?conflict=open` shows them in order. */

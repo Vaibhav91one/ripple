@@ -36,7 +36,7 @@ export const NAV: { title?: string; items: NavItem[] }[] = [
 
 /** Bottom of the sidebar, above the user card. */
 export const NAV_FOOTER: NavItem[] = [
-  { href: "/reports?view=activity", label: "Notifications", icon: Bell },
+  { href: "/reports?tab=activity", label: "Notifications", icon: Bell },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/help", label: "Help", icon: LifeBuoy },
 ];

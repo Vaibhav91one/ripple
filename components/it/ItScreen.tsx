@@ -7,8 +7,9 @@ import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
 import { card } from "@/components/ui/hatch";
 import { decideIt, getIt, isGraphDown } from "@/lib/api";
 import type { ItRequest } from "@/lib/schemas";
+import { fmtDate } from "@/lib/date";
 
-const date = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const date = fmtDate;
 const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 const teamLabel = (id: string | null) => (id ? (TEAMS.find((t) => t.id === id)?.label ?? id) : "No team");
 const btn = "rounded-control border border-hairline px-2.5 py-1 text-2xs font-medium text-body transition-colors hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple disabled:opacity-50";
