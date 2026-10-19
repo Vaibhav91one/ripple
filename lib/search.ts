@@ -121,7 +121,7 @@ export const PAGES: { id: string; title: string; href: string; keywords?: string
   { id: "agents", title: "Agents", href: "/agents" },
   { id: "connections", title: "Connections", href: "/connections", keywords: "sources" },
   { id: "integrations", title: "Integrations", href: "/integrations" },
-  { id: "notifications", title: "Notifications", href: "/reports?view=activity", keywords: "activity inbox" },
+  { id: "notifications", title: "Notifications", href: "/reports?tab=activity", keywords: "activity inbox" },
   { id: "settings", title: "Settings", href: "/settings", keywords: "preferences keys" },
   { id: "help", title: "Help", href: "/help", keywords: "docs support" },
   { id: "profile", title: "Profile", href: "/profile", keywords: "me account" },
