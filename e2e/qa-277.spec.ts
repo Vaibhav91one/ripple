@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 test("Notifications in the sidebar opens the Activity tab", async ({ page }) => {
   await page.goto("/");
+  const menu = page.getByRole("button", { name: "Open menu" });
+  if (await menu.isVisible()) await menu.click(); // phone: the sidebar is a drawer
   await page.getByRole("link", { name: /^Notifications/ }).click();
   await expect(page).toHaveURL(/\/reports\?tab=activity/);
   await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute("aria-selected", "true");
@@ -18,7 +20,7 @@ test("a pending item on the case file opens its approval, not the home page", as
 });
 
 test("skip link is first in the Tab order and lands on main", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/help"); // "/" autofocuses the Assistant composer
   await page.keyboard.press("Tab");
   const skip = page.getByRole("link", { name: "Skip to content" });
   await expect(skip).toBeFocused();
