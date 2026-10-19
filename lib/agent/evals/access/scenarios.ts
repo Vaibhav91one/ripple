@@ -53,6 +53,16 @@ export const accessScenarios: Scenario[] = [
     },
   },
   {
+    name: "team.member_added: only the new joiner is checked, one request if they lack the group",
+    graphFixture: { statements: supportFixture(5) },
+    input: { reason: "team.member_added", decisionId: "d-1", personId: "p-nia" },
+    expect: { mustCite: ["art-rfc14"], mustPropose: [req("p-nia")], mustNotPropose: NEVER, recipients: ["support"], proposalCount: 1, maxSteps: 4 },
+    trace: {
+      calls: [[{ tool: "access_gap", input: { decisionId: "d-1", personId: "p-nia" } }], [request("p-nia", "Nia")]],
+      output: { summary: "Nia joined Support after API v1's shutdown on Jan 31, 2027 was confirmed [[art-rfc14]]; she lacks the v2 console and the request waits for approval.", requests: [mine("p-nia", "Nia")], unknown: [] },
+    },
+  },
+  {
     name: "a stale person cannot be requested even if the model tries",
     graphFixture: { statements: supportFixture(200) },
     input: { reason: "change.confirmed", decisionId: "d-1" },

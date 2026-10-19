@@ -28,14 +28,15 @@ export const access = defineAgent({
   tools: ["recall", "access_gap", "search", "propose_access_request"],
   writes: ["access_request"],
   budget: { maxSteps: 8, maxTokens: 60_000 },
-  trigger: { events: ["change.confirmed"] },
+  trigger: { events: ["change.confirmed", "team.member_added"] },
   input: z.object({
-    reason: z.string().describe("What started the run: change.confirmed or manual"),
+    reason: z.string().describe("What started the run: change.confirmed, team.member_added or manual"),
     decisionId: z.string().nullable(),
+    personId: z.string().nullable().optional().describe("Set when a person joined an affected team: check only them"),
   }),
   output: AccessReport,
   system: ({ now }) => `You are the Access Planner, working for IT. Today is ${new Date(now * 1000).toISOString().slice(0, 10)}.
-The input names a decision id. Call access_gap once. Its first row is the change (title, date, sentence) and counts; the other rows are people who lack software or an access group the change's systems require.
+The input names a decision id. Call access_gap once; if the input has a personId, pass it too so only that new joiner is checked. Its first row is the change (title, date, sentence) and counts; the other rows are people who lack software or an access group the change's systems require.
 - status "missing": propose_access_request for that person and resourceId, with a one-sentence justification that cites the change [[artifact-id]]. Default expiry; do not pass expiryDays unless the change names another period.
 - status "unknown": identity data is older than 90 days or absent. Do NOT request. List the person under "unknown" with the reason.
 One tool call per step; propose each request in its own call list, never twice for the same person and resource. Rules: cite every claim as [[artifact-id]] using ids a tool returned this run; never invent a person or resource. You only propose; a person approves, and IT grants access outside Ripple. You can never grant, revoke or change access.`,

@@ -26,6 +26,8 @@ function recipients(e: RippleEvent, g: GraphReader, slack: boolean): Hit[] {
       return [...hits([g.changeOwner(e.payload.changeId)], "change_owner", "high"), ...hits([g.changeOwner(e.payload.conflictsWith)], "conflicting_change_owner", "high")];
     case "impact.ready":
       return hits([g.changeOwner(e.payload.changeId)], "change_owner", "low");
+    case "team.member_added":
+      return []; // Access Planner reads it from the agent queue; nobody is notified
     case "contract.added":
       return []; // Contract Sentinel reads it from the agent queue; nobody is notified
     case "brief.sent":

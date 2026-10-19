@@ -289,6 +289,17 @@ export async function changeSunset(g: Graph, decisionId: string, newOn: number, 
   return { data: cf.data, cypher: [c, ...cf.cypher], created: cf.created };
 }
 
+/** Ids of open changes (confirmed, not past their effective date) whose ripple reaches this team. */
+export async function openChangesForTeam(g: Graph, now: number, teamId: string): Promise<string[]> {
+  const { rows } = await run(g, "open-changes", { now }, z.object({ id: z.string() }));
+  const hit: string[] = [];
+  for (const { id } of rows) {
+    const r = await ripple(g, id, now).catch((e) => (e instanceof NotFound ? null : Promise.reject(e)));
+    if (r?.teams.some((t) => t.teamId === teamId)) hit.push(id);
+  }
+  return hit;
+}
+
 // ---------- lookups ----------
 export async function decisions(g: Graph): Promise<Result<Decision[]>> {
   const { rows, c } = await run(g, "decisions", {}, Decision);

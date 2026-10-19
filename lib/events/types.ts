@@ -34,6 +34,8 @@ export const RippleEvent = z.discriminatedUnion("type", [
   ev("task.due", { taskId: id }),
   ev("task.overdue", { taskId: id }),
   ev("approval.requested", { changeId: id, approverId: id }),
+  // A person joined a team (membership PATCH or Clerk sync). No recipients; Access Planner checks open changes for this person.
+  ev("team.member_added", { teamId: id, personId: id, userId: z.string().optional() }),
   ev("access.needed", { userId: id, resource: id }),
   ev("access.granted", { userId: id, resource: id }),
   ev("pr.opened", prPayload),

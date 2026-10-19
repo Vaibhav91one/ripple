@@ -22,6 +22,13 @@ export async function emit(tx: Executor, event: RippleEvent): Promise<{ inserted
   return { inserted: !!row, id: row?.id };
 }
 
+/** One team.member_added per team; the dedupe key makes a repeat (webhook retry, second PATCH) a no-op. */
+export async function emitMemberAdded(tx: Executor, orgId: string, personId: string, teamIds: string[], userId?: string): Promise<void> {
+  for (const teamId of teamIds) {
+    await emit(tx, { type: "team.member_added", orgId, subject: { kind: "team", id: teamId }, payload: { teamId, personId, userId }, dedupeKey: `member:${orgId}:${teamId}:${personId}` });
+  }
+}
+
 /** Runs only for newly inserted events. enqueue() never throws and no-ops without DATABASE_URL. */
 async function onEventInserted(id: string, event: RippleEvent): Promise<void> {
   await enqueue("route-event", { eventId: id, type: event.type, orgId: event.orgId }, { singletonKey: event.dedupeKey });
