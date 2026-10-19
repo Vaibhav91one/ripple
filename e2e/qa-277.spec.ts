@@ -21,7 +21,7 @@ test("a pending item on the case file opens its approval, not the home page", as
 
 test("skip link is first in the Tab order and lands on main", async ({ page }, info) => {
   test.skip(info.project.name === "mobile", "keyboard-only feature; the 390px project is the same Chromium");
-  await page.goto("/help"); // "/" autofocuses the Assistant composer
+  await page.goto("/help", { waitUntil: "networkidle" }); // "/" autofocuses the Assistant composer; idle = hydrated, so focus is not reset after Tab
   await page.keyboard.press("Tab");
   const skip = page.getByRole("link", { name: "Skip to content" });
   await expect(skip).toBeFocused();
