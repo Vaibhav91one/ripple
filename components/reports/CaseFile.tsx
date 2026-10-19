@@ -161,8 +161,8 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               sub="Who needed to act, and what they did"
               action={
                 <div className="flex shrink-0 gap-4 text-xs text-faint">
-                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded--sm" style={hatch("var(--faint)")} />Expected</span>
-                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded--sm bg-covered" />Done</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm" style={hatch("var(--faint)")} />Expected</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm bg-covered" />Done</span>
                 </div>
               }
             />
