@@ -5,7 +5,7 @@ import { roQuery, type Graph } from "../graph/client";
 import { load } from "../graph/queries";
 import type { RestrictedSummary } from "../schemas/common";
 import {
-  ARR_OWNER, EDGE_OWNER, KIND_OWNER, LABEL_KIND, LEADERSHIP, RESTRICTED_QUOTE, RESTRICTED_TITLE, kindNoun,
+  ARR_OWNER, EDGE_OWNER, KIND_OWNER, LABEL_KIND, LEADERSHIP, RESTRICTED_QUOTE, RESTRICTED_TITLE, kindNoun, teamName,
   type RestrictedKind,
 } from "./classify";
 
@@ -121,4 +121,23 @@ export async function redactToolOut<O extends { rows: unknown[]; sources: unknow
 ): Promise<O & { restricted?: RestrictedSummary[] }> {
   const r = redact({ rows: out.rows, sources: out.sources }, viewer, await loadIndex(g));
   return { ...out, rows: r.value.rows, sources: r.value.sources, ...(r.restricted.length ? { restricted: r.restricted } : {}) } as O & { restricted?: RestrictedSummary[] };
+}
+
+const withOwnerPhrase = (x: unknown): unknown => {
+  if (Array.isArray(x)) return x.map(withOwnerPhrase);
+  if (!isObj(x)) return x;
+  const out = Object.fromEntries(Object.entries(x).map(([k, y]) => [k, withOwnerPhrase(y)]));
+  if (out.quote === RESTRICTED_QUOTE && typeof out.restricted === "string") out.quote = `restricted to ${teamName(out.restricted)}`;
+  return out;
+};
+
+/**
+ * Redact `value` (a brief, its claims, a conflict, source titles) for the team it is addressed to (#142): topology stays, text owned by
+ * another team is hidden and a hidden quote reads "restricted to <Team>". Briefs have no session viewer (emails, ack links, tasks), so the
+ * recipient team is the viewer; an unknown team owns nothing (fails closed).
+ */
+export async function redactForTeam<T>(g: Graph, teamId: string | undefined, value: T): Promise<T> {
+  const known = teamId ? (await roQuery<{ id: string }>(g, "MATCH (t:Team {id: $teamId}) RETURN t.id AS id", { teamId })).length > 0 : false;
+  const r = redact(value, { teamIds: known && teamId ? [teamId] : [] }, await loadIndex(g));
+  return withOwnerPhrase(r.value) as T;
 }

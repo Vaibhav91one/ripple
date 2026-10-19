@@ -644,3 +644,53 @@ describe.skipIf(!process.env.DATABASE_URL)("sentinel leak: runBackground prompts
     }
   }, 120_000);
 });
+
+// ---------- briefs (#142): addressed to the recipient team, so redacted for the RECIPIENT, not for a session viewer ----------
+describe("sentinel leak: briefs", () => {
+  t("a Legal-owned quote in a brief to Security is withheld there and shown to Legal", async () => {
+    vi.stubEnv("DATABASE_URL", ""); // the direct (DB-less) notify path: Task, Outbox html and result are all in the graph / return value
+    // seed: Security's own edge now cites a Legal-owned artifact and quote, so a Legal quote lands in a brief to Security
+    const cite = "MATCH (:Team {id: 'security'})-[r:OWNS]->() ";
+    const before = await query<{ src: string; quote: string }>(g, cite + "RETURN r.src AS src, r.quote AS quote");
+    await query(g, cite + "SET r.src = 'art-msa-northwind', r.quote = 'SENTINEL_SRC Northwind guarantees v1 past the shutdown'");
+    try {
+      const { buildBrief } = await import("../briefs");
+      const { notifyGaps } = await import("../notify");
+      const { ackBrief } = await import("../ack-brief");
+      const raw = async (team: string) => JSON.stringify(await buildBrief(team, "d-1", { g, now: NOW, model: null }));
+      expect(await raw("security"), "precondition: the sentinel quote reaches the Security brief").toContain("SENTINEL_SRC");
+      expect(await raw("legal")).toContain("SENTINEL_SRC");
+
+      const res = await notifyGaps(g, "d-1", { now: NOW, model: null, env: {}, baseUrl: "http://x" });
+      const stored = await query<{ team: string; body: string; html: string }>(
+        g, "MATCH (k:Task)-[:NOTIFIES]->(tm:Team) OPTIONAL MATCH (o:Outbox {id: 'out-d-1-' + tm.id}) RETURN tm.id AS team, k.body AS body, o.html AS html",
+      );
+      const ack = async (team: string) => JSON.stringify(await ackBrief("demo", team, "d-1", NOW));
+      const create = async (team: string) => {
+        const seen: unknown[] = [];
+        const propose = async (_k: string, payload: unknown, evidence: unknown) => (seen.push({ payload, evidence }), { ok: true });
+        await TOOLS.create_tasks.run({ g, now: NOW, demo: true, propose } as never, { decisionId: "d-1" });
+        return JSON.stringify(seen.filter((s) => (s as { payload: { teamId: string } }).payload.teamId === team));
+      };
+      const surfaces = async (team: string) => ({
+        notify: JSON.stringify(res.filter((r) => r.teamId === team)),
+        task: JSON.stringify(stored.filter((r) => r.team === team).map((r) => r.body)),
+        email: JSON.stringify(stored.filter((r) => r.team === team).map((r) => r.html)),
+        ack: await ack(team),
+        create_tasks: await create(team),
+      });
+      for (const [path, text] of Object.entries(await surfaces("security"))) expect(text, `security ${path}`).not.toContain("SENTINEL_SRC");
+      const sec = await surfaces("security");
+      expect(sec.email).toContain("restricted to Legal");
+      expect(sec.ack).toContain("restricted to Legal");
+      expect(res.map((r) => r.teamId)).toContain("security");
+      // Legal (the owner) keeps its quote; Legal is not a gap team in this graph, so its brief is read through the ack page
+      expect(await ack("legal")).toContain("SENTINEL_SRC");
+      // fail closed: a team that cannot be resolved sees no foreign quote
+      expect(JSON.stringify(await ackBrief("demo", "no-such-team", "d-1", NOW))).not.toContain("SENTINEL_SRC");
+    } finally {
+      for (const b of before) await query(g, cite + "SET r.src = $src, r.quote = $quote", b);
+      vi.unstubAllEnvs();
+    }
+  }, 60_000);
+});
