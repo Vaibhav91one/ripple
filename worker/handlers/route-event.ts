@@ -2,8 +2,19 @@ import type { Job } from "pg-boss";
 import type { RippleEvent } from "../../lib/events/types";
 import type { Graph } from "../../lib/graph/client";
 
+/** access.granted and task.* events carry no change id: find the decision through the graph (access request -> decision, campaign task -> its campaign's decision). */
+async function decisionOf(event: { type: string; payload: object; subject?: { id: string } }, g?: Graph): Promise<string | null> {
+  if (!g) return null;
+  const { roQuery } = await import("../../lib/graph/client");
+  const taskId = (event.payload as { taskId?: string }).taskId;
+  const [r] = event.type === "access.granted" && event.subject
+    ? await roQuery<{ d: string | null }>(g, "MATCH (a:AccessRequest {id: $id}) RETURN a.decisionId AS d", { id: event.subject.id })
+    : taskId && event.type.startsWith("task.") ? await roQuery<{ d: string | null }>(g, "MATCH (k:Task {id: $id}), (c:Campaign) WHERE k.id STARTS WITH 'task-' + c.decisionId + '-' RETURN c.decisionId AS d", { id: taskId }) : [];
+  return r?.d ?? null;
+}
+
 /** Queue one `agent` job per agent whose trigger lists this event type (Impact Analyst, Contract Sentinel). Their input schemas pick the keys they need. */
-export async function dispatchAgents(event: Pick<RippleEvent, "type" | "orgId" | "payload">, enqueue: (name: "agent", data: object) => Promise<unknown>, g?: Graph, now = Math.floor(Date.now() / 1000)): Promise<string[]> {
+export async function dispatchAgents(event: Pick<RippleEvent, "type" | "orgId" | "payload"> & { subject?: RippleEvent["subject"] }, enqueue: (name: "agent", data: object) => Promise<unknown>, g?: Graph, now = Math.floor(Date.now() / 1000)): Promise<string[]> {
   const { agents } = await import("../../lib/agent/registry");
   const p = event.payload as { changeId?: string; contractId?: string };
   const hit = agents().filter((x) => x.trigger.events?.includes(event.type));
@@ -14,7 +25,8 @@ export async function dispatchAgents(event: Pick<RippleEvent, "type" | "orgId" |
     for (const a of hit) for (const decisionId of changes) await enqueue("agent", { orgId: event.orgId, agent: a.name, trigger: `event:${event.type}`, input: { reason: event.type, decisionId, personId: m.personId } });
     return changes.length ? hit.map((x) => x.name) : [];
   }
-  for (const a of hit) await enqueue("agent", { orgId: event.orgId, agent: a.name, trigger: `event:${event.type}`, input: { reason: event.type, decisionId: p.changeId ?? null, contractId: p.contractId ?? null } });
+  const decisionId = p.changeId ?? (hit.length ? await decisionOf(event, g) : null);
+  for (const a of hit) await enqueue("agent", { orgId: event.orgId, agent: a.name, trigger: `event:${event.type}`, input: { reason: event.type, decisionId, contractId: p.contractId ?? null } });
   return hit.map((x) => x.name);
 }
 

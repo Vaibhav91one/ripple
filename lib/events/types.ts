@@ -31,6 +31,7 @@ export const RippleEvent = z.discriminatedUnion("type", [
   ev("evidence.recorded", { changeId: id, channelId: id, teamId: z.string().optional(), personId: z.string().optional() }),
   ev("campaign.chase", { changeId: id, teamId: id, by: id }),
   ev("task.assigned", { taskId: id, userId: id }),
+  ev("task.done", { taskId: id }),
   ev("task.due", { taskId: id }),
   ev("task.overdue", { taskId: id }),
   ev("approval.requested", { changeId: id, approverId: id }),

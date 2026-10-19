@@ -8,7 +8,7 @@ const sample: Record<string, object> = {
   "conflict.found": { changeId: "c1", conflictsWith: "c2" }, "brief.sent": { briefId: "b1", userId: "u1" },
   "ack.recorded": { changeId: "c1", userId: "u1" }, "ack.missing_48h": { changeId: "c1", userId: "u1" },
   "ack.missing_96h": { changeId: "c1", userId: "u1" }, "campaign.chase": { changeId: "c1", teamId: "legal", by: "u1" }, "task.assigned": { taskId: "t1", userId: "u1" },
-  "task.due": { taskId: "t1" }, "task.overdue": { taskId: "t1" }, "approval.requested": { changeId: "c1", approverId: "u1" },
+  "task.due": { taskId: "t1" }, "task.done": { taskId: "t1" }, "task.overdue": { taskId: "t1" }, "approval.requested": { changeId: "c1", approverId: "u1" },
   "access.needed": { userId: "u1", resource: "r" }, "access.granted": { userId: "u1", resource: "r" },
   "pr.opened": { url: "https://github.com/a/b/pull/1" }, "pr.updated": { url: "https://github.com/a/b/pull/1" },
   "impact.ready": { changeId: "c1", runId: "r1" }, "contract.added": { contractId: "ctr-1" },
