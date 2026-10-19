@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { SampleCompany } from "@/components/settings/SampleCompany";
 import { MembersSection, Notice, PrefsSection } from "@/components/settings/sections";
 import { PageLoading } from "@/components/states/States";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -124,6 +125,10 @@ async function Settings({ searchParams }: { searchParams: SP }) {
           <section aria-label="Notification defaults" className="space-y-3">
             <PrefsSection ctx={ctx} show="org" />
           </section>
+          <Card className="space-y-4">
+            <CardHeader title="Sample company" sub="Ledgerly, a made-up fintech to look around with" />
+            <SampleCompany />
+          </Card>
           <Card id="audit" className="space-y-4">
             <CardHeader title="Audit log" sub="Every write and every refused write in this org, newest first. Read-only." />
             <AuditLog ctx={ctx} f={f} />

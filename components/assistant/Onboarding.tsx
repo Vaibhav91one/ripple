@@ -32,17 +32,27 @@ const LINKS = [
   { href: "/connections/csv", title: "Import a CSV", sub: "Teams, systems and customers", icon: <FileSpreadsheet size={18} aria-hidden /> },
 ];
 
-export function Onboarding({ canManage }: { canManage: boolean }) {
+/** Load or remove the sample company, then refetch everything that reads the graph. Shared by the home card, the home note and Settings. */
+export function useSample() {
   const qc = useQueryClient();
-  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "removing" | "error">("idle");
   const [msg, setMsg] = useState("");
-  const load = async () => {
-    setState("loading");
-    const r = await fetch("/api/assistant/sample", { method: "POST" }).catch(() => null);
-    if (!r?.ok) { setState("error"); setMsg((await r?.json().catch(() => null))?.message ?? "The sample did not load. Try again."); return; }
+  const run = async (method: "POST" | "DELETE", busy: "loading" | "removing", fail: string) => {
+    setState(busy);
+    const r = await fetch("/api/assistant/sample", { method }).catch(() => null);
+    if (!r?.ok) { setState("error"); setMsg((await r?.json().catch(() => null))?.message ?? fail); return; }
     setState("idle");
     await qc.invalidateQueries(); // chips, reports and the home cards all read the graph that just changed
   };
+  return {
+    state, msg,
+    load: () => run("POST", "loading", "The sample did not load. Try again."),
+    remove: () => run("DELETE", "removing", "The sample was not removed. Try again."),
+  };
+}
+
+export function Onboarding({ canManage }: { canManage: boolean }) {
+  const { state, msg, load } = useSample();
   return (
     <section aria-labelledby="onboard-title" className="mt-8 w-full rounded-card border border-hairline bg-surface p-5 text-left">
       <h2 id="onboard-title" className="text-md font-medium text-strong">Your company brain is empty</h2>
@@ -76,14 +86,8 @@ export function Onboarding({ canManage }: { canManage: boolean }) {
 
 /** A quiet line while the sample is in the graph, with the way out for admins. */
 export function SampleNote({ canManage }: { canManage: boolean }) {
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  const remove = async () => {
-    setBusy(true);
-    await fetch("/api/assistant/sample", { method: "DELETE" }).catch(() => null);
-    setBusy(false);
-    await qc.invalidateQueries();
-  };
+  const { state, remove } = useSample();
+  const busy = state === "removing";
   return (
     <p className="mt-4 text-xs text-faint">
       You are looking at the sample company, Ledgerly.{" "}
