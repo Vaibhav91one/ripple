@@ -9,9 +9,9 @@ export type InlineAskProps = {
 
 export function InlineAsk({ heading, before, chip }: InlineAskProps) {
   return (
-    <section className="rounded-[var(--ref-radius)] border border-hairline bg-ripple-soft p-1.5 shadow-[0_6px_20px_color-mix(in_srgb,var(--chart)_14%,transparent)]">
+    <section className="rounded-[var(--ref-radius)] border border-hairline bg-ripple-soft p-1.5 shadow-raised">
       <button type="button" aria-expanded="true" className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-2xs text-body focus-visible:outline-2 focus-visible:outline-ripple">
-        <Sparkles size={12} className="text-ripple" aria-hidden />
+        <Sparkles size={12} className="text-ripple-ink" aria-hidden />
         <span className="flex-1">{heading}</span>
         <ChevronUp size={14} className="text-faint" aria-hidden />
       </button>

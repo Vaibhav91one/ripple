@@ -26,7 +26,7 @@ const STEPS: { id: Contract["approvalState"]; label: string }[] = [
   { id: "approved", label: "Approved" },
   { id: "signed", label: "Signed" },
 ];
-const th = "px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-faint";
+const th = "px-2 py-1.5 text-left text-2xs font-medium uppercase tracking-wide text-faint";
 const td = "px-2 py-2 align-middle";
 
 // Legal workspace: an Ironclad-style renewal window, obligations, clause risk and approval layers.
@@ -65,7 +65,7 @@ export function LegalDashboard() {
                     <td className={`${td} tabular-nums text-body`}>{formatKpi("usd", c.value)}</td>
                     <td className={td}>
                       <span className="tabular-nums text-body">{c.noticeDays}d</span>{" "}
-                      <span className={late ? "text-conflict" : "text-faint"}>{late ? "window passed" : `by ${fmtDay(noticeBy)}`}</span>
+                      <span className={late ? "text-conflict-ink" : "text-faint"}>{late ? "window passed" : `by ${fmtDay(noticeBy)}`}</span>
                     </td>
                     <td className={`${td} tabular-nums text-body`}>{fmtDay(c.endsAt)}</td>
                   </tr>
@@ -122,7 +122,7 @@ export function LegalDashboard() {
                     </button>
                     )}
                     {conflict && (
-                      <p className="text-xs text-conflict">
+                      <p className="text-xs text-conflict-ink">
                         Conflicts with the sunset decision.{" "}
                         <Link href={`/changes/${V1_DECISION_ID}?conflict=open`} className="underline underline-offset-2">Open the conflict</Link>
                       </p>

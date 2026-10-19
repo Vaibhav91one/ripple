@@ -76,7 +76,7 @@ export function AnalyticsPage() {
       </nav>
 
       {error ? (
-        <Card><p className="text-sm text-conflict">Could not load analytics: {error.message}. <button className="underline" onClick={() => void refetch()}>Retry</button></p></Card>
+        <Card><p className="text-sm text-conflict-ink">Could not load analytics: {error.message}. <button className="underline" onClick={() => void refetch()}>Retry</button></p></Card>
       ) : !a ? (
         <div className="grid gap-4 lg:grid-cols-3" aria-busy="true" aria-label="Loading analytics">
           {[0, 1, 2].map((i) => <div key={i} className="h-[560px] animate-pulse rounded-card bg-surface" />)}
@@ -134,7 +134,7 @@ function GraphSection({ d }: { d: string }) {
 function Overview({ a, team }: { a: Analytics; team: string | null }) {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 *:min-w-0 lg:grid-cols-[1fr_1.1fr_1fr]">
+      <div className="grid items-start gap-4 *:min-w-0 lg:grid-cols-[1fr_1.1fr_1fr]">
         <div className="flex flex-col gap-4"><CoverageCard a={a} /><TrendCard a={a} /></div>
         <WhyCard a={a} />
         <div className="flex flex-col gap-4"><Insight a={a} /><NeedsYou a={a} /></div>
@@ -158,7 +158,7 @@ function CoverageCard({ a }: { a: Analytics }) {
     <Card>
       <CardHeader title="Coverage" sub={`${c.title}${due}`} />
       <div className="mt-5">
-        <HeroNumber value={`${c.pct}%`} delta={{ value: `${Math.abs(d)} pts`, dir: d < 0 ? "down" : "up", tone: d > 0 ? "good" : d < 0 ? "bad" : "neutral", vs: "vs yesterday" }}>
+        <HeroNumber value={c.teams.affected ? `${c.pct}%` : "–"} delta={{ value: `${Math.abs(d)} pts`, dir: d < 0 ? "down" : "up", tone: d > 0 ? "good" : d < 0 ? "bad" : "neutral", vs: "vs yesterday" }}>
           {coverageSentence(a)}
         </HeroNumber>
       </div>
@@ -234,7 +234,7 @@ function NeedsYou({ a }: { a: Analytics }) {
   if (a.agents.pending) rows.push({ id: "approvals", icon: CircleCheck, tone: "ripple", title: `${plural(a.agents.pending, "approval")} waiting org-wide`, sub: a.agents.demo ? "Demo data: seeded agent history" : "Drafted by the agents, waiting for your OK", href: "/reports" });
   const od = overdue.reduce((s, c) => s + c.count, 0);
   if (od) rows.push({ id: "overdue", icon: Clock, tone: "neutral", title: `${plural(od, "task")} overdue`, sub: `Org-wide · ${listNames(overdue.map((c) => name.get(c.teamId) ?? c.teamId))}`, href: "/reports" });
-  return <NeedsYouCard id="needs-you" rows={rows} sub={`${plural(rows.length, "thing")} on this change`} empty="Nothing needs you on this change." />;
+  return <NeedsYouCard id="needs-you" rows={rows} sub={`${plural(rows.length, "thing")} on this change`} empty="Nothing needs you on this change." moreHref={caseHref} />;
 }
 
 const LEVEL = [0, 18, 34, 56];
@@ -248,7 +248,7 @@ function HeatmapCard({ a, team }: { a: Analytics; team: string | null }) {
           <caption className="sr-only">Gaps by team and gap type</caption>
           <thead>
             <tr>
-              <th className="w-24" />
+              <th className="w-40" />
               {columns.map((c) => (
                 <th key={c.gap} scope="col" className="px-1 pb-1 text-left font-normal">
                   <span className="block text-xs text-faint">{GAP_LABEL[c.gap]}{c.gap === "overdue" && " (org)"}</span>
@@ -259,9 +259,10 @@ function HeatmapCard({ a, team }: { a: Analytics; team: string | null }) {
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 && <tr><td colSpan={columns.length + 2} className="py-6 text-center text-faint">No teams affected yet.</td></tr>}
             {rows.map((r) => (
               <tr key={r.teamId}>
-                <th scope="row" className="pr-2 text-left font-medium text-strong">{r.name}</th>
+                <th scope="row" className="pr-2 text-left font-medium text-strong"><span className="line-clamp-2 [overflow-wrap:anywhere]" title={r.name}>{r.name}</span></th>
                 {r.cells.map((c, i) => {
                   const tone = GAP_TONE[columns[i].gap];
                   const color = tone === "neutral" ? "var(--strong)" : `var(--${tone})`;
@@ -289,8 +290,8 @@ function HeatmapCard({ a, team }: { a: Analytics; team: string | null }) {
 }
 
 const ACT_ICON: Record<string, LucideIcon> = { contract_conflict: Scale, not_told: Send, not_acked: CircleAlert, overdue: FileWarning };
-const TINT = { conflict: "bg-conflict-soft text-conflict", gap: "bg-gap-soft text-gap", neutral: "bg-raised text-body" } as const;
-const INK = { conflict: "text-conflict", gap: "text-gap", neutral: "text-strong" } as const;
+const TINT = { conflict: "bg-conflict-soft text-conflict-ink", gap: "bg-gap-soft text-gap-ink", neutral: "bg-raised text-body" } as const;
+const INK = { conflict: "text-conflict-ink", gap: "text-gap-ink", neutral: "text-strong" } as const;
 const DOT = { conflict: "bg-conflict/70", gap: "bg-gap/70", neutral: "bg-faint/60" } as const;
 
 function ActFirst({ a }: { a: Analytics }) {
@@ -341,8 +342,8 @@ function ForecastSection({ a }: { a: Analytics }) {
           <>
             <Kpi label={`Projected coverage on ${due}`} value={`${f.projectedPct}%`} sub={`At the pace so far · ${f.daysLeft ?? 0} days left`} />
             <Kpi label="Today" value={`${f.currentPct}%`} sub={`${f.projectedPct - f.currentPct} more pts expected by ${due}`} />
-            <Kpi label="Gap to target" value={`${gap} pts`} tone={gap ? "text-gap" : undefined} sub={gap ? `Short of 100% on ${due} at this pace` : "On track for every team"} />
-            <Kpi label="With your approvals" value={`${w.approvals}%`} tone={w.gainPts ? "text-covered" : undefined}
+            <Kpi label="Gap to target" value={`${gap} pts`} tone={gap ? "text-gap-ink" : undefined} sub={gap ? `Short of 100% on ${due} at this pace` : "On track for every team"} />
+            <Kpi label="With your approvals" value={`${w.approvals}%`} tone={w.gainPts ? "text-covered-ink" : undefined}
               chip={w.gainPts ? `${w.gainPts} pts` : undefined}
               sub={pending ? `${plural(pending, "pending action")} on top of the current path` : "No agent action is pending, so it matches the current path"} />
           </>
@@ -350,7 +351,7 @@ function ForecastSection({ a }: { a: Analytics }) {
           <>
             <Kpi label="Projected coverage" value="–" sub="No effective date set" />
             <Kpi label="Today" value={`${f.currentPct}%`} sub="Nothing to project to without a date" />
-            <Kpi label="Gap to target" value={`${100 - f.currentPct} pts`} tone={f.currentPct < 100 ? "text-gap" : undefined} sub="Short of 100% today" />
+            <Kpi label="Gap to target" value={`${100 - f.currentPct} pts`} tone={f.currentPct < 100 ? "text-gap-ink" : undefined} sub="Short of 100% today" />
             <Kpi label="With your approvals" value="–" sub="No effective date set" />
           </>
         )}
@@ -368,14 +369,14 @@ function ForecastSection({ a }: { a: Analytics }) {
             <button key={s.id} type="button" role="switch" aria-checked={active} onClick={() => toggle(s)}
               className={`flex flex-col rounded-card border bg-surface p-5 text-left transition-colors ${active ? (derived ? "border-strong" : "border-covered") : "border-hairline hover:border-faint"}`}>
               <span className="flex w-full items-center justify-between">
-                <span className={`grid size-9 place-items-center rounded-full ${derived ? "bg-raised text-body" : "bg-covered-soft text-covered"}`}><Send size={15} aria-hidden /></span>
+                <span className={`grid size-9 place-items-center rounded-full ${derived ? "bg-raised text-body" : "bg-covered-soft text-covered-ink"}`}><Send size={15} aria-hidden /></span>
                 <span aria-hidden className={`flex h-5 w-9 items-center rounded-full p-0.5 transition-colors ${active ? (derived ? "bg-strong" : "bg-covered") : "bg-hairline"}`}>
-                  <span className={`size-4 rounded-full bg-surface shadow-sm transition-transform ${active ? "translate-x-4" : ""}`} />
+                  <span className={`size-4 rounded-full bg-surface shadow-card transition-transform ${active ? "translate-x-4" : ""}`} />
                 </span>
               </span>
               <span className="mt-4 text-md font-medium text-strong">{scenarioLabel(s)}</span>
-              <span className="mt-1 flex items-baseline gap-2"><span className={`text-3xl font-light tabular-nums ${active && !derived ? "text-covered" : "text-strong"}`}>+{s.pts} pts</span><span className="text-sm text-faint">of coverage</span></span>
-              <span className="mt-3 h-1.5 w-full rounded-full bg-raised"><span className="block h-full rounded-full" style={{ width: `${s.pts}%`, ...(active && !derived ? { background: "var(--covered)" } : hatch("var(--faint)")) }} /></span>
+              <span className="mt-1 flex items-baseline gap-2"><span className={`text-3xl font-light tabular-nums ${active && !derived ? "text-covered-ink" : "text-strong"}`}>+{s.pts} pts</span><span className="text-sm text-faint">of coverage</span></span>
+              <span className="mt-3 h-1.5 w-full rounded-full bg-raised"><span className="block h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, s.pts))}%`, ...(active && !derived ? { background: "var(--covered)" } : hatch("var(--faint)")) }} /></span>
               <span className="mt-3 text-sm text-faint">{derived ? <><StatusPill tone="neutral">not yet proposed</StatusPill><span className="ml-2">What telling this team is worth</span></> : "A pending action: approving it sends the notice"}</span>
             </button>
           );
@@ -468,7 +469,7 @@ function ByTeam({ a, team }: { a: Analytics; team: string | null }) {
             { key: "t", header: "Team", render: (r) => <span className="font-medium">{r.name}</span> },
             { key: "s", header: "Status", render: (r) => { const x = tt.get(r.teamId); return x?.hours != null ? <StatusPill tone="covered">Told in {fmtHours(x.hours)}</StatusPill> : x ? <StatusPill tone="gap">Waiting {fmtHours(x.waitingHours ?? 0)}</StatusPill> : <StatusPill tone="neutral">Not on this change</StatusPill>; } },
             { key: "g", header: "Gaps", render: (r) => r.cells.map((c, i) => c && <span key={i} className="mr-3 whitespace-nowrap text-sm">{GAP_LABEL[columns[i].gap]}: {c.arrAtRisk ? fmtUsd(c.arrAtRisk) : c.count}</span>) },
-            { key: "p", header: "Coverage lost", align: "right", render: (r) => { const s = step.get(r.teamId); return s ? <span className="text-gap">{stepText(s.pts, s.arrAtRisk)}</span> : "–"; } },
+            { key: "p", header: "Coverage lost", align: "right", render: (r) => { const s = step.get(r.teamId); return s ? <span className="text-gap-ink">{stepText(s.pts, s.arrAtRisk)}</span> : "–"; } },
           ]}
         />
       </div>
@@ -488,7 +489,7 @@ function useGraph(a: Analytics, team: string | null) {
 /** Loading, error and empty states for the graph-backed tabs; renders `children` only when there is something to show. */
 function GraphState({ a, q, empty, children }: { a: Analytics; q: { isPending: boolean; error: Error | null; refetch: () => unknown }; empty: string | null; children: React.ReactNode }) {
   if (!a.coverage) return <p className="text-sm text-faint">No open change to trace.</p>;
-  if (q.error) return <p className="text-sm text-conflict">Could not load the graph: {q.error.message}. <button className="underline" onClick={() => void q.refetch()}>Retry</button></p>;
+  if (q.error) return <p className="text-sm text-conflict-ink">Could not load the graph: {q.error.message}. <button className="underline" onClick={() => void q.refetch()}>Retry</button></p>;
   if (q.isPending) return <div className="h-40 animate-pulse rounded-inset bg-raised" aria-busy="true" aria-label="Loading the graph" />;
   if (empty) return <p className="text-sm text-faint">{empty}</p>;
   return <>{children}</>;

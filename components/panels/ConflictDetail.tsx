@@ -65,7 +65,7 @@ export function ConflictDetail({
     <section className="overflow-hidden rounded-lg border border-hairline bg-surface">
       <header className="flex items-center justify-between gap-4 border-b border-hairline p-4">
         <div className="flex items-center gap-3">
-          <span className="rounded-sm bg-conflict-soft px-2 py-0.5 text-xs font-medium uppercase text-conflict">{conflict.severity} severity</span>
+          <span className="rounded-sm bg-conflict-soft px-2 py-0.5 text-xs font-medium uppercase text-conflict-ink">{conflict.severity} severity</span>
           <h2 className="text-lg text-strong">A promise and a decision disagree</h2>
         </div>
         <p className="text-sm text-body">

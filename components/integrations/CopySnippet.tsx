@@ -19,7 +19,7 @@ export function CopySnippet({ label, lang, code }: { label: string; lang?: strin
           {lang && <span className="text-xs text-faint">{lang}</span>}
         </span>
         <button type="button" onClick={copy} aria-label={`Copy ${label}`}
-          className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-chip px-2 text-xs font-medium hover:bg-raised ${copied ? "text-covered" : "text-body"}`}>
+          className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-chip px-2 text-xs font-medium hover:bg-raised ${copied ? "text-covered-ink" : "text-body"}`}>
           {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
           <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
         </button>

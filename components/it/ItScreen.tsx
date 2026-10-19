@@ -24,8 +24,8 @@ function Row({ r, canDecide, busy, onDecide }: { r: ItRequest; canDecide: boolea
           <span className="font-medium">{r.resourceName}</span>
           <span className="ml-2 rounded-full border border-hairline px-1.5 py-px text-2xs text-faint">{r.resourceKind === "group" ? "access group" : "software"}</span>
         </p>
-        <p className="text-[13px] text-body">{r.justification}</p>
-        {r.quote && <blockquote className="border-l-2 border-hairline pl-2 text-[13px] text-faint">&ldquo;{r.quote}&rdquo;</blockquote>}
+        <p className="text-sm text-body">{r.justification}</p>
+        {r.quote && <blockquote className="border-l-2 border-hairline pl-2 text-sm text-faint">&ldquo;{r.quote}&rdquo;</blockquote>}
         <p className="text-2xs text-faint">
           {r.changeTitle ?? r.decisionId}
           {r.deadline !== null && ` · needed by ${date(r.deadline)}`} · expires {date(r.expiresAt)} · approvers: {r.approvers.map(teamLabel).join(", ")}
@@ -61,7 +61,7 @@ export function ItScreen() {
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-8 sm:px-8">
       <PageHeader title="IT queue" subtitle={data ? `${plural(open.length, "open request")} tied to changes, earliest change date first` : "Access requests tied to changes"} />
-      <p className="max-w-2xl text-[13px] text-faint">Ripple only asks. Grant access in your identity provider, then mark it granted here so the person is told and the gap closes.</p>
+      <p className="max-w-2xl text-sm text-faint">Ripple only asks. Grant access in your identity provider, then mark it granted here so the person is told and the gap closes.</p>
       {isGraphDown(error) && <GraphDownBanner onRetry={() => refetch()} />}
       {isPending && <LoadingBlock label="Loading the IT queue" />}
       {error && !isGraphDown(error) && <p role="alert" className="text-sm text-body">{error.message}</p>}

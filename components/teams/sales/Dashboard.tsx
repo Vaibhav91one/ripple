@@ -84,7 +84,7 @@ export function SalesDashboard() {
             {forecastRows.map(([label, v]) => (
               <tr key={label}>
                 <th scope="row" className="py-2 text-left font-normal text-body">{label}</th>
-                <td className={`py-2 text-right tabular-nums ${label === "Gap to goal" && v > 0 ? "text-gap" : "text-strong"}`}>{usd(v)}</td>
+                <td className={`py-2 text-right tabular-nums ${label === "Gap to goal" && v > 0 ? "text-gap-ink" : "text-strong"}`}>{usd(v)}</td>
               </tr>
             ))}
           </tbody>
@@ -100,7 +100,7 @@ export function SalesDashboard() {
             onSubmit={(a) => setDecision(summary(a))}
             onReset={() => setDecision(null)}
           />
-          {decision && <p className="text-xs text-covered">Recorded: {decision}</p>}
+          {decision && <p className="text-xs text-covered-ink">Recorded: {decision}</p>}
         </div>
       </Widget>
 

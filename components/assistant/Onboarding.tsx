@@ -44,13 +44,13 @@ export function Onboarding({ canManage }: { canManage: boolean }) {
     await qc.invalidateQueries(); // chips, reports and the home cards all read the graph that just changed
   };
   return (
-    <section aria-labelledby="onboard-title" className="mt-8 w-full rounded-[20px] border border-hairline bg-surface p-5 text-left">
+    <section aria-labelledby="onboard-title" className="mt-8 w-full rounded-card border border-hairline bg-surface p-5 text-left">
       <h2 id="onboard-title" className="text-md font-medium text-strong">Your company brain is empty</h2>
       <p className="mt-1 text-sm text-body">Ripple learns who a change reaches from your tools. Connect one, or look around with a sample company first.</p>
       <ul className="mt-4 grid gap-2 sm:grid-cols-3">
         {LINKS.map((l) => (
           <li key={l.href}>
-            <Link href={l.href} className="flex h-full items-start gap-3 rounded-[14px] border border-hairline p-3 hover:bg-raised">
+            <Link href={l.href} className="flex h-full items-start gap-3 rounded-inset border border-hairline p-3 hover:bg-raised">
               <span className="mt-0.5 text-strong">{l.icon}</span>
               <span><span className="block text-sm font-medium text-strong">{l.title}</span><span className="block text-xs text-faint">{l.sub}</span></span>
             </Link>

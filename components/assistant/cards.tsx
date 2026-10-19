@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/reports-ui";
 
 // Inline result cards in the thread, picked by tool name. Each card re-reads the graph (getRipple) instead of trusting
 // tool rows, so live and cached answers render the same card.
@@ -15,8 +16,7 @@ import { teamName } from "@/lib/permissions/classify";
 import type { Source } from "@/lib/schemas";
 import type { ToolRun } from "./thread";
 
-const shell = "overflow-hidden rounded-[20px] border border-hairline bg-surface";
-const usd = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
+const shell = "overflow-hidden rounded-card border border-hairline bg-surface";
 
 function CaseLink({ id }: { id: string }) {
   return (
@@ -50,7 +50,7 @@ function ImpactCard({ decisionId }: { decisionId: string }) {
         {stats.map(([k, v]) => (
           <div key={k} className="py-1">
             <dt className="text-xs text-faint">{k}</dt>
-            <dd className={`text-xl font-light tabular-nums tracking-tight ${k === "Not told" && c.notTold ? "text-gap" : "text-strong"}`}>{v}</dd>
+            <dd className={`text-xl font-light tabular-nums tracking-tight ${k === "Not told" && c.notTold ? "text-gap-ink" : "text-strong"}`}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -70,7 +70,7 @@ function ImpactCard({ decisionId }: { decisionId: string }) {
 
 function Quote({ s, label, onOpen }: { s: Source; label: string; onOpen: () => void }) {
   return (
-    <button type="button" onClick={onOpen} className="group block w-full rounded-[14px] p-3 text-left hover:bg-raised/70">
+    <button type="button" onClick={onOpen} className="group block w-full rounded-inset p-3 text-left hover:bg-raised/70">
       <span className="font-mono text-2xs uppercase tracking-wider text-faint">{label}</span>
       {s.restricted ? (
         <span className="mt-1 block text-sm text-faint">Restricted to {teamName(s.restricted)}</span>
@@ -98,7 +98,7 @@ function ConflictCard({ decisionId }: { decisionId: string }) {
         <h3 className="flex items-center gap-2 text-md font-medium text-strong">
           <span className="size-2 rounded-full bg-conflict" aria-hidden />A promise and a decision disagree
         </h3>
-        <span className="shrink-0 rounded-full bg-conflict-soft px-2 py-0.5 text-2xs font-medium text-conflict">{k.severity}</span>
+        <span className="shrink-0 rounded-full bg-conflict-soft px-2 py-0.5 text-2xs font-medium text-conflict-ink">{k.severity}</span>
       </header>
       <p className="px-5 pt-1 text-sm text-faint">
         {k.contractIds.length} contracts{data.counts.arrAtRisk ? ` · ${usd(data.counts.arrAtRisk)} ARR at risk` : ""}
@@ -123,7 +123,7 @@ function PathCard({ run }: { run: ToolRun }) {
       <ol className="mt-2 flex flex-wrap items-center gap-1.5">
         {nodes.map((n, i) => (
           <li key={i} className="flex items-center gap-1.5">
-            {i > 0 && <ArrowRight size={13} className="text-ripple" aria-hidden />}
+            {i > 0 && <ArrowRight size={13} className="text-ripple-ink" aria-hidden />}
             <span className="rounded-full border border-ripple/30 bg-ripple-soft px-2.5 py-1 text-xs text-strong">{String(n.name ?? n.id ?? "")}<span className="ml-1 text-faint">{String(n.label ?? "")}</span></span>
           </li>
         ))}
@@ -157,7 +157,7 @@ function ProposalCard({ run, readonly }: { run: ToolRun; readonly: boolean }) {
           onSubmit={([a]) => void decide(a.selected[0] === 0)}
         />
       </div>
-      {result && <p role={result.ok ? "status" : "alert"} className={`text-xs ${result.ok ? "text-covered" : "text-conflict"}`}>{result.text}</p>}
+      {result && <p role={result.ok ? "status" : "alert"} className={`text-xs ${result.ok ? "text-covered-ink" : "text-conflict-ink"}`}>{result.text}</p>}
       {readonly && <p className="text-xs text-faint">Read-only demo: nothing is sent. Run Ripple locally to approve agent actions.</p>}
     </div>
   );

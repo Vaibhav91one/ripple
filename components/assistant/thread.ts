@@ -101,7 +101,11 @@ export const toolLabel = (tool: string) => TOOL_LABELS[tool] ?? tool.replace(/^p
 export const traceSummary = (n: number) => `Checked ${n} ${n === 1 ? "source" : "sources"}`;
 export const resultNote = (rowCount?: number) => (rowCount === undefined ? "checking…" : rowCount ? `${rowCount} ${rowCount === 1 ? "result" : "results"}` : "nothing found");
 
-export const titleOf = (q: string) => (q.length > 60 ? `${q.slice(0, 57).trimEnd()}…` : q);
+/** Thread title: the question, cut at 60 characters by grapheme so an emoji or accent is never split. */
+export const titleOf = (q: string) => {
+  const g = Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(q), (s) => s.segment);
+  return g.length > 60 ? `${g.slice(0, 57).join("").trimEnd()}…` : q;
+};
 
 /** Slash commands: each one expands to a prompt (the bare forms are the cached starters) or opens a page. */
 export const COMMANDS = [

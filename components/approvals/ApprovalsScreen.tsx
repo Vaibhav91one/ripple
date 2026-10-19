@@ -14,7 +14,7 @@ import type { ApprovalRow } from "@/lib/schemas";
 import { ApprovalDrawer, type Decision } from "./ApprovalDrawer";
 import { ago, btn, kindLabel, STATUS_TONE, useNames } from "./shared";
 
-type Toast = { title: string; body: string };
+type Toast = { id: number; title: string; body: string };
 type Section = { key: string; kind: string; group: string | null; rows: ApprovalRow[] };
 
 /** Rows of one kind and change sit together under a header that can approve them all. */
@@ -48,13 +48,16 @@ export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
   const rows = useMemo(() => data?.approvals ?? [], [data]);
   const secs = useMemo(() => sections(rows), [rows]);
   const row = rows.find((r) => r.id === sel);
+  // keep the last row rendered while the drawer animates out
+  const [shown, setShown] = useState(row);
+  if (row && row !== shown) setShown(row);
 
   const decide = useMutation({
     mutationFn: ({ id, ...d }: Decision & { id: string }) => decideApproval(id, d.decision, { note: d.note, bulk: d.bulk }),
     onSuccess: (res, v) => {
       const done = res.results.filter((r) => r.changed).length;
       const verb = v.decision === "approve" ? "Approved" : "Rejected";
-      setToast({ title: done > 1 ? `${verb} ${done} actions` : done ? `${verb}` : "Already decided", body: done > 1 ? "They are queued to run, one by one." : v.decision === "approve" ? "Queued to run. A failure will show up here." : "Nothing was changed." });
+      setToast((t) => ({ id: (t?.id ?? 0) + 1, title: done > 1 ? `${verb} ${done} actions` : done ? `${verb}` : "Already decided", body: done > 1 ? "They are queued to run, one by one." : v.decision === "approve" ? "Queued to run. A failure will show up here." : "Nothing was changed." }));
       setSel(null);
       void qc.invalidateQueries({ queryKey: ["approvals"] });
     },
@@ -87,7 +90,7 @@ export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
       {data?.note && !data.sample && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body">{data.note}</p>}
       {data?.sample && <p role="status" className="rounded-lg border border-hairline bg-raised px-4 py-3 text-sm text-body">{data.note} You can read everything here; deciding is for signed-in members.</p>}
       {isPending && <LoadingBlock label="Loading proposals" />}
-      {decide.error && !row && <p role="alert" className="text-sm text-conflict">{decide.error.message}</p>}
+      {decide.error && !row && <p role="alert" className="text-sm text-conflict-ink">{decide.error.message}</p>}
 
       {data && !rows.length && (
         <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-hairline px-6 py-14 text-center">
@@ -133,19 +136,17 @@ export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
         })}
       </div>
 
-      <AnimatePresence>
-        {row && (
+      {shown && (
           <ApprovalDrawer
-            key={row.id} row={row} now={now} siblings={sibs(row)} busy={decide.isPending} error={decide.error?.message}
-            readOnly={data?.sample ? "Sample data is read-only." : row.canDecide ? undefined : row.status === "pending" || row.status === "failed" ? "Your role can't decide this kind of action." : undefined}
-            onDecide={(d) => run(row.id, d)} onClose={() => { decide.reset(); void setSel(null); }}
+            key={shown.id} open={!!row} row={shown} now={now} siblings={sibs(shown)} busy={decide.isPending} error={decide.error?.message}
+            readOnly={data?.sample ? "Sample data is read-only." : shown.canDecide ? undefined : shown.status === "pending" || shown.status === "failed" ? "Your role can't decide this kind of action." : undefined}
+            onDecide={(d) => run(shown.id, d)} onClose={() => { decide.reset(); void setSel(null); }}
           />
-        )}
-      </AnimatePresence>
+      )}
 
       <div className="fixed right-4 top-16 z-50">
         <AnimatePresence>
-          {toast && <ActionToast key={toast.title + toast.body} {...toast} time="Just now" action="History" dismiss="Dismiss" onAction={() => { setTab("decided"); setToast(undefined); }} onDismiss={() => setToast(undefined)} />}
+          {toast && <ActionToast key={toast.id} {...toast} time="Just now" action="History" dismiss="Dismiss" onAction={() => { setTab("decided"); setToast(undefined); }} onDismiss={() => setToast(undefined)} />}
         </AnimatePresence>
       </div>
     </div>

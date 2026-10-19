@@ -9,7 +9,7 @@ const ICONS = {
 } satisfies Record<string, LucideIcon>;
 export type IconName = keyof typeof ICONS;
 const TONES = {
-  plain: "bg-raised text-strong", red: "bg-conflict text-strong", ripple: "bg-ripple-soft text-ripple", gap: "bg-gap-soft text-gap", covered: "bg-covered-soft text-covered",
+  plain: "bg-raised text-strong", red: "bg-conflict text-strong", ripple: "bg-ripple-soft text-ripple-ink", gap: "bg-gap-soft text-gap-ink", covered: "bg-covered-soft text-covered-ink",
 };
 export type RowTone = keyof typeof TONES;
 export interface SearchRow { id: string; label: string; icon: IconName; tone: RowTone; meta?: string }

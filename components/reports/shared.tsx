@@ -18,7 +18,7 @@ export function Segmented<T extends string>({ value, options, onChange, label, t
           type="button"
           onClick={() => onChange(o.id)}
           {...(tabs ? { role: "tab", id: `${tabs}-tab-${o.id}`, "aria-selected": o.id === value, "aria-controls": panelId(tabs, o.id) } : { "aria-pressed": o.id === value })}
-          className={`h-8 whitespace-nowrap rounded-[calc(var(--radius-control)-4px)] px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ripple ${o.id === value ? "bg-surface text-strong shadow-[0_1px_2px_oklch(0_0_0/0.08)]" : "text-faint hover:text-strong"}`}
+          className={`h-8 whitespace-nowrap rounded-[calc(var(--radius-control)-4px)] px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ripple ${o.id === value ? "bg-surface text-strong shadow-card" : "text-faint hover:text-strong"}`}
         >
           {o.label}
         </button>

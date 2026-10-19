@@ -91,7 +91,7 @@ export default function ApprovalCard({
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-surface px-3 py-2 text-[12.5px] font-medium text-strong shadow-[var(--kit-shadow-btn)] transition-colors duration-150 hover:bg-raised">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-surface px-3 py-2 text-sm font-medium text-strong shadow-[var(--kit-shadow-btn)] transition-colors duration-150 hover:bg-raised">
         Open approval
       </button>
     );
@@ -108,17 +108,17 @@ export default function ApprovalCard({
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
             </span>
-            <span className="text-[13px] font-medium text-strong" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) 100ms both" }}>
+            <span className="text-sm font-medium text-strong" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) 100ms both" }}>
               {sentLabel}
             </span>
-            <button type="button" onClick={reset} className="text-[12px] font-medium text-ripple hover:underline transition-colors">
+            <button type="button" onClick={reset} className="text-xs font-medium text-ripple-ink hover:underline transition-colors">
               Start over
             </button>
           </div>
         ) : (
           <div key={qi} className="p-4" style={{ animation: "fade-up 350ms cubic-bezier(0.23,1,0.32,1) both" }}>
             <div className="flex items-start justify-between gap-3">
-              <span className="text-[13px] font-medium text-strong">{question.q}</span>
+              <span className="text-sm font-medium text-strong">{question.q}</span>
               <button
                 type="button"
                 aria-label="Dismiss"
@@ -144,7 +144,7 @@ export default function ApprovalCard({
                   >
                     <span
                       className={`flex size-4 shrink-0 items-center justify-center transition-colors duration-200
-                        ${question.type === "radio" ? "rounded-full" : "rounded-[5px]"}
+                        ${question.type === "radio" ? "rounded-full" : "rounded-md"}
                         ${on ? "bg-strong text-page" : "shadow-[inset_0_0_0_1.5px_var(--hairline)] text-transparent"}`}
                     >
                       {question.type === "radio" ? (
@@ -153,7 +153,7 @@ export default function ApprovalCard({
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
                       )}
                     </span>
-                    <span className={`text-[13px] transition-colors duration-200 ${on ? "text-strong" : "text-body"}`}>
+                    <span className={`text-sm transition-colors duration-200 ${on ? "text-strong" : "text-body"}`}>
                       {option}
                     </span>
                   </button>
@@ -169,7 +169,7 @@ export default function ApprovalCard({
                   }}
                   placeholder="Type something…"
                   aria-label="Custom answer"
-                  className="min-w-0 flex-1 bg-transparent text-[13px] text-strong outline-none placeholder:text-faint"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-strong outline-none placeholder:text-faint"
                 />
               </label>
             </div>
@@ -184,7 +184,7 @@ export default function ApprovalCard({
               aria-label="Previous"
               disabled={qi === 0 || sent}
               onClick={() => setQi((current) => Math.max(0, current - 1))}
-              className="flex size-6 items-center justify-center rounded-[5px] text-faint transition-colors duration-100 enabled:hover:bg-raised enabled:hover:text-body disabled:opacity-35"
+              className="flex size-6 items-center justify-center rounded-md text-faint transition-colors duration-100 enabled:hover:bg-raised enabled:hover:text-body disabled:opacity-35"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
@@ -213,7 +213,7 @@ export default function ApprovalCard({
               aria-label="Next"
               disabled={last || sent}
               onClick={() => setQi((current) => Math.min(QUESTIONS.length - 1, current + 1))}
-              className="flex size-6 items-center justify-center rounded-[5px] text-faint transition-colors duration-100 enabled:hover:bg-raised enabled:hover:text-body disabled:opacity-35"
+              className="flex size-6 items-center justify-center rounded-md text-faint transition-colors duration-100 enabled:hover:bg-raised enabled:hover:text-body disabled:opacity-35"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
             </button>
@@ -224,7 +224,7 @@ export default function ApprovalCard({
               aria-label={last ? "Send answers" : "Next question"}
               disabled={!hasAnswer}
               onClick={() => last ? send(answers, custom) : setQi((current) => current + 1)}
-              className="-mr-0.5 flex size-7 items-center justify-center rounded-[8px] transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
+              className="-mr-0.5 flex size-7 items-center justify-center rounded-xl transition-[background-color,color,transform] duration-200 enabled:active:scale-[0.96]"
               style={{
                 background: hasAnswer ? "var(--strong)" : "var(--raised)",
                 color: hasAnswer ? "var(--surface)" : "var(--faint)",

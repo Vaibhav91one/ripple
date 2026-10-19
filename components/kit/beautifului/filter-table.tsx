@@ -63,7 +63,7 @@ const DEMO: FilterTableProps<DemoRow> = {
     {
       header: "Status",
       cell: (r) => (
-        <span className={`inline-flex h-5 items-center rounded-[5px] px-1.5 text-[11px] font-medium ${DEMO_PILLS[r.status].cls}`}>
+        <span className={`inline-flex h-5 items-center rounded-md px-1.5 text-2xs font-medium ${DEMO_PILLS[r.status].cls}`}>
           {DEMO_PILLS[r.status].label}
         </span>
       ),
@@ -104,14 +104,14 @@ export default function FilterTable<R = DemoRow>(props: Partial<FilterTableProps
                 type="button"
                 aria-pressed={active}
                 onClick={() => (p.onChange ? p.onChange(f.key) : setOwn(f.key))}
-                className={`flex h-6.5 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12px]
+                className={`flex h-6.5 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs
                   font-medium transition-[background-color,box-shadow,color] duration-200
                   ${active ? "bg-surface text-strong shadow-[var(--kit-shadow-btn)]" : "text-body hover:bg-raised"}`}
               >
                 {f.dot && <span className="size-1.5 rounded-full" style={{ background: f.dot }} />}
                 {f.label}
                 <span
-                  className={`rounded-[4px] px-1 text-[10.5px] tabular-nums
+                  className={`rounded-md px-1 text-2xs tabular-nums
                     ${active ? "bg-raised text-body" : "text-faint"}`}
                 >
                   {f.count ?? count(f.key)}
@@ -131,10 +131,10 @@ export default function FilterTable<R = DemoRow>(props: Partial<FilterTableProps
         style={{ scrollbarWidth: "none" }}
       >
         <div style={{ minWidth: p.minWidth ?? 420 }}>
-          <div className="grid border-b border-hairline px-3 py-2 text-[11.5px] font-medium text-faint" style={{ gridTemplateColumns: grid }}>
+          <div className="grid border-b border-hairline px-3 py-2 text-xs font-medium text-faint" style={{ gridTemplateColumns: grid }}>
             {p.columns.map((c) => <span key={c.header}>{c.header}</span>)}
           </div>
-          {shownRows.length === 0 && <p className="px-3 py-4 text-[12px] text-faint">{p.empty ?? "Nothing here."}</p>}
+          {shownRows.length === 0 && <p className="px-3 py-4 text-xs text-faint">{p.empty ?? "Nothing here."}</p>}
           {p.rows.map((row) => {
             const shown = filter === "all" || p.matches(row, filter);
             return (
@@ -149,7 +149,7 @@ export default function FilterTable<R = DemoRow>(props: Partial<FilterTableProps
               >
                 <div className="overflow-hidden">
                   <div
-                    className="grid items-center gap-x-2 border-b border-hairline px-3 py-2 text-[12px] transition-colors duration-100 last:border-0 hover:bg-raised"
+                    className="grid items-center gap-x-2 border-b border-hairline px-3 py-2 text-xs transition-colors duration-100 last:border-0 hover:bg-raised"
                     style={{ gridTemplateColumns: grid }}
                   >
                     {p.columns.map((c) => <div key={c.header} className="min-w-0 truncate">{c.cell(row)}</div>)}

@@ -14,7 +14,7 @@ export function LegalPage({ title, updated, children }: { title: string; updated
           <Link href="/terms" className="transition-colors hover:text-strong">Terms</Link>
         </span>
       </nav>
-      <article className="space-y-6 py-10 text-body [&_h2]:pt-4 [&_h2]:text-md [&_h2]:font-medium [&_h2]:text-strong [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_a]:text-ripple [&_a]:hover:underline">
+      <article className="space-y-6 py-10 text-body [&_h2]:pt-4 [&_h2]:text-md [&_h2]:font-medium [&_h2]:text-strong [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_a]:text-ripple-ink [&_a]:hover:underline">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold text-strong">{title}</h1>
           <p className="font-mono text-2xs uppercase tracking-wider text-faint">Last updated {updated}</p>

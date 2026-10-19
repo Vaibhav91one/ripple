@@ -9,7 +9,7 @@ const r = (p: Partial<ReportRow>): ReportRow => ({ ...row, ...p });
 
 describe("reports formatting", () => {
   it("writes money short, with restricted ARR spelled out", () => {
-    expect([usd(180000), usd(62500), usd(1_250_000), usd(640), usd(0), usd(-62000), usd(null)]).toEqual(["$180K", "$62.5K", "$1.3M", "$640", "$0", "-$62K", "Restricted"]);
+    expect([usd(180000), usd(62500), usd(1_250_000), usd(640), usd(0), usd(-62000), usd(null), usd(999_950), usd(4_200_000_000)]).toEqual(["$180K", "$62.5K", "$1.3M", "$640", "$0", "-$62K", "Restricted", "$1M", "$4.2B"]);
   });
 
   it("dates are UTC and relative days read as words", () => {

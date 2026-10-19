@@ -30,4 +30,9 @@ export async function me(ctx: Pick<Context, "viewer" | "org">): Promise<Me> {
   return { mode, name, role, org, initials: initials(name), teamIds, lens: null };
 }
 
-export const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const graphemes = (s: string) => Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s), (g) => g.segment);
+/** First letter of the first and last word, by grapheme (emoji and combining marks stay whole). */
+export const initials = (name: string) => {
+  const w = name.trim().split(/\s+/).filter(Boolean);
+  return (w.length > 1 ? [w[0], w[w.length - 1]] : w).map((x) => graphemes(x)[0]).join("").toUpperCase() || "?";
+};

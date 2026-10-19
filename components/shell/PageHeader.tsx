@@ -16,7 +16,7 @@ export function PageHeader({ title, subtitle, crumbs, children }: { title: React
             ))}
           </nav>
         )}
-        <h1 className="truncate text-3xl font-normal leading-tight tracking-tight text-strong sm:text-title">{title}</h1>
+        <h1 title={typeof title === "string" ? title : undefined} className="truncate pb-1 text-3xl font-normal leading-snug tracking-tight text-strong sm:text-title">{title}</h1>
         {subtitle && <p className="mt-1.5 text-md text-faint">{subtitle}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
@@ -28,7 +28,7 @@ const pill = "inline-flex h-11 items-center gap-2 rounded-control lg:h-10 px-3.5
 
 /** Date range pill plus the muted "vs previous" label. Without `onClick` it is a static label, not a dead button. */
 export function DateRange({ label, compare, onClick }: { label: string; compare?: string; onClick?: () => void }) {
-  const cls = `${pill} border border-hairline bg-surface text-strong shadow-[0_1px_1px_oklch(0_0_0/0.03)]`;
+  const cls = `${pill} border border-hairline bg-surface text-strong shadow-card`;
   return (
     <span className="inline-flex items-center gap-1">
       {onClick ? (
@@ -71,5 +71,5 @@ export function ExportButton({ label = "Export", ...act }: { label?: string } & 
 
 /** The one dark button a page may have (margin's "Flag for review"). */
 export function PrimaryButton({ children, ...act }: { children: React.ReactNode } & Action) {
-  return <Act {...act} className={`${pill} bg-strong text-ink-on-strong shadow-[0_1px_2px_oklch(0_0_0/0.15)] hover:bg-body`}>{children}</Act>;
+  return <Act {...act} className={`${pill} bg-strong text-ink-on-strong shadow-card hover:bg-body`}>{children}</Act>;
 }

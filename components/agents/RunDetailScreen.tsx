@@ -30,7 +30,7 @@ function rows(steps: RunDetail["steps"]): ToolRowData[] {
           body: (
             <div className="space-y-2 py-1">
               {s.cypher.map((c, i) => <CodeBlock key={i} code={c} language="Cypher" title={`query ${i + 1}`} stream={false} className="max-w-none" />)}
-              <p className="font-mono text-[11.5px] text-faint">
+              <p className="font-mono text-xs text-faint">
                 {s.sources.length ? <>Cited: {s.sources.map((x) => <span key={x} className="mr-1.5 rounded-md bg-overlay px-1.5 py-0.5 text-body">{x}</span>)}</> : "No sources cited"}
               </p>
             </div>
@@ -49,7 +49,7 @@ export function RunDetailScreen({ id }: { id: string }) {
       <div className="mx-auto w-full max-w-[760px] space-y-4 px-4 py-8">
         {isGraphDown(error) && <GraphDownBanner onRetry={() => void refetch()} />}
         <p className="rounded-card border border-dashed border-hairline p-6 text-sm text-faint">{error instanceof NotFoundError ? "This run doesn't exist, or it belongs to another org." : "The run could not be loaded."}</p>
-        <Link href="/agents" className="text-sm text-ripple underline-offset-4 hover:underline">Back to agents</Link>
+        <Link href="/agents" className="text-sm text-ripple-ink underline-offset-4 hover:underline">Back to agents</Link>
       </div>
     );
   }

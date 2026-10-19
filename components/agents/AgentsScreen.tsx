@@ -118,6 +118,7 @@ export function AgentsScreen() {
   const block = agents.data && !agents.data.canEdit ? agents.data.editBlock ?? "role" : denied ? "role" : null;
   const lock: Lock = agents.isPending ? LOCK_REASON.role : block ? LOCK_REASON[block] : null;
   const shown = filterAgents(list, q, team);
+  const failedNow = list.filter((a) => a.lastRun?.status === "failed").length;
   const inTeam = filterAgents(list, "", team).length;
   const on = list.filter((a) => a.enabled).length;
   const ran = list.filter((a) => a.runs24h > 0).length;
@@ -152,14 +153,20 @@ export function AgentsScreen() {
 
       {unknown && <p role="status" className="mb-4 text-sm text-faint">Unknown team, showing all.</p>}
       {agents.data?.note && <p role="status" className="mb-4 rounded-inset bg-raised px-4 py-3 text-sm text-body">{agents.data.note}</p>}
-      {patch.error && !denied && <p role="alert" className="mb-4 text-sm text-conflict">{patch.error.message}</p>}
+      {patch.error && !denied && <p role="alert" className="mb-4 text-sm text-conflict-ink">{patch.error.message}</p>}
+
+      {failedNow > 3 && <p role="status" className="mb-4 rounded-inset bg-gap-soft px-4 py-3 text-sm text-gap-ink">{failedNow} agents failed their last run. Open one to see why.</p>}
 
       {agents.isPending ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-80 rounded-card" />)}</div>
       ) : shown.length === 0 ? (
-        <EmptyState icon={Bot} title="No agent matches">
-          {q ? `Nothing matches "${q}"${team ? ` for ${teamLabel(team)}` : ""}.` : `No agent works for ${teamLabel(team ?? "")} yet.`} Try another word or team.
-        </EmptyState>
+        q || team ? (
+          <EmptyState icon={Bot} title="No agent matches">
+            {q ? `Nothing matches "${q}"${team ? ` for ${teamLabel(team)}` : ""}.` : `No agent works for ${teamLabel(team ?? "")} yet.`} Try another word or team.
+          </EmptyState>
+        ) : (
+          <EmptyState icon={Bot} title="No agents yet">No agents are set up for this org yet.</EmptyState>
+        )
       ) : (
         <AgentGrid agents={shown} now={now} lock={lock} busy={busy} onOpen={setOpen} onToggle={(name, enabled) => patch.mutate({ name, enabled })} />
       )}

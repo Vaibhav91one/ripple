@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { useMemo } from "react";
 import { ExternalLink, FileText, Search } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner } from "@/components/states/States";
@@ -25,7 +25,7 @@ const ACTORS = ["all", "person", "agent", "system"] as const;
 const DOT_TONE = { blocked: "conflict", waiting: "gap", done: "covered" } as const;
 const DOT_BG = { blocked: "bg-conflict", waiting: "bg-gap", done: "bg-covered" } as const;
 
-export const coverageTone = (pct: number) => (pct < 50 ? "text-conflict" : pct < 100 ? "text-gap" : "text-strong");
+export const coverageTone = (pct: number) => (pct < 50 ? "text-conflict-ink" : pct < 100 ? "text-gap-ink" : "text-strong");
 
 export function ReportsScreen() {
   const [tab, setTab] = useQueryState("tab", parseAsStringLiteral(TABS).withDefault("cases"));
@@ -41,7 +41,8 @@ export function ReportsScreen() {
 }
 
 function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useQueryState("q", parseAsString.withDefault(""));
+  const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
   const [state, setState] = useQueryState("state", parseAsStringLiteral(STATES).withDefault("all"));
   const all = useMemo(() => worstFirst(data?.cases ?? []), [data]);
   const rows = all.filter((r) => (state === "all" || r.state === state) && matches(r, q));
@@ -51,8 +52,11 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
 
   const dated = all.filter((r): r is ReportRow & { effectiveAt: number } => r.effectiveAt !== null); // undated cases have no place on the axis
   const days = dated.map((r) => daysLeft(r.effectiveAt, data.now));
-  const min = Math.min(0, ...days) - 10;
-  const max = Math.max(60, ...days) + 10;
+  // the axis is clamped to -30..+120 days; dots past an end pile up there and the sentence counts them
+  const min = Math.max(-30, Math.min(0, ...days) - 10);
+  const max = Math.min(120, Math.max(60, ...days) + 10);
+  const later = days.filter((d) => d > max).length;
+  const earlier = days.filter((d) => d < min).length;
   const pos = (v: number) => ((v - min) / (max - min)) * 100; // DotStrip places values on a 0-100 axis
   const by = data.summary.byState;
   const controls = (
@@ -60,9 +64,9 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
               <label className="flex h-10 w-full items-center gap-2 rounded-control border border-hairline bg-surface px-3 text-sm sm:w-64">
                 <Search size={15} aria-hidden className="text-faint" />
                 <span className="sr-only">Search cases</span>
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search cases, systems, teams" className="min-w-0 flex-1 bg-transparent text-strong outline-none placeholder:text-faint" />
+                <input value={q} onChange={(e) => { void setQ(e.target.value || null); void setPage(null); }} placeholder="Search cases, systems, teams" className="min-w-0 flex-1 bg-transparent text-strong outline-none placeholder:text-faint" />
               </label>
-              <Segmented label="Filter by state" value={state} onChange={(v) => void setState(v)} options={STATES.map((s) => ({ id: s, label: s === "all" ? "All" : STATE[s].label.split(" ")[0] }))} />
+              <Segmented label="Filter by state" value={state} onChange={(v) => { void setState(v); void setPage(null); }} options={STATES.map((s) => ({ id: s, label: s === "all" ? "All" : STATE[s].label.split(" ")[0] }))} />
             </div>
   );
   const legend = (
@@ -95,6 +99,8 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
           <span className="font-medium text-strong">{all[0].title}</span> is the worst case: {all[0].coverage.pct}% of teams told
           {all[0].effectiveAt ? `, effective ${relDays(all[0].effectiveAt, data.now)}` : ""}.
           {all.length > dated.length && ` ${all.length - dated.length} without an effective date ${all.length - dated.length === 1 ? "is" : "are"} not plotted.`}
+          {later > 0 && ` +${later} later than ${max} days sit at the right edge.`}
+          {earlier > 0 && ` ${earlier} older than ${-min} days sit at the left edge.`}
         </p>
       </Card>
 
@@ -111,32 +117,33 @@ function Cases({ data }: { data?: Awaited<ReturnType<typeof getReports>> }) {
             rows={rows}
             rowKey={(r) => r.id}
             highlight={all[0].id}
+            pageSize={50} page={page} onPage={(n) => void setPage(n === 1 ? null : n)}
             columns={[
               { key: "case", header: "Case", render: (r) => (
                 <Link href={`/reports/${encodeURIComponent(r.id)}`} className="block min-w-48 hover:underline">
-                  <span className="block font-medium">{r.title}</span>
+                  <span className="block font-medium [overflow-wrap:anywhere]">{r.title}</span>
                   <span className="block text-xs text-faint">{r.id.toUpperCase()} · announced {day(r.announcedAt)}</span>
                 </Link>
               ) },
-              { key: "sys", header: "Systems", render: (r) => (
-                <><span className="block">{r.systems.map((s) => s.name).join(", ") || "None"}</span><span className="block text-xs text-faint">{r.coverage.affected} teams affected</span></>
+              { key: "sys", header: "Systems", priority: "low", render: (r) => (
+                <><span className="line-clamp-2 max-w-56 [overflow-wrap:anywhere]" title={r.systems.map((s) => s.name).join(", ")}>{r.systems.map((s) => s.name).join(", ") || "None"}</span><span className="block text-xs text-faint">{r.coverage.affected ? `${r.coverage.affected} ${r.coverage.affected === 1 ? "team" : "teams"} affected` : "No teams affected"}</span></>
               ) },
-              { key: "eff", header: "Effective", render: (r) => r.effectiveAt ? (<><span className="block">{day(r.effectiveAt)}</span><span className="block text-xs text-faint">{relDays(r.effectiveAt, data.now)}</span></>) : <span className="text-faint">No date</span> },
+              { key: "eff", header: "Effective", priority: "low", render: (r) => r.effectiveAt ? (<><span className="block">{day(r.effectiveAt)}</span><span className="block text-xs text-faint">{relDays(r.effectiveAt, data.now)}</span></>) : <span className="text-faint">No date</span> },
               { key: "arr", header: "ARR at risk", align: "right", render: (r) => <span className={r.arrAtRisk === null ? "text-faint" : ""}>{usd(r.arrAtRisk)}</span> },
               { key: "cov", header: "Coverage", render: (r) => (
                 <span className="flex items-center gap-3">
-                  <span className={`w-10 text-right ${coverageTone(r.coverage.pct)}`}>{r.coverage.pct}%</span>
+                  <span className={`w-10 text-right ${r.coverage.affected ? coverageTone(r.coverage.pct) : "text-faint"}`}>{r.coverage.affected ? `${r.coverage.pct}%` : "–"}</span>
                   <span className="relative w-20"><HatchedBar plan={100} actual={r.coverage.pct} max={100} tone={r.coverage.pct < 100 ? "ink" : "ripple"} label={`${r.coverage.told} of ${r.coverage.affected} teams told`} /></span>
                   <span aria-hidden className="h-4 w-0.5 rounded-full bg-strong" />
                 </span>
               ) },
-              { key: "gap", header: "Main gap", render: (r) => (
+              { key: "gap", header: "Main gap", priority: "low", render: (r) => (
                 <><span className="block">{r.mainGap ? `${r.mainGap.name} not told` : "None"}</span>
-                  {r.openConflicts > 0 && <span className="block text-xs text-conflict">{r.openConflicts} contract {r.openConflicts === 1 ? "conflict" : "conflicts"}</span>}</>
+                  {r.openConflicts > 0 && <span className="block text-xs text-conflict-ink">{r.openConflicts} contract {r.openConflicts === 1 ? "conflict" : "conflicts"}</span>}</>
               ) },
               { key: "st", header: "Status", render: (r) => <StatusPill tone={STATE[r.state].tone}>{STATE[r.state].label}</StatusPill> },
             ]}
-            footer={<span>Showing {rows.length} of {all.length} {all.length === 1 ? "case" : "cases"}</span>}
+            footer={<span>Showing {Math.min(rows.length, 50)} of {rows.length === all.length ? all.length : `${rows.length} matching, ${all.length}`} {all.length === 1 ? "case" : "cases"}</span>}
           />
           {!rows.length && <p className="px-2 pt-4 text-sm text-faint">No case matches. Clear the search or pick All.</p>}
         </div>
@@ -166,7 +173,7 @@ function ActivityFeed() {
             return (
               <li key={`${it.caseId}-${it.id}-${i}`} className="grid grid-cols-[auto_1fr] items-start gap-3 py-3 sm:grid-cols-[7.5rem_auto_1fr_auto] sm:items-center">
                 <time className="hidden text-sm tabular-nums text-faint sm:block">{dayTime(it.at)}</time>
-                <span className={`grid size-9 place-items-center rounded-full ${it.kind === "conflict" ? "bg-conflict-soft text-conflict" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
+                <span className={`grid size-9 place-items-center rounded-full ${it.kind === "conflict" ? "bg-conflict-soft text-conflict-ink" : "bg-raised text-body"}`}><Icon size={16} aria-hidden /></span>
                 <div className="min-w-0">
                   <p className="text-md text-strong">{it.text} {it.demo && <DemoTag />}</p>
                   <p className="text-sm text-faint">

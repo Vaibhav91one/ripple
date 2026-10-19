@@ -27,7 +27,7 @@ export function OverviewScreen() {
   if (!q.data) {
     return (
       <div className="p-6">
-        {q.error instanceof GraphDownError ? <GraphDownBanner onRetry={() => q.refetch()} /> : q.error ? <p className="text-sm text-conflict">Could not load the overview.</p> : <LoadingBlock label="Loading the overview" />}
+        {q.error instanceof GraphDownError ? <GraphDownBanner onRetry={() => q.refetch()} /> : q.error ? <p className="text-sm text-conflict-ink">Could not load the overview.</p> : <LoadingBlock label="Loading the overview" />}
       </div>
     );
   }
@@ -82,7 +82,7 @@ function Dashboard({ o }: { o: Overview }) {
               <ul className="flex flex-col divide-y divide-hairline">
                 {o.openDecisions.map(({ decision: d, notTold: gap }, i) => (
                   <li key={d.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-2.5 ${sel?.decision.id === d.id ? "rounded-md bg-raised" : ""}`}>
-                    <Link href={`/changes/${d.id}`} className="min-w-0 flex-1 truncate text-[13px] font-medium text-strong hover:underline transition-colors">{d.title}</Link>
+                    <Link href={`/changes/${d.id}`} className="min-w-0 flex-1 truncate text-sm font-medium text-strong hover:underline transition-colors">{d.title}</Link>
                     {/* conflicts are counted per graph, tied to the first (main) decision */}
                     {i === 0 && conflicts > 0 && <StatusPill tone="conflict" label={`${conflicts} conflict${conflicts > 1 ? "s" : ""}`} />}
                     {gap.map((t) => <StatusPill key={t} tone="gap" label={`${name(t)} not told`} />)}
@@ -113,7 +113,7 @@ function Dashboard({ o }: { o: Overview }) {
             </Widget>
 
             <Widget title="Recent changes" meta={<Link href="/changes" className="hover:text-strong transition-colors">See all</Link>}>
-              <ul className="flex flex-col divide-y divide-hairline text-[13px]">
+              <ul className="flex flex-col divide-y divide-hairline text-sm">
                 {o.recentChanges.slice(0, 6).map((c, i) => (
                   <li key={i} className="flex items-center gap-3 py-2">
                     <span className="w-14 shrink-0 text-xs tabular-nums text-faint">{fmtDay(c.at)}</span>
@@ -131,7 +131,7 @@ function Dashboard({ o }: { o: Overview }) {
               {o.teams.map((t) => (
                 <li key={t.teamId}>
                   <Link href={`/teams/${t.teamId}`} className="flex h-full flex-col gap-2 rounded-lg border border-hairline bg-surface p-3 transition-colors hover:bg-raised">
-                    <span className="truncate text-[13px] font-medium text-strong">{t.name}</span>
+                    <span className="truncate text-sm font-medium text-strong">{t.name}</span>
                     <span className="text-xs text-faint">{t.people} people · {t.affected ? (t.told ? "told" : "not told") : "not affected"}</span>
                     <StatusPill className="self-start" tone={!t.affected ? "neutral" : t.told ? "covered" : "gap"} label={!t.affected ? "clear" : t.told ? "covered" : "gap"} />
                   </Link>
@@ -146,7 +146,7 @@ function Dashboard({ o }: { o: Overview }) {
             <h2 className="text-sm font-semibold text-strong">Details</h2>
             {sel ? (
               <>
-                <p className="text-[13px] font-medium text-strong">{sel.decision.title}</p>
+                <p className="text-sm font-medium text-strong">{sel.decision.title}</p>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                   <dt className="text-faint">Status</dt><dd className="text-body">{sel.decision.status}</dd>
                   <dt className="text-faint">Decided</dt><dd className="text-body">{fmtDay(sel.decision.decidedAt)}</dd>

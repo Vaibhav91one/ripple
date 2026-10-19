@@ -107,7 +107,7 @@ export default function StyleguideV2() {
                 <li key={String(team)} className="grid grid-cols-[6rem_1fr_5rem] items-center gap-4 py-3 text-md">
                   <span className="text-strong">{team}</span>
                   <HatchedBar plan={Number(plan)} actual={Number(actual)} max={8} label={`${team}: ${actual} of ${plan}`} />
-                  <span className={`text-right text-sm ${String(note).startsWith("+") ? "text-conflict" : "text-faint"}`}>{note}</span>
+                  <span className={`text-right text-sm ${String(note).startsWith("+") ? "text-conflict-ink" : "text-faint"}`}>{note}</span>
                 </li>
               ))}
             </ul>

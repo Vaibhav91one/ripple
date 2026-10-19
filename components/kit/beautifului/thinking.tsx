@@ -101,7 +101,7 @@ export function ThinkingLive({ label = "Thinking" }: { label?: string }) {
         <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" />
       </svg>
       <span
-        className="bg-clip-text text-[13px] font-medium whitespace-nowrap text-transparent"
+        className="bg-clip-text text-sm font-medium whitespace-nowrap text-transparent"
         style={{
           backgroundImage: "linear-gradient(90deg, var(--faint) 35%, var(--strong) 50%, var(--faint) 65%)",
           backgroundSize: "200% 100%",
@@ -144,7 +144,7 @@ export default function ThinkingState({ variant = "Steps" }: { variant?: string 
         </svg>
         {working ? (
           <span
-            className="bg-clip-text text-[13px] font-medium whitespace-nowrap text-transparent"
+            className="bg-clip-text text-sm font-medium whitespace-nowrap text-transparent"
             style={{
               backgroundImage:
                 "linear-gradient(90deg, var(--faint) 35%, var(--strong) 50%, var(--faint) 65%)",
@@ -156,7 +156,7 @@ export default function ThinkingState({ variant = "Steps" }: { variant?: string 
           </span>
         ) : (
           <span
-            className="text-[13px] font-medium whitespace-nowrap text-body"
+            className="text-sm font-medium whitespace-nowrap text-body"
             style={{ animation: "fade-in 350ms ease-out both" }}
           >
             {v.done}
@@ -194,7 +194,7 @@ export default function ThinkingState({ variant = "Steps" }: { variant?: string 
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.3-4.3" />
                 </svg>
-                <span className="text-[12.5px] text-body">{v.query}</span>
+                <span className="text-sm text-body">{v.query}</span>
               </div>
             )}
             {v.rows.slice(0, visible).map((row, i) => {
@@ -210,23 +210,23 @@ export default function ThinkingState({ variant = "Steps" }: { variant?: string 
                     <span className="size-3 shrink-0 rounded-full border-[1.5px] border-hairline border-t-body" style={{ animation: "spin 700ms linear infinite" }} />
                   )
                 )}
-                <span className={`min-w-0 truncate text-[12.5px] ${variant === "Reasoning" ? "whitespace-normal leading-relaxed text-body" : "font-medium text-strong"} ${variant === "Search" ? "animated-underline" : ""}`}>
+                <span className={`min-w-0 truncate text-sm ${variant === "Reasoning" ? "whitespace-normal leading-relaxed text-body" : "font-medium text-strong"} ${variant === "Search" ? "animated-underline" : ""}`}>
                   {row.primary}
                 </span>
                 {row.secondary && (
-                  <span className={`shrink-0 text-[11.5px] text-faint ${row.mono ? "font-mono" : ""}`}>
+                  <span className={`shrink-0 text-xs text-faint ${row.mono ? "font-mono" : ""}`}>
                     {row.secondary}
                   </span>
                 )}
                 {row.add !== undefined && (
-                  <span className="shrink-0 font-mono text-[11px] tabular-nums">
-                    <span className="text-covered">+{row.add}</span>{" "}
-                    <span className="text-conflict">−{row.del}</span>
+                  <span className="shrink-0 font-mono text-2xs tabular-nums">
+                    <span className="text-covered-ink">+{row.add}</span>{" "}
+                    <span className="text-conflict-ink">−{row.del}</span>
                   </span>
                 )}
                 </>
               );
-              const rowClass = "flex min-h-7 w-full items-center gap-2 rounded-[6px] px-1.5 py-0.5 text-left";
+              const rowClass = "flex min-h-7 w-full items-center gap-2 rounded-chip px-1.5 py-0.5 text-left";
               const animation = { animation: `fade-up 320ms cubic-bezier(0.23,1,0.32,1) ${i * 120}ms both` };
 
               if (variant === "Search") {
@@ -267,7 +267,7 @@ export default function ThinkingState({ variant = "Steps" }: { variant?: string 
               );
             })}
             {variant === "Search" && stage >= 3 && (
-              <span className="text-[12px] text-faint" style={{ animation: "fade-in 300ms ease-out both" }}>
+              <span className="text-xs text-faint" style={{ animation: "fade-in 300ms ease-out both" }}>
                 +7 more
               </span>
             )}

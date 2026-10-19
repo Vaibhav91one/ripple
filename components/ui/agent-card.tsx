@@ -42,7 +42,7 @@ function AgentCardSm(p: AgentCardProps) {
         </span>
       </div>
       <p className="mt-3 truncate text-xs text-body" title={p.task}>{p.task}</p>
-      <p className={`mt-1 flex items-center gap-1.5 font-mono text-2xs ${p.statusTone === "gap" ? "text-gap" : "text-faint"}`} aria-live="polite">
+      <p className={`mt-1 flex items-center gap-1.5 font-mono text-2xs ${p.statusTone === "gap" ? "text-gap-ink" : "text-faint"}`} aria-live="polite">
         <span aria-hidden>{p.glyph}</span>{p.status}<span aria-hidden>·</span>{p.folderNote}
       </p>
       {p.footer && <div className="mt-3 border-t border-hairline pt-3">{p.footer}</div>}
@@ -53,7 +53,7 @@ function AgentCardSm(p: AgentCardProps) {
 export function AgentCard(p: AgentCardProps) {
   if (p.size === "sm") return <AgentCardSm {...p} />;
   return (
-    <div className="w-full max-w-[480px] overflow-hidden rounded-card border-[3px] border-hairline bg-surface shadow-sm">
+    <div className="w-full max-w-[480px] overflow-hidden rounded-card border-[3px] border-hairline bg-surface shadow-card">
       <div className="flex items-center justify-between border-b-2 border-hairline px-7 py-[18px]">
         <span className="font-mono text-lg text-body">{p.title}</span>
         <span className={`inline-flex items-center gap-2.5 rounded-full px-[18px] py-1.5 font-mono text-lg font-medium text-[var(--accent-ink)] ${PILL[p.pillTone ?? "conflict"]}`}>
@@ -74,7 +74,7 @@ export function AgentCard(p: AgentCardProps) {
           <span className="size-5 rounded-full bg-gap" aria-hidden />{p.agent}
         </p>
         <p className="mt-2.5 text-lg text-body">{p.task}</p>
-        <p className={`mt-3 flex items-center gap-2 font-mono text-xl ${p.statusTone === "gap" ? "text-gap" : "text-strong"}`} aria-live="polite">
+        <p className={`mt-3 flex items-center gap-2 font-mono text-xl ${p.statusTone === "gap" ? "text-gap-ink" : "text-strong"}`} aria-live="polite">
           <span className="w-5 text-center" aria-hidden>{p.glyph}</span>{p.status}
         </p>
       </div>
@@ -90,7 +90,7 @@ export function CubeCard(p: CubeCardProps) {
     <div className={`w-[220px] overflow-hidden rounded-card bg-overlay ${ink}`}>
       <div className="flex items-center justify-between border-b border-hairline/30 px-4 py-[13px]">
         <span className="flex items-center gap-2 text-sm font-medium"><Box className="size-[15px]" aria-hidden />{p.title}</span>
-        <span className="flex items-center gap-1.5 rounded-full bg-covered px-2 py-0.5 font-mono text-2xs font-medium text-[var(--accent-ink)]">
+        <span className="flex items-center gap-1.5 rounded-full bg-covered-soft px-2 py-0.5 font-mono text-2xs font-medium text-covered-ink">
           <span className="size-[5px] rounded-full bg-[var(--accent-ink)]" aria-hidden />{p.price}
         </span>
       </div>

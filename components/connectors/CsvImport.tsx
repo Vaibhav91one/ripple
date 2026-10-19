@@ -83,7 +83,7 @@ export function CsvImport({ canImport }: { canImport: boolean }) {
           </label>
         </div>
         <p className="text-xs text-faint">Columns for {def.label.toLowerCase()}: {def.hint}.</p>
-        {error && <p role="alert" className="text-sm text-conflict">{error}</p>}
+        {error && <p role="alert" className="text-sm text-conflict-ink">{error}</p>}
       </section>
 
       {headers.length > 0 && rows.length > 0 && (
@@ -94,7 +94,7 @@ export function CsvImport({ canImport }: { canImport: boolean }) {
             <ul className="grid gap-3 sm:grid-cols-2">
               {def.fields.map((f) => (
                 <li key={f.key} className="flex items-center justify-between gap-3 rounded-card border border-hairline bg-surface p-3">
-                  <label htmlFor={`${id}-${f.key}`} className="text-sm text-body">{f.label}{f.required && <span className="text-conflict"> *</span>}</label>
+                  <label htmlFor={`${id}-${f.key}`} className="text-sm text-body">{f.label}{f.required && <span className="text-conflict-ink"> *</span>}</label>
                   <select id={`${id}-${f.key}`} className={`${field} min-w-0 max-w-[55%]`} value={mapping[f.key] ?? ""} onChange={(e) => setMapping({ ...mapping, [f.key]: e.target.value })}>
                     <option value="">Not mapped</option>
                     {headers.map((h) => <option key={h} value={h}>{h}</option>)}
@@ -102,7 +102,7 @@ export function CsvImport({ canImport }: { canImport: boolean }) {
                 </li>
               ))}
             </ul>
-            {missing.length > 0 && <p role="status" className="text-sm text-gap">Map {missing.join(", ")} to continue.</p>}
+            {missing.length > 0 && <p role="status" className="text-sm text-gap-ink">Map {missing.join(", ")} to continue.</p>}
           </section>
 
           <section aria-labelledby={`${id}-3`} className="space-y-3">
@@ -121,7 +121,7 @@ export function CsvImport({ canImport }: { canImport: boolean }) {
                       <tr key={i}>
                         <td className="px-3 py-1.5 text-faint">{i + 2}</td>
                         {def.fields.map((f) => <td key={f.key} className="max-w-48 truncate px-3 py-1.5 text-body">{mapping[f.key] ? r[mapping[f.key]] : ""}</td>)}
-                        <td className={`whitespace-nowrap px-3 py-1.5 ${p ? "text-conflict" : "text-covered"}`}>{p ? p.message : "OK"}</td>
+                        <td className={`whitespace-nowrap px-3 py-1.5 ${p ? "text-conflict-ink" : "text-covered-ink"}`}>{p ? p.message : "OK"}</td>
                       </tr>
                     );
                   })}
@@ -137,7 +137,7 @@ export function CsvImport({ canImport }: { canImport: boolean }) {
               <div role="status" className="space-y-2 text-sm text-body">
                 <p>{result.applied} rows imported{result.errors.length ? `, ${result.errors.length} skipped.` : "."}</p>
                 {result.errors.length > 0 && (
-                  <ul className="space-y-1 text-conflict">
+                  <ul className="space-y-1 text-conflict-ink">
                     {result.errors.slice(0, 50).map((e) => <li key={e.row}>Row {e.row}: {e.message}</li>)}
                     {result.errors.length > 50 && <li>and {result.errors.length - 50} more.</li>}
                   </ul>

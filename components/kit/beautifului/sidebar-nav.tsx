@@ -64,12 +64,12 @@ const SAMPLE_HEADER = (
     className="mb-2 flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left
       transition-[background-color,transform] duration-100 hover:bg-raised active:scale-[0.96]"
   >
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-strong text-[13px] font-semibold text-surface">
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-strong text-sm font-semibold text-surface">
       R
     </span>
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-[13px] font-medium leading-tight text-strong">Ripple</span>
-      <span className="block truncate text-[11px] leading-tight text-faint">Acme workspace</span>
+      <span className="block truncate text-sm font-medium leading-tight text-strong">Ripple</span>
+      <span className="block truncate text-2xs leading-tight text-faint">Acme workspace</span>
     </span>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
@@ -124,9 +124,9 @@ export default function SidebarNav({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Quick search"
-          className="min-w-0 flex-1 bg-transparent text-[12.5px] text-strong outline-none placeholder:text-faint"
+          className="min-w-0 flex-1 bg-transparent text-sm text-strong outline-none placeholder:text-faint"
         />
-        <kbd className="flex size-4.5 items-center justify-center rounded-[5px] bg-surface text-[10px] text-faint shadow-[var(--kit-shadow-hairline)]">
+        <kbd className="flex size-4.5 items-center justify-center rounded-md bg-surface text-3xs text-faint shadow-[var(--kit-shadow-hairline)]">
           /
         </kbd>
       </label>}
@@ -135,8 +135,8 @@ export default function SidebarNav({
       {action && <button
         type="button"
         onClick={action.onClick}
-        className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[13px]
-          font-medium text-ripple transition-[background-color,transform] duration-100 hover:bg-ripple-soft active:scale-[0.96]"
+        className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm
+          font-medium text-ripple-ink transition-[background-color,transform] duration-100 hover:bg-ripple-soft active:scale-[0.96]"
       >
         <span className="min-w-0 flex-1 truncate text-left">{action.label}</span>
         <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-ripple text-page">
@@ -154,7 +154,7 @@ export default function SidebarNav({
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 rounded-[7px] bg-raised"
+          className="pointer-events-none absolute inset-x-0 rounded-chip bg-raised"
           style={{
             top: box?.top ?? 0,
             height: box?.height ?? 0,
@@ -165,7 +165,7 @@ export default function SidebarNav({
         />
         {sections.map((section) => (
           <div key={section}>
-            <div className="px-2 pb-1 pt-1 text-[10.5px] font-medium uppercase tracking-[0.08em] text-faint">
+            <div className="px-2 pb-1 pt-1 text-2xs font-medium uppercase tracking-[0.08em] text-faint">
               {section}
             </div>
             <div className="flex flex-col gap-px">
@@ -183,22 +183,22 @@ export default function SidebarNav({
                     onBlur={() => setHovered(null)}
                     onClick={() => setActive(item.key)}
                     aria-current={isActive ? "page" : undefined}
-                    className="group relative z-10 flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left
+                    className="group relative z-10 flex w-full items-center gap-2 rounded-chip px-2 py-1.5 text-left
                       transition-[color,transform] duration-150 active:scale-[0.96]"
                   >
                     <span className={isActive ? "text-strong" : "text-faint"}>
                       <Icon kind={item.icon ?? "spaces"} />
                     </span>
                     <span
-                      className={`min-w-0 flex-1 truncate text-[13px] transition-colors duration-150
+                      className={`min-w-0 flex-1 truncate text-sm transition-colors duration-150
                         ${isActive ? "font-medium text-strong" : "text-body"}`}
                     >
                       {item.label}
                     </span>
                     {typeof item.badge === "number" ? (
                       <span
-                        className={`flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10.5px] font-semibold tabular-nums ${
-                          isActive ? "bg-surface text-body shadow-[var(--kit-shadow-hairline)]" : "bg-ripple-soft text-ripple"
+                        className={`flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-2xs font-semibold tabular-nums ${
+                          isActive ? "bg-surface text-body shadow-[var(--kit-shadow-hairline)]" : "bg-ripple-soft text-ripple-ink"
                         }`}
                         style={{ animation: "pop-in 250ms cubic-bezier(0.23,1,0.32,1) both" }}
                       >
@@ -209,7 +209,7 @@ export default function SidebarNav({
                     )}
                     {item.plus && (
                       <span
-                        className="flex size-4.5 items-center justify-center rounded-[5px] text-faint opacity-0
+                        className="flex size-4.5 items-center justify-center rounded-md text-faint opacity-0
                           transition-[background-color,color,opacity] duration-100 group-hover:opacity-100 hover:bg-overlay/70 hover:text-body"
                         style={isActive ? { opacity: 1 } : undefined}
                       >

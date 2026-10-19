@@ -1,15 +1,13 @@
 // Pure view model for /analytics: GET /api/analytics -> sentences, heatmap grid, ranked actions, forecast math. No React.
+import { usd } from "@/lib/reports-ui";
 import type { Analytics, GapType, Scenario } from "@/lib/schemas/analytics";
 
 type A = Analytics;
 
 /** $950, $62K, $1.2M (ARR is whole dollars). */
 export function fmtUsd(n: number): string {
-  const a = Math.abs(n);
-  const s = a >= 1e6 ? `${trim(a / 1e6)}M` : a >= 1e3 ? `${trim(a / 1e3)}K` : `${Math.round(a)}`;
-  return `${n < 0 ? "−" : ""}$${s}`;
+  return `${n < 0 ? "−" : ""}${usd(Math.abs(n))}`;
 }
-const trim = (v: number) => (v >= 100 ? Math.round(v).toString() : v.toFixed(1).replace(/\.0$/, ""));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "Jan 31" in UTC, so server and client agree. */
@@ -21,7 +19,7 @@ export const fmtHours = (h: number) => (h < 48 ? `${Math.round(h)} h` : `${Math.
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** Points then dollars, margin's "−1.6 pts · $7.7K". */
-export const stepText = (pts: number, arr: number | null) => `−${pts} pts${arr ? ` · ${fmtUsd(arr)}` : ""}`;
+export const stepText = (pts: number, arr: number | null) => `−${Math.abs(pts)} pts${arr ? ` · ${fmtUsd(arr)}` : ""}`;
 
 /** ARR still exposed: the one figure the API puts on the contract-conflict cell. null = none attributable, or restricted. */
 export const exposedArr = (a: A): number | null => a.heatmap.cells.find((c) => c.gap === "contract_conflict" && c.arrAtRisk !== null)?.arrAtRisk ?? null;
@@ -30,6 +28,7 @@ export const exposedArr = (a: A): number | null => a.heatmap.cells.find((c) => c
 export function coverageSentence(a: A): string {
   const c = a.coverage;
   if (!c) return "No open change to measure yet.";
+  if (c.teams.affected === 0) return "No teams affected yet: nothing to tell.";
   const left = c.teams.affected - c.teams.told;
   const arr = exposedArr(a);
   const when = a.forecast?.effectiveAt ? ` before ${fmtDay(a.forecast.effectiveAt)}` : "";

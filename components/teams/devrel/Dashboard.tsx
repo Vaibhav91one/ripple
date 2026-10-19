@@ -7,7 +7,7 @@ import { TeamFrame, TeamState, Widget } from "../TeamFrame";
 import { fmtDay } from "../format";
 import { useNames, useTeamDashboard } from "../useTeamDashboard";
 
-const th = "px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-faint";
+const th = "px-2 py-1.5 text-left text-2xs font-medium uppercase tracking-wide text-faint";
 const td = "px-2 py-2 align-middle";
 
 // DevRel workspace: Mintlify-style docs analytics, SDK adoption and the changelog queue.

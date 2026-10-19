@@ -87,7 +87,7 @@ export function FileUpload({ canUpload, customers }: { canUpload: boolean; custo
           <input ref={input} type="file" multiple hidden accept=".pdf,.docx,.md,.markdown,.txt" onChange={(e) => e.target.files && add(e.target.files)} />
           <p className="text-xs text-faint">PDF, DOCX, Markdown or text. Up to 20MB each. Only the extracted text and its sha256 are stored, not the original file.</p>
         </div>
-        {error && <p role="alert" className="text-sm text-conflict">{error}</p>}
+        {error && <p role="alert" className="text-sm text-conflict-ink">{error}</p>}
         {files.length > 0 && (
           <ul className="divide-y divide-hairline rounded-card border border-hairline bg-surface text-sm">
             {files.map((f, i) => (
@@ -115,14 +115,14 @@ export function FileUpload({ canUpload, customers }: { canUpload: boolean; custo
                 <li key={r.name} className="px-3 py-2">
                   <span className="text-strong">{r.name}</span>{" "}
                   {r.ok
-                    ? <span className="text-covered">{r.duplicate ? "Already uploaded, nothing changed" : `Read ${r.pages ? `${r.pages} pages, ` : ""}${r.chars.toLocaleString()} characters`}
+                    ? <span className="text-covered-ink">{r.duplicate ? "Already uploaded, nothing changed" : `Read ${r.pages ? `${r.pages} pages, ` : ""}${r.chars.toLocaleString()} characters`}
                       {r.clauses !== undefined && `; ${r.clauses} clauses found${r.linked === false ? " (customer not found, not linked)" : ""}`}</span>
-                    : <span className="text-conflict">{r.error}</span>}
+                    : <span className="text-conflict-ink">{r.error}</span>}
                 </li>
               ))}
             </ul>
             {ok.some((r) => !(r as { duplicate: boolean }).duplicate) && (
-              <p>{ok.length} {ok.length === 1 ? "file" : "files"} queued for ingestion. Proposed edges appear in <Link href="/reports" className="text-ripple underline-offset-4 hover:underline">Reports</Link> once the worker finishes.</p>
+              <p>{ok.length} {ok.length === 1 ? "file" : "files"} queued for ingestion. Proposed edges appear in <Link href="/reports" className="text-ripple-ink underline-offset-4 hover:underline">Reports</Link> once the worker finishes.</p>
             )}
           </div>
         )}

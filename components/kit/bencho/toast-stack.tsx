@@ -117,11 +117,10 @@ export function ToastStack({
         return [fresh, ...rest];
       });
       setLeaving(null);
-    }, 220);
+    }, mo.duration.exit);
   };
 
   const retry = (id: Toast["id"]) => {
-    if (toasts) return;
     if (toasts) return;
     setStack((s) => s.map((t) => (t.id === id
       ? { ...t, kind: "success", title: "Payment complete", body: "Your card was charged.", action: undefined }
@@ -161,7 +160,7 @@ export function ToastStack({
             animate={out
               ? { y: p.y, scale: p.scale, opacity: 0, x: 60 }
               : { y: p.y, scale: p.scale, opacity: 1, x: 0 }}
-            transition={out ? { duration: mo.sec(mo.duration.enter), ease: mo.ease.exit } : SPRING}
+            transition={out ? { duration: mo.sec(mo.duration.exit), ease: mo.ease.exit } : SPRING}
             aria-hidden={!open && !front ? true : undefined}
           >
             <span className="tst-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span>

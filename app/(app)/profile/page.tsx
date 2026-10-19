@@ -60,7 +60,7 @@ async function Profile() {
           {who.lens && (
             <Card className="space-y-4">
               <CardHeader title="View as" sub="Which team you are looking from" />
-              <div className="flex flex-wrap items-center gap-2"><LensSwitcher current={who.lens} /></div>
+              <div className="flex flex-wrap items-center gap-2"><LensSwitcher current={who.lens} local={who.mode === "local"} /></div>
               <p className="text-sm text-faint">
                 Ripple shows the same graph to everyone but redacts the details a team doesn&apos;t own: Legal sees contract clauses, Sales sees deals, leadership sees counts and totals but never the text. Switch the lens to see what each team sees. It is a cookie on this browser, not an account.
               </p>

@@ -32,7 +32,7 @@ function Demo() {
           }}
         />
       )}
-      {resolved && <p role="status" className="rounded-md bg-covered-soft p-3 text-sm text-covered">Resolved: {resolved}</p>}
+      {resolved && <p role="status" className="rounded-md bg-covered-soft p-3 text-sm text-covered-ink">Resolved: {resolved}</p>}
       <SourcePanel />
     </main>
   );

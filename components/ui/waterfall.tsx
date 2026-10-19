@@ -27,13 +27,18 @@ const BAR_TOP = 24;
 const BAR_H = 18;
 
 export function Waterfall({ title, subtitle, link, href, stepColor = "var(--hatch)", axis, target, steps, actual, note }: WaterfallProps) {
-  const pct = (v: number) => ((v - axis.min) / (axis.max - axis.min)) * 100;
+  // clamped: a step past either end of the axis stops at the card edge instead of bleeding out
+  const pct = (v: number) => Math.min(100, Math.max(0, ((v - axis.min) / (axis.max - axis.min)) * 100));
   const bars = steps.map((s, i) => {
     const right = target.value - steps.slice(0, i).reduce((a, x) => a + x.delta, 0);
     const left = right - s.delta;
     return { ...s, left: pct(left), width: pct(right) - pct(left) };
   });
-  const label = "flex h-4 items-center justify-between text-sm";
+  const label = "flex h-4 items-center justify-between gap-3 text-sm";
+  const name = "min-w-0 truncate font-medium text-strong";
+  const value = "shrink-0 whitespace-nowrap";
+  // text on white needs the ink shade of the hatch colour (4.5:1)
+  const ink = /^var\(--(gap|conflict|covered|ripple)\)$/.test(stepColor) ? stepColor.replace(")", "-ink)") : stepColor;
   return (
     <Card>
       <CardHeader
@@ -43,19 +48,19 @@ export function Waterfall({ title, subtitle, link, href, stepColor = "var(--hatc
       />
       <div className="mt-10">
         <div className="relative" style={{ height: ROW }}>
-          <p className={label}><span className="font-medium text-strong">{target.label}</span><span className="text-faint">{target.text}</span></p>
+          <p className={label}><span className={name} title={target.label}>{target.label}</span><span className={`${value} text-faint`}>{target.text}</span></p>
           <div className="absolute rounded-chip" style={{ ...hatch("var(--faint)"), top: BAR_TOP, height: BAR_H, left: 0, width: `${pct(target.value)}%` }} />
         </div>
         {bars.map((b) => (
           <div key={b.label} className="relative" style={{ height: ROW }}>
-            <p className={label}><span className="font-medium text-strong">{b.label}</span><span className="font-medium" style={{ color: stepColor }}>{b.text}</span></p>
+            <p className={label}><span className={name} title={b.label}>{b.label}</span><span className={`${value} font-medium`} style={{ color: ink }}>{b.text}</span></p>
             <div className="absolute rounded-chip" style={{ ...hatch(stepColor), top: BAR_TOP, height: BAR_H, left: `${b.left}%`, width: `${b.width}%` }} />
             <span aria-hidden className="absolute border-l border-dashed border-faint" style={{ left: `${b.left}%`, top: BAR_TOP + BAR_H, height: ROW - BAR_H }} />
           </div>
         ))}
         <div className="relative" style={{ height: 48 }}>
-          <p className={label}><span className="font-medium text-strong">{actual.label}</span><span className="text-faint">{actual.text}</span></p>
-          <div className="absolute min-w-1 rounded-chip bg-[var(--chart)] shadow-[0_2px_6px_color-mix(in_srgb,var(--chart)_45%,transparent)]" style={{ top: BAR_TOP, height: BAR_H, left: 0, width: `${pct(actual.value)}%` }} />
+          <p className={label}><span className={name} title={actual.label}>{actual.label}</span><span className={`${value} text-faint`}>{actual.text}</span></p>
+          <div className="absolute min-w-1 rounded-chip bg-[var(--chart)] shadow-hairline" style={{ top: BAR_TOP, height: BAR_H, left: 0, width: `${pct(actual.value)}%` }} />
         </div>
       </div>
       <div className="relative mt-2 h-4 text-xs text-faint" aria-hidden>

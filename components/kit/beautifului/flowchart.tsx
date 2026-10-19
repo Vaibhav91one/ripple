@@ -165,7 +165,7 @@ function Menu({
   return (
     <div
       onMouseLeave={() => setHovered(null)}
-      className={`absolute bottom-full z-20 mb-1.5 rounded-[10px] bg-surface p-1 shadow-[var(--kit-shadow-raised)] ${width}
+      className={`absolute bottom-full z-20 mb-1.5 rounded-control bg-surface p-1 shadow-[var(--kit-shadow-raised)] ${width}
         ${align === "right" ? "right-0" : "left-0"}`}
       style={{
         animation: "pop-in 180ms cubic-bezier(0.23,1,0.32,1) both",
@@ -174,7 +174,7 @@ function Menu({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-1 rounded-[6px] bg-raised"
+        className="pointer-events-none absolute inset-x-1 rounded-chip bg-raised"
         style={{
           top: box?.top ?? 0,
           height: box?.height ?? 0,
@@ -192,10 +192,10 @@ function Menu({
           }}
           onMouseEnter={() => setHovered(i)}
           onClick={() => onPick(item.name)}
-          className="relative z-10 flex h-7.5 w-full cursor-pointer items-center gap-2 rounded-[6px] px-2 text-left"
+          className="relative z-10 flex h-7.5 w-full cursor-pointer items-center gap-2 rounded-chip px-2 text-left"
         >
-          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-strong">{item.name}</span>
-          {item.tag && <span className="shrink-0 text-[11px] text-faint">{item.tag}</span>}
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-strong">{item.name}</span>
+          {item.tag && <span className="shrink-0 text-2xs text-faint">{item.tag}</span>}
           <span className={`shrink-0 text-strong ${item.name === value ? "" : "invisible"}`}>
             <CheckIcon />
           </span>
@@ -210,7 +210,7 @@ function SourceChip() {
   return (
     <span
       data-ui
-      className="inline-flex h-6 shrink-0 items-center gap-1 rounded-[6px] bg-surface px-1.5 text-[12px] font-medium text-strong shadow-[var(--kit-shadow-btn)]"
+      className="inline-flex h-6 shrink-0 items-center gap-1 rounded-chip bg-surface px-1.5 text-xs font-medium text-strong shadow-[var(--kit-shadow-btn)]"
     >
       <span className="text-body">
         <ConeIcon size={12} />
@@ -247,8 +247,8 @@ function SelectChip({
         type="button"
         aria-expanded={open}
         onClick={() => onToggle(id)}
-        className={`inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-[6px] px-1.5
-          text-[12px] font-medium text-strong transition-colors duration-100 hover:bg-hairline
+        className={`inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 rounded-chip px-1.5
+          text-xs font-medium text-strong transition-colors duration-100 hover:bg-hairline
           ${open ? "bg-hairline" : "bg-raised"}`}
       >
         {dot && <span className="size-1.5 shrink-0 rounded-full bg-gap" />}
@@ -293,18 +293,18 @@ function ConditionBody() {
     <div className="flex flex-col gap-1.5 px-3 py-2.5">
       <div className="flex min-w-0 items-center gap-1.5">
         <Handle />
-        <span className="w-7 text-[12.5px] text-body">If</span>
+        <span className="w-7 text-sm text-body">If</span>
         <SourceChip />
         {chip("prop1", PROPERTIES.map((name) => ({ name })), "w-36")}
-        <span className="text-[12.5px] text-body">is</span>
+        <span className="text-sm text-body">is</span>
         {chip("val1", FLAVORS, "w-44", { dot: true, align: "right" })}
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1.5">
         <Handle />
-        <span className="w-7 text-[12.5px] text-body">and</span>
+        <span className="w-7 text-sm text-body">and</span>
         <SourceChip />
         {chip("prop2", PROPERTIES.map((name) => ({ name })), "w-36")}
-        <span className="text-[12.5px] text-body">is</span>
+        <span className="text-sm text-body">is</span>
         <span className="max-w-full pl-[49px]">{chip("val2", TOPPINGS, "w-64", { dot: true })}</span>
       </div>
     </div>
@@ -316,18 +316,18 @@ function StepBody({ node }: { node: FlowNode }) {
   return (
     <div className="flex items-center gap-2.5 p-2.5">
       <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-[8px]"
+        className="flex size-9 shrink-0 items-center justify-center rounded-xl"
         style={{ background: mix(TONE[tone], 12), color: INK[tone], boxShadow: `0 0 0 1px ${mix(TONE[tone], 20)}` }}
       >
         {node.icon ?? <ConeIcon />}
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-[13px] font-semibold leading-tight text-strong">{node.title}</span>
-        {node.subtitle && <span className="mt-0.5 block truncate text-[12px] leading-snug text-body">{node.subtitle}</span>}
+        <span className="block truncate text-sm font-semibold leading-tight text-strong">{node.title}</span>
+        {node.subtitle && <span className="mt-0.5 block truncate text-xs leading-snug text-body">{node.subtitle}</span>}
       </span>
       {node.badge && (
         <span
-          className="shrink-0 rounded-[6px] px-1.5 py-0.5 font-mono text-[11px] font-medium"
+          className="shrink-0 rounded-chip px-1.5 py-0.5 font-mono text-2xs font-medium"
           style={{ background: mix(TONE[tone], 14, "var(--surface)"), color: INK[tone] }}
         >
           {node.badge}
@@ -622,13 +622,13 @@ export default function Flowchart({
               transition={{ duration: sec(duration.node) }}
             >
               <span
-                className="inline-flex h-6 items-center rounded-[6px] px-2 text-[11.5px] font-medium"
+                className="inline-flex h-6 items-center rounded-chip px-2 text-xs font-medium"
                 style={{ background: mix(TONE[tone], 14, "var(--page)"), color: mix(INK[tone], 80, "var(--strong)") }}
               >
                 {n.kind}
               </span>
               {n.condition ? (
-                <div className="w-full rounded-[18px] bg-surface shadow-[var(--kit-shadow-card)] transition-shadow duration-150 hover:shadow-[var(--kit-shadow-raised)]">
+                <div className="w-full rounded-card bg-surface shadow-[var(--kit-shadow-card)] transition-shadow duration-150 hover:shadow-[var(--kit-shadow-raised)]">
                   <ConditionBody />
                 </div>
               ) : (
@@ -639,7 +639,7 @@ export default function Flowchart({
                     if (e.detail === 0) select(n.id);
                   }}
                   aria-pressed={active}
-                  className={`w-full cursor-pointer rounded-[18px] bg-surface text-left outline-none transition-shadow duration-150
+                  className={`w-full cursor-pointer rounded-card bg-surface text-left outline-none transition-shadow duration-150
                     focus-visible:shadow-[0_0_0_1.5px_var(--ripple)] ${
                       active
                         ? "shadow-[0_0_0_1.5px_var(--ripple),0_2px_10px_color-mix(in_oklab,var(--page)_30%,transparent)]"
@@ -665,7 +665,7 @@ export default function Flowchart({
           return (
             <m.span
               key={`l-${edge.id ?? `${edge.from}-${edge.to}-${i}`}`}
-              className="pointer-events-none absolute whitespace-nowrap rounded-[5px] bg-page px-1.5 py-px font-mono text-[10px] font-medium shadow-[var(--kit-shadow-hairline)]"
+              className="pointer-events-none absolute whitespace-nowrap rounded-md bg-page px-1.5 py-px font-mono text-3xs font-medium shadow-[var(--kit-shadow-hairline)]"
               style={{ left: g.mx, top: g.my, x: "-50%", y: "-50%", color: tone === "neutral" ? "var(--faint)" : TONE[tone] }}
               initial={{ opacity: 0 }}
               animate={{ opacity: edge.dim ? 0.12 : 1 }}
@@ -678,14 +678,14 @@ export default function Flowchart({
       </div>
 
       {fill && (
-        <div data-ui className="absolute bottom-3 left-3 flex flex-col overflow-hidden rounded-[8px] bg-surface shadow-[var(--kit-shadow-card)]">
+        <div data-ui className="absolute bottom-3 left-3 flex flex-col overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
           {([["+", "Zoom in", () => zoomAt(1.25)], ["−", "Zoom out", () => zoomAt(0.8)], ["⤢", "Fit to screen", () => { autoFit.current = true; fit(); }]] as const).map(([glyph, label, run]) => (
             <button
               key={label}
               type="button"
               aria-label={label}
               onClick={run}
-              className="flex size-8 items-center justify-center text-[14px] text-body transition-colors hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple"
+              className="flex size-8 items-center justify-center text-sm text-body transition-colors hover:bg-raised hover:text-strong focus-visible:outline-2 focus-visible:outline-ripple"
             >
               {glyph}
             </button>

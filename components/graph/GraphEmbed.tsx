@@ -18,7 +18,7 @@ export function GraphEmbed({ d, team = null, height = 360, view: given }: { d: s
   const [node, setNode] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["graph", d, team, ""], queryFn: () => getGraph(d, { team }), enabled: !given });
   const data = given ?? q.data;
-  if (q.error) return isGraphDown(q.error) ? <GraphDownBanner onRetry={() => void q.refetch()} /> : <p className="p-4 text-sm text-conflict">Could not load the graph: {q.error.message}</p>;
+  if (q.error) return isGraphDown(q.error) ? <GraphDownBanner onRetry={() => void q.refetch()} /> : <p className="p-4 text-sm text-conflict-ink">Could not load the graph: {q.error.message}</p>;
   if (!data) return <div className="animate-pulse bg-raised/40" style={{ height }} aria-busy="true" aria-label="Loading the graph" />;
   const info = node ? inspect(data, node, fmtDate) : null;
   return (

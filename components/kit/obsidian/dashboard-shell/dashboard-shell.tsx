@@ -59,7 +59,7 @@ export function DashboardButton({ variant, size, className, type = "button", ...
 
 // Menus and popovers portal to the body, outside the shell, so they carry the layer class that holds the palette.
 const layerClassName =
-  "obsidian-dashboard-shell-layer z-50 rounded-[10px] bg-(--obsidian-dashboard-shell-menu) p-1 text-(--obsidian-dashboard-shell-foreground) shadow-(--obsidian-dashboard-shell-menu-shadow) outline-none backdrop-blur-xl backdrop-saturate-150";
+  "obsidian-dashboard-shell-layer z-50 rounded-control bg-(--obsidian-dashboard-shell-menu) p-1 text-(--obsidian-dashboard-shell-foreground) shadow-(--obsidian-dashboard-shell-menu-shadow) outline-none backdrop-blur-xl backdrop-saturate-150";
 
 function layerMotion(reduceMotion: boolean) {
   if (reduceMotion) {
@@ -190,7 +190,7 @@ export function DashboardMenuRadioItem({ className, children, onFocus, onBlur, .
 export function DashboardMenuLabel({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.Label>) {
   return (
     <DropdownMenuPrimitive.Label
-      className={cn("px-2.5 pb-2 pt-2.5 text-[11px] font-medium uppercase leading-none tracking-[1px] text-(--obsidian-dashboard-shell-text-subtle)", className)}
+      className={cn("px-2.5 pb-2 pt-2.5 text-2xs font-medium uppercase leading-none tracking-[1px] text-(--obsidian-dashboard-shell-text-subtle)", className)}
       {...props}
     />
   );
@@ -764,7 +764,7 @@ export function DashboardShell({
                       keepFocusInside(event);
                     }
                   }}
-                  className="absolute inset-y-0 left-0 flex w-[254px] max-w-[85%] flex-col border-r border-(--obsidian-dashboard-shell-border) bg-(--obsidian-dashboard-shell-sidebar) shadow-[0_16px_40px_rgb(0_0_0/0.35)]"
+                  className="absolute inset-y-0 left-0 flex w-[254px] max-w-[85%] flex-col border-r border-(--obsidian-dashboard-shell-border) bg-(--obsidian-dashboard-shell-sidebar) shadow-overlay"
                   initial={{ x: reduceMotion ? 0 : "-100%" }}
                   animate={{ x: 0 }}
                   exit={{ x: reduceMotion ? 0 : "-100%" }}
@@ -1011,7 +1011,7 @@ function NavItem({ item, isActive, isQuiet, pillId, onSelect }: NavItemProps) {
       ) : null}
       <span className="relative min-w-0 flex-1 truncate text-left">{item.label}</span>
       {item.count !== undefined && (
-        <span className="relative inline-flex h-4 min-w-6 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-(--obsidian-dashboard-shell-border-strong) bg-(--obsidian-dashboard-shell-muted) px-1 text-[11px] font-normal leading-none tabular-nums text-(--obsidian-dashboard-shell-text-muted)">
+        <span className="relative inline-flex h-4 min-w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-(--obsidian-dashboard-shell-border-strong) bg-(--obsidian-dashboard-shell-muted) px-1 text-2xs font-normal leading-none tabular-nums text-(--obsidian-dashboard-shell-text-muted)">
           {item.count}
         </span>
       )}

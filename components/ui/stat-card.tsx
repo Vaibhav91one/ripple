@@ -6,8 +6,8 @@ import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 export type StatTrend = "up" | "down" | "flat";
 
 const tone: Record<StatTrend, string> = {
-  up: "bg-covered-soft text-covered",
-  down: "bg-conflict-soft text-conflict",
+  up: "bg-covered-soft text-covered-ink",
+  down: "bg-conflict-soft text-conflict-ink",
   flat: "bg-overlay text-body",
 };
 const icon = { up: TrendingUp, down: TrendingDown, flat: Minus };

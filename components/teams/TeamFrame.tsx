@@ -80,5 +80,5 @@ export function Widget({ title, meta, wide, children }: { title: string; meta?: 
 export function TeamState({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   if (!error) return <div className="p-6"><LoadingBlock label="Loading the workspace" /></div>;
   if (error instanceof GraphDownError) return <div className="p-6"><GraphDownBanner onRetry={onRetry} /></div>;
-  return <p className="p-6 text-sm text-conflict">Could not load this workspace.</p>;
+  return <p className="p-6 text-sm text-conflict-ink">Could not load this workspace.</p>;
 }

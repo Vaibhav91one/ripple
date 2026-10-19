@@ -10,14 +10,11 @@ export const STATE: Record<ReportRow["state"], { label: string; tone: StatusTone
   done: { label: "Done", tone: "covered", order: 2 },
 };
 
-/** $180K, $1.2M, $640; null = the viewer may not see ARR. */
+const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 });
+/** The one money format: $180K, $1.2M, $4.2B, $640 (999,950 is $1M, never $1000K); null = the viewer may not see ARR. */
 export function usd(n: number | null): string {
-  if (n === null) return "Restricted";
-  const a = Math.abs(n);
-  const s = a >= 1e6 ? `$${trim(a / 1e6)}M` : a >= 1e3 ? `$${trim(a / 1e3)}K` : `$${a}`;
-  return n < 0 ? `-${s}` : s;
+  return n === null ? "Restricted" : USD.format(n);
 }
-const trim = (v: number) => (Math.round(v * 10) / 10).toString();
 
 /** "Jan 31" (UTC, so server and client agree). */
 export const day = (ts: number) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(ts * 1000);

@@ -32,7 +32,7 @@ const SAMPLE_COLUMNS: DiffColumn[] = [
 
 /** The source pill used in the sample rows; export so other screens match. */
 export function DiffChip({ label, dot = "bg-ripple", onClick, tone }: { label: string; dot?: string; onClick?: () => void; tone?: DiffTone }) {
-  const cls = "inline-flex h-5.5 max-w-full items-center gap-1.5 rounded-full bg-page px-2 text-[11.5px] font-medium shadow-[var(--kit-shadow-hairline)] transition-opacity duration-400";
+  const cls = "inline-flex h-5.5 max-w-full items-center gap-1.5 rounded-full bg-page px-2 text-xs font-medium shadow-[var(--kit-shadow-hairline)] transition-opacity duration-400";
   const body = (
     <>
       <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
@@ -90,7 +90,7 @@ export default function DiffTable({
     <div className={`w-full ${className}`}>
       <div className="relative overflow-hidden rounded-xl bg-surface shadow-[var(--kit-shadow-card)]">
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-hairline">
-          <span className="text-[12.5px] font-medium text-strong">{title}</span>
+          <span className="text-sm font-medium text-strong">{title}</span>
         </div>
 
         <table className="w-full table-fixed border-collapse text-left">
@@ -102,7 +102,7 @@ export default function DiffTable({
           <thead>
             <tr className="border-b border-hairline">
               {columns.map((c) => (
-                <th key={c.label} className="px-4 py-2.5 align-top text-[12px] font-medium text-faint">
+                <th key={c.label} className="px-4 py-2.5 align-top text-xs font-medium text-faint">
                   {c.label}
                 </th>
               ))}
@@ -125,7 +125,7 @@ export default function DiffTable({
                         <div className="overflow-hidden" style={{ background: TONE_BG.added }}>
                           <div className="grid items-center border-t border-hairline" style={{ gridTemplateColumns: columns.map((c) => c.width).join(" ") }}>
                             {row.cells.map((cell, i) => (
-                              <span key={i} className="px-4 py-2.5 align-top min-w-0 text-[13px] text-covered">
+                              <span key={i} className="px-4 py-2.5 align-top min-w-0 text-sm text-covered-ink">
                                 {cell}
                               </span>
                             ))}
@@ -148,7 +148,7 @@ export default function DiffTable({
                     return (
                       <td
                         key={i}
-                        className={`px-4 py-2.5 align-top tabular-nums transition-colors duration-400 ${i === 0 ? "text-[13px] font-medium" : "text-[12.5px]"}`}
+                        className={`px-4 py-2.5 align-top tabular-nums transition-colors duration-400 ${i === 0 ? "text-sm font-medium" : "text-sm"}`}
                         style={{
                           color: i === 0 ? (on ? TONE_COLOR[row.tone] : "var(--strong)") : on && last ? TONE_COLOR[row.tone] : "var(--body)",
                           textDecorationLine: on && last && row.tone === "removed" && typeof cell === "string" ? "line-through" : "none",

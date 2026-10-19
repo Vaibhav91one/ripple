@@ -52,9 +52,9 @@ export function StreamText({
       {words.slice(0, count).map((word, i) => (
         <span
           key={i}
-          className="inline [will-change:filter,opacity]"
+          className="inline"
           style={{
-            animation: "stream-in 420ms cubic-bezier(0.22,0.61,0.25,1) both",
+            animation: "stream-in 240ms cubic-bezier(0.22,0.61,0.25,1) backwards",
           }}
         >
           {word}

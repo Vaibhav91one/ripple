@@ -94,15 +94,15 @@ export default function CodeBlock({
       {/* header */}
       <div className="primitive-card-bar flex items-center justify-between border-b border-hairline">
         <span className="flex items-baseline gap-2">
-          <span className="font-mono text-[12px] font-medium text-strong">{title}</span>
-          <span className="text-[11.5px] text-faint">{language}</span>
+          <span className="font-mono text-xs font-medium text-strong">{title}</span>
+          <span className="text-xs text-faint">{language}</span>
         </span>
         <button
           aria-label="Copy code"
           onClick={copy}
-          className={`flex h-6 items-center gap-1 rounded-[6px] px-1.5 text-[11.5px]
+          className={`flex h-6 items-center gap-1 rounded-chip px-1.5 text-xs
             font-medium transition-colors duration-100 hover:bg-raised
-            ${copied ? "text-covered" : "text-faint hover:text-strong"}`}
+            ${copied ? "text-covered-ink" : "text-faint hover:text-strong"}`}
         >
           {copied ? (
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
@@ -114,14 +114,14 @@ export default function CodeBlock({
       </div>
 
       {/* code */}
-      <pre className="max-h-[min(60vh,420px)] min-h-[137px] overflow-auto bg-page px-3 py-2.5 font-mono text-[11.5px] leading-[1.7]">
+      <pre className="max-h-[min(60vh,420px)] min-h-[137px] overflow-auto bg-page px-3 py-2.5 font-mono text-xs leading-[1.7]">
         {lines.slice(0, count).map((line, i) => (
           <div
             key={i}
             className="flex"
             style={{ animation: "fade-up 250ms cubic-bezier(0.23,1,0.32,1) both" }}
           >
-            <span className="w-5 shrink-0 text-right text-[10.5px] leading-[1.86] text-faint/60 select-none">
+            <span className="w-5 shrink-0 text-right text-2xs leading-[1.86] text-faint/60 select-none">
               {i + 1}
             </span>
             <span className="pl-2.5 whitespace-pre">
