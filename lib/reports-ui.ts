@@ -10,7 +10,7 @@ export const STATE: Record<ReportRow["state"], { label: string; tone: StatusTone
   done: { label: "Done", tone: "covered", order: 2 },
 };
 
-const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 });
+const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 });
 /** The one money format: $180K, $1.2M, $4.2B, $640 (999,950 is $1M, never $1000K); null = the viewer may not see ARR. */
 export function usd(n: number | null): string {
   return n === null ? "Restricted" : USD.format(n);
