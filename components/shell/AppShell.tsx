@@ -9,6 +9,7 @@ import { getApprovals } from "@/lib/api";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Mark } from "@/components/brand/Mark";
 import { SiteCredits } from "@/components/SiteCredits";
+import { SoundButton } from "@/components/settings/SoundToggle";
 import { CommandMenu } from "./CommandMenu";
 import { NAV, NAV_FOOTER, activeHref, type NavItem } from "./nav";
 import type { ShellUser } from "./identity";
@@ -122,6 +123,7 @@ export function AppShell({ user: fallback, lensSlot, authSlot, children }: { use
                 </>
               )}
             </Link>
+            <div className={`mt-2 flex px-1 ${collapsed ? "justify-center" : ""}`}><SoundButton /></div>
             {!collapsed && authSlot && <div className="mt-2 flex items-center gap-2 px-1.5">{authSlot}</div>}
             {!collapsed && <SiteCredits className="mt-2 px-1.5 text-left text-2xs leading-snug" />}
           </div>

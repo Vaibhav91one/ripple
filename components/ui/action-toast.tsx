@@ -1,11 +1,14 @@
 "use client";
 import { Check, ChevronRight } from "lucide-react";
 import { m } from "motion/react";
+import { useEffect } from "react";
+import { play } from "@/lib/sound";
 import { duration, ease, sec } from "@/lib/motion";
 
 export function ActionToast({ title, body, time, action, dismiss, onAction, onDismiss }: {
   title: string; body: string; time: string; action: string; dismiss: string; onAction?: () => void; onDismiss?: () => void;
 }) {
+  useEffect(() => play("success"), []);
   return (
     <m.div
       role="status"

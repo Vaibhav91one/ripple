@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { LensSwitcher } from "@/components/shell/LensSwitcher";
+import { SoundSetting } from "@/components/settings/SoundToggle";
 import { PrefsSection } from "@/components/settings/sections";
 import { PageLoading } from "@/components/states/States";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -72,6 +73,10 @@ async function Profile() {
           </Card>
         </div>
         <div className="grid min-w-0 gap-4">
+          <Card className="space-y-3">
+            <CardHeader title="Sounds" sub="Subtle cues when things change" />
+            <SoundSetting />
+          </Card>
           <PrefsSection ctx={ctx} show="me" />
           {authEnabled() && <ClerkAccount />}
         </div>

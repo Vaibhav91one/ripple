@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { play } from "@/lib/sound";
 
 const URGENCIES = [["high", "Urgent"], ["normal", "Normal"], ["low", "Low"]] as const;
 const CHANNELS = [["slack_dm", "Slack DM"], ["email", "Email"], ["inbox", "In-app"]] as const;
@@ -37,6 +38,7 @@ export function NotificationPrefs({ title, note, initial, zones, scope, readOnly
       const quiet = v.quiet ? { quietStart: v.quietStart, quietEnd: v.quietEnd } : scope === "me" ? { quietStart: "00:00", quietEnd: "00:00" } : { quietStart: null, quietEnd: null };
       const body = { scope, channels: v.channels, tz: v.tz, ...quiet, ...(scope === "me" ? { digest: v.digest } : { digestDay: v.digest ? v.digestDay : "off" }) };
       const res = await fetch("/api/settings/notifications", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      play(res.ok ? "success" : "error");
       setMsg(res.ok ? { ok: true, text: "Saved" } : { ok: false, text: `Save failed (${res.status})` });
       router.refresh();
     });
