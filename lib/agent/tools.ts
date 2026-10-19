@@ -4,6 +4,7 @@ import { z } from "zod";
 import { roQuery, type Graph } from "../graph/client";
 import { bottleneck, decisions, load, NotFound, ripple, search, weightedPath, whoKnows, whyAffected, type Cypher } from "../graph/queries";
 import { claimsBody, claimsFor } from "../briefs";
+import { redactForTeam } from "../permissions/redact";
 import type { ActionKind } from "./define";
 import type { Source } from "../schemas";
 import type { RestrictedSummary } from "../schemas/common";
@@ -416,14 +417,16 @@ export const TOOLS = {
     run: async ({ g, now, readonly, propose }, { decisionId }) => {
       if (readonly) throw new Error("demo_readonly");
       const r = await ripple(g, decisionId, now);
-      const rows = r.gap.map((teamId) => ({ teamId, payload: { id: `task-${decisionId}-${teamId}`, teamId, decisionId, title: `Review: ${r.decision.title}`, body: claimsBody(claimsFor(r, teamId)) } }));
+      // briefs are addressed to the gap team, so the claims are redacted for that team, not the caller (#142)
+      const claims = new Map(await Promise.all(r.gap.map(async (teamId) => [teamId, await redactForTeam(g, teamId, claimsFor(r, teamId))] as const)));
+      const rows = r.gap.map((teamId) => ({ teamId, payload: { id: `task-${decisionId}-${teamId}`, teamId, decisionId, title: `Review: ${r.decision.title}`, body: claimsBody(claims.get(teamId)!) } }));
       if (!propose) { // no approver (no Postgres): describe, never write
         const c = load("task-preview");
         const prev = rows.length ? await roQuery<{ teamId: string; owner: string | null; dueAt: number }>(g, c.text, { rows: rows.map((x) => ({ teamId: x.teamId, decisionId })), now }) : [];
         const wouldCreate = rows.map(({ teamId, payload }) => ({ teamId, title: payload.title, owner: prev.find((p) => p.teamId === teamId)?.owner ?? null, dueAt: prev.find((p) => p.teamId === teamId)?.dueAt ?? null }));
         return { rows: [{ proposed: false, reason: "approvals_unavailable", wouldCreate }], sources: [], cypher: [c] };
       }
-      const out = await Promise.all(rows.map(async ({ teamId, payload }) => ({ teamId, ...(await propose("create_task", payload, claimsFor(r, teamId))) })));
+      const out = await Promise.all(rows.map(async ({ teamId, payload }) => ({ teamId, ...(await propose("create_task", payload, claims.get(teamId)!)) })));
       return { rows: out as Row[], sources: [], cypher: [] };
     },
   }),

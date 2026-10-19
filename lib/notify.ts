@@ -10,6 +10,7 @@ import { detectConflicts, load, ripple } from "./graph/queries";
 import { queue } from "./queue";
 import { emit } from "./events/emit";
 import { createIssue, type GithubEnv } from "./actions/executors";
+import { redactForTeam } from "./permissions/redact";
 import { sendEmail, type EmailEnv } from "./notify/email";
 import type { Ack } from "./schemas";
 
@@ -71,17 +72,19 @@ export async function notifyGaps(
   const engine = !!readEnv().DATABASE_URL; // no Postgres (the demo): keep the direct preview path
 
   for (const teamId of r.gap) {
-    const brief = await buildBrief(teamId, decisionId, { g, now, rippleResult: r, model: o.model });
+    const built = await buildBrief(teamId, decisionId, { g, now, rippleResult: r, model: o.model });
+    const brief = await redactForTeam(g, teamId, built); // the recipient team is the viewer: other teams' quotes read "restricted to <Team>" (#142)
     const member = await firstMember(g, teamId);
     const token = encodeAckToken({ teamId, decisionId, exp: now + TTL, o: orgId, p: member?.id });
     const taskId = `task-${decisionId}-${teamId}`;
     const title = `Review: ${r.decision.title}`;
     const refs = new Set(r.teams.find((t) => t.teamId === teamId)?.why.map((w) => w.ref));
-    const conflict = r.conflicts.find((c) => c.contractIds.some((id) => refs.has(id)));
-    const titles = new Map((await roQuery<{ id: string; title: string }>(
+    const found = r.conflicts.find((c) => c.contractIds.some((id) => refs.has(id)));
+    const conflict = found && await redactForTeam(g, teamId, found);
+    const titles = new Map((await redactForTeam(g, teamId, await roQuery<{ id: string; title: string }>(
       g, "MATCH (a:Artifact) WHERE a.id IN $ids RETURN a.id AS id, a.title AS title",
       { ids: [...brief.claims, ...(conflict ? [conflict] : [])].flatMap((c) => c.sources.map((s) => s.artifactId)) },
-    )).map((a) => [a.id, a.title]));
+    ))).map((a) => [a.id, a.title]));
     const html = (await renderHtml())(createElement(BriefEmail, {
       brief, teamName: teamName(teamId), decisionTitle: r.decision.title, conflict, token, baseUrl,
       sourceTitle: (id: string) => titles.get(id) ?? id,

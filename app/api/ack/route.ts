@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { ackFromToken } from "@/lib/ack";
-import { env } from "@/lib/env";
-import { graphFor } from "@/lib/graph/client";
-import { DEMO_GRAPH, getContext, graphNameFor } from "@/lib/server/context";
+import { ackGraph } from "@/lib/ack-brief";
+import { getContext } from "@/lib/server/context";
 
 const Body = z.object({ token: z.string().min(1), kind: z.enum(["seen", "concern", "not_relevant"]) });
 
@@ -15,7 +14,7 @@ export async function POST(req: Request) {
     const r = await ackFromToken({
       ...body.data,
       // The token's org picks the graph (not the clicker's session); RIPPLE_GRAPH is the test override.
-      graph: (o) => graphFor(env().RIPPLE_GRAPH || (o === DEMO_GRAPH ? DEMO_GRAPH : graphNameFor(o))),
+      graph: ackGraph,
       // only a signed-in person of the token's org counts as the actor
       actor: (o) => {
         const me = ctx.viewer.kind === "user" && ctx.viewer.orgId === o ? ctx.viewer : undefined;

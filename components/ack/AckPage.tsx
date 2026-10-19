@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { AckConfirm } from "./AckConfirm";
 import { decodeAckToken } from "@/lib/ack-token";
-import { artifacts, briefs, decisions, teams } from "@/lib/mock/ledgerly";
+import { ackBrief } from "@/lib/ack-brief";
 
 const shell = "mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 px-6 py-16";
 
@@ -19,7 +19,7 @@ function Notice({ icon: Icon, title, body }: { icon: typeof Clock; title: string
   );
 }
 
-export function AckPage({ token, reply }: { token: string; reply?: string }) {
+export async function AckPage({ token, reply }: { token: string; reply?: string }) {
   const r = decodeAckToken(token);
   if (r.state === "invalid")
     return <Notice icon={AlertTriangle} title="This link is not valid" body="The acknowledgement link is malformed or has been altered. Ask for the brief to be sent again." />;
@@ -28,12 +28,10 @@ export function AckPage({ token, reply }: { token: string; reply?: string }) {
   if (r.state === "acked")
     return <Notice icon={CheckCircle2} title="Already acknowledged" body="Your team has already acknowledged this decision. Nothing more to do." />;
 
-  const { teamId, decisionId } = r.payload;
-  const brief = briefs.find((b) => b.teamId === teamId && b.decisionId === decisionId);
-  if (!brief) return <Notice icon={AlertTriangle} title="Brief not found" body="There is no brief for this team and decision." />;
-  const team = teams.find((t) => t.id === teamId)?.name ?? teamId;
-  const decision = decisions.find((d) => d.id === decisionId)?.title ?? decisionId;
-  const title = (id: string) => artifacts.find((a) => a.id === id)?.title ?? id;
+  const { teamId, decisionId, o = "demo" } = r.payload;
+  const b = await ackBrief(o, teamId, decisionId).catch(() => null);
+  if (!b?.brief.claims.length) return <Notice icon={AlertTriangle} title="Brief not found" body="There is no brief for this team and decision." />;
+  const { brief, team, decision, title } = b;
 
   return (
     <main className={shell}>
