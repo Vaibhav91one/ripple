@@ -35,3 +35,13 @@ test("Help answers the basics and does not repeat the sidebar credits", async ({
   for (const q of ["What is Ripple?", "What is the demo?", "How do I connect my tools?", "Who can see what?", "Can I run it myself?"]) await expect(page.getByText(q)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Credits" })).toHaveCount(0);
 });
+
+test("/ and an unknown case id log no console errors or warnings", async ({ page }) => {
+  const logs: string[] = [];
+  page.on("console", (m) => ["error", "warning"].includes(m.type()) && logs.push(`${m.type()}: ${m.text()}`));
+  page.on("pageerror", (e) => logs.push(e.message));
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/reports/does-not-exist", { waitUntil: "networkidle" });
+  await expect(page.getByText("That page or team doesn't exist")).toBeVisible();
+  expect(logs).toEqual([]);
+});
