@@ -21,7 +21,7 @@ test("a pending item on the case file opens its approval, not the home page", as
 
 test("skip link is first in the Tab order and lands on main", async ({ page }, info) => {
   test.skip(info.project.name === "mobile", "keyboard-only feature; the 390px project is the same Chromium");
-  await page.goto("/help"); // "/" autofocuses the Assistant composer
+  await page.goto("/help", { waitUntil: "networkidle" }); // "/" autofocuses the Assistant composer; idle = hydrated, so focus is not reset after Tab
   await page.keyboard.press("Tab");
   const skip = page.getByRole("link", { name: "Skip to content" });
   await expect(skip).toBeFocused();
@@ -34,4 +34,14 @@ test("Help answers the basics and does not repeat the sidebar credits", async ({
   await page.goto("/help");
   for (const q of ["What is Ripple?", "What is the demo?", "How do I connect my tools?", "Who can see what?", "Can I run it myself?"]) await expect(page.getByText(q)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Credits" })).toHaveCount(0);
+});
+
+test("/ and an unknown case id log no console errors or warnings", async ({ page }) => {
+  const logs: string[] = [];
+  page.on("console", (m) => ["error", "warning"].includes(m.type()) && logs.push(`${m.type()}: ${m.text()}`));
+  page.on("pageerror", (e) => logs.push(e.message));
+  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/reports/does-not-exist", { waitUntil: "networkidle" });
+  await expect(page.getByText("That page or team doesn't exist")).toBeVisible();
+  expect(logs).toEqual([]);
 });
