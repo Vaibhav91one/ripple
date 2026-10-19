@@ -9,12 +9,22 @@ export function fmtUsd(n: number): string {
   return `${n < 0 ? "−" : ""}${usd(Math.abs(n))}`;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** "Jan 31" in UTC, so server and client agree. */
-export const fmtDay = (ts: number) => { const d = new Date(ts * 1000); return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`; };
+import { fmtDate as fmtDay } from "@/lib/date";
+export { fmtDay };
 
-/** 36 h, 25 days. */
-export const fmtHours = (h: number) => (h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`);
+/** 36 h, 26 days. Whole days waited (floor), the one rule for "waiting" everywhere. */
+export const fmtHours = (h: number) => (h < 48 ? `${Math.round(h)} h` : `${Math.floor(h / 24)} days`);
+
+type GNode = { id: string; kind: string; title: string; status: "conflict" | "gap" | "covered" | "neutral" };
+
+/** A system's gap, from what touches it in the graph: a conflicting contract, or a team that has not been told. */
+export function systemGap(id: string, nodes: GNode[], edges: { from: string; to: string }[]): { status: GNode["status"]; teams: string[] } {
+  const by = new Map(nodes.map((n) => [n.id, n]));
+  const near = edges.flatMap((e) => (e.from === id ? [by.get(e.to)] : e.to === id ? [by.get(e.from)] : [])).filter((n): n is GNode => !!n && n.kind !== "system" && n.kind !== "decision");
+  const teams = near.filter((n) => n.kind === "team" && n.status === "gap").map((n) => n.title);
+  const status = near.some((n) => n.status === "conflict") ? "conflict" : teams.length ? "gap" : near.some((n) => n.kind === "team") ? "covered" : "neutral";
+  return { status, teams };
+}
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 

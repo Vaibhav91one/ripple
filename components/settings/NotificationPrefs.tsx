@@ -23,6 +23,7 @@ const field = "rounded-md border border-hairline bg-raised px-2 py-1 text-sm tex
 export function NotificationPrefs({ title, note, initial, zones, scope, readOnly }: Props) {
   const router = useRouter();
   const [v, setV] = useState(initial);
+  const [tzText, setTzText] = useState(initial.tz);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   const set = (p: Partial<FormValues>) => { setV({ ...v, ...p }); setMsg(undefined); };
@@ -77,9 +78,11 @@ export function NotificationPrefs({ title, note, initial, zones, scope, readOnly
           <input type="time" aria-label="Quiet hours start" className={field} value={v.quietStart} disabled={off || !v.quiet} onChange={(e) => set({ quietStart: e.target.value })} />
           to
           <input type="time" aria-label="Quiet hours end" className={field} value={v.quietEnd} disabled={off || !v.quiet} onChange={(e) => set({ quietEnd: e.target.value })} />
-          <select aria-label="Time zone" className={`${field} max-w-full`} value={v.tz} disabled={off} onChange={(e) => set({ tz: e.target.value })}>
-            {(zones.includes(v.tz) ? zones : [v.tz, ...zones]).map((z) => <option key={z} value={z}>{z}</option>)}
-          </select>
+          {/* type to search ~400 zones; only a real zone is kept, anything else snaps back on blur */}
+          <input type="text" list={`zones-${scope}`} aria-label="Time zone" placeholder="Search time zones" autoComplete="off" className={`${field} max-w-full`} value={tzText} disabled={off}
+            onChange={(e) => { setTzText(e.target.value); if (zones.includes(e.target.value)) set({ tz: e.target.value }); }}
+            onBlur={() => setTzText(v.tz)} />
+          <datalist id={`zones-${scope}`}>{(zones.includes(v.tz) ? zones : [v.tz, ...zones]).map((z) => <option key={z} value={z} />)}</datalist>
         </div>
       </fieldset>
 

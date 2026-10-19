@@ -1,6 +1,6 @@
 // Agent gallery pieces: the team filter, plain-words status, and the card grid. Pure (no data fetching) so tests can render it.
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { Lock as LockIcon, MessageCircle } from "lucide-react";
 import { StatusPill, type StatusTone } from "@/components/ui/status-pill";
 import { ago } from "@/components/approvals/shared";
 import type { AgentInfo } from "@/lib/schemas";
@@ -106,6 +106,7 @@ export function AgentTile({ a, now, lock, busy, onOpen, onToggle }: { a: AgentIn
           <StatusPill tone={st.tone}>{st.label}</StatusPill>
         </div>
         <p className="mt-2 text-xs text-faint">{runWords(a, now)}</p>
+        {lock && <p className="mt-1 inline-flex items-center gap-1 text-xs text-faint"><LockIcon size={11} aria-hidden />Switch is locked: {lock}</p>}
         <div className="mt-4 flex gap-2 sm:mt-auto sm:pt-4">
           <Link href={`/?agent=${encodeURIComponent(a.name)}`} className={`${chatBtn} flex-1`}><MessageCircle size={14} aria-hidden />Chat with this agent</Link>
         </div>

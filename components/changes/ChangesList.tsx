@@ -8,8 +8,9 @@ import { StatusPills } from "@/components/ripple/StatusPills";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { GraphDownBanner, LoadingBlock } from "@/components/states/States";
 import { getCampaign, getDecisions, getNames, getRipple, isGraphDown } from "@/lib/api";
+import { fmtDate } from "@/lib/date";
 
-const day = (ts: number | null) => (ts ? new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "No date");
+const day = (ts: number | null) => (ts ? fmtDate(ts) : "No date");
 const FILTERS = ["open", "resolved", "all"] as const;
 const OPTIONS = [{ id: "open", label: "Open" }, { id: "resolved", label: "Resolved" }, { id: "all", label: "All" }] as const;
 

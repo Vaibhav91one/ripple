@@ -3,5 +3,5 @@
 MATCH (n)
 WHERE (n:Decision OR n:Change OR n:System OR n:Customer OR n:Contract OR n:Deal OR n:Team OR n:Person)
   AND (toLower(coalesce(n.name, n.title, '')) CONTAINS $q OR toLower(n.id) = $q)
-RETURN n.id AS id, labels(n) AS labels, coalesce(n.name, n.title, n.id) AS title, n.status AS status
+RETURN n.id AS id, labels(n) AS labels, coalesce(n.name, n.title, n.id) AS title, n.status AS status, n.decidedAt AS at
 LIMIT $cap

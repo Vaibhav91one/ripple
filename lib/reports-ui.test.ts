@@ -13,7 +13,7 @@ describe("reports formatting", () => {
   });
 
   it("dates are UTC and relative days read as words", () => {
-    expect(day(1801386000)).toBe("Jan 31");
+    expect(day(1801386000)).toBe("Jan 31, 2027");
     const now = 1801386000;
     expect([relDays(now, now), relDays(now + 86400, now), relDays(now + 44 * 86400, now), relDays(now - 3 * 86400, now)]).toEqual(["today", "tomorrow", "in 44 days", "3 days ago"]);
   });
@@ -56,7 +56,7 @@ describe("reports state mapping", () => {
   });
 
   it("the noticed sentence comes from typed contract rows, and says so when they are redacted", () => {
-    expect(noticedSentence(detail)).toBe("Northwind Capital MSA guarantees API v1 until Jun 30, 2027. The Jan 31 sunset breaks it. 1 more contract says the same. Nobody in Legal knows.");
+    expect(noticedSentence(detail)).toBe("Northwind Capital MSA guarantees API v1 until Jun 30, 2027. The Jan 31, 2027 sunset breaks it. 1 more contract says the same. Nobody in Legal knows.");
     expect(noticedSentence({ ...detail, conflicts: detail.conflicts.map((c) => ({ ...c, contracts: [] })) })).toMatch(/restricted to its owning team/);
     expect(noticedSentence({ ...detail, conflicts: [] })).toBeNull();
   });

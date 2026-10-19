@@ -37,7 +37,7 @@ async function Profile() {
   const myTeams = who.teamIds.map((id) => names.get(id) ?? id);
   return (
     <>
-      <PageHeader title="Profile" subtitle={`${who.name} · ${who.org}`} crumbs={[{ label: "Settings", href: "/settings" }, { label: "Profile" }]} />
+      <PageHeader title="Profile" subtitle={`${who.name} · ${who.org}`} crumbs={[{ label: "Settings", href: "/settings" }]} />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
         <div className="grid min-w-0 gap-4">
           <Card className="space-y-5">

@@ -6,8 +6,10 @@ import { LABEL_GROUP, MAX_Q, MIN_Q, SearchResult, fulltextQuery, rank, type Grou
 import { bad, handle, params } from "@/lib/server/route";
 
 const Q = z.object({ q: z.string().trim().min(MIN_Q).max(MAX_Q) });
-const NodeRow = z.object({ id: z.string(), labels: z.array(z.string()), title: z.string(), status: z.string().nullable().optional() });
+const NodeRow = z.object({ id: z.string(), labels: z.array(z.string()), title: z.string(), status: z.string().nullable().optional(), at: z.number().nullable().optional() });
 const RelatedRow = z.object({ id: z.string(), title: z.string(), status: z.string().nullable().optional(), customer: z.string() });
+/** A change that is over: ranks under an open one on a tie. */
+const CLOSED = new Set(["superseded", "closed", "resolved", "rejected"]);
 const NOUN: Partial<Record<Group, string>> = { change: "Change", system: "System", customer: "Customer", contract: "Contract", deal: "Deal", team: "Team", person: "Person" };
 const ART: Record<string, { group: Group; label: string }> = {
   ticket: { group: "ticket", label: "Ticket" }, pr: { group: "document", label: "Pull request" },
@@ -34,7 +36,7 @@ export function GET(req: Request) {
     const hits = [
       ...nodes.flatMap((n) => {
         const group = n.labels.map((l) => LABEL_GROUP[l]).find(Boolean);
-        return group ? [{ id: n.id, group, label: NOUN[group] ?? group, title: n.title, text: group === "change" && n.status ? `Change · ${n.status}` : undefined, score: 0 }] : [];
+        return group ? [{ id: n.id, group, label: NOUN[group] ?? group, title: n.title, text: group === "change" && n.status ? `Change · ${n.status}` : undefined, score: 0, live: !CLOSED.has(n.status ?? ""), at: n.at ?? 0 }] : [];
       }),
       // score 1: kept even though the title does not match, ranked under direct matches
       ...related.map((d) => ({ id: d.id, group: "change" as const, label: "Change", title: d.title, text: `Touches ${d.customer}`, score: 1 })),

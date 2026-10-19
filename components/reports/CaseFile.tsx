@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence } from "motion/react";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { ApprovalsScreen } from "@/components/approvals/ApprovalsScreen";
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, Bot, ChevronRight, CircleCheck, ExternalLink, FileText, Lock, Megaphone, Share2, ShieldAlert, Sparkles, UserX, X } from "lucide-react";
 import { GraphEmbed } from "@/components/graph/GraphEmbed";
@@ -21,13 +22,14 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { TargetBar } from "@/components/ui/target-bar";
 import { chaseTeam, decideApproval, getApprovals, getReport, isGraphDown, NotFoundError } from "@/lib/api";
-import { day, dayTime, daysLeft, eventTone, gaps, isReadOnlyError, runChase, safeUrl, type ChaseResult, KIND_LABEL, noticedSentence, STATE, TEAM_STATUS, teamDelta, teamsWorstFirst, usd, type Gap } from "@/lib/reports-ui";
+import { sourceLabel, day, dayTime, daysLeft, eventTone, gaps, isReadOnlyError, runChase, safeUrl, type ChaseResult, KIND_LABEL, noticedSentence, STATE, TEAM_STATUS, teamDelta, teamsWorstFirst, usd, type Gap } from "@/lib/reports-ui";
 import type { ReportDetail, TimelineEvent } from "@/lib/schemas/reports";
 import { DemoTag, KIND_ICON, Segmented, TabPanel } from "./shared";
 
 const TABS = ["overview", "timeline", "artifacts", "runs"] as const;
 const pill = "inline-flex h-10 items-center gap-2 rounded-control px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ripple disabled:cursor-not-allowed disabled:opacity-50";
 const primary = `${pill} bg-strong text-ink-on-strong shadow-card hover:bg-body h-auto min-h-10 max-w-full whitespace-normal py-2 text-left`;
+const BAR_TONE = { acked: "covered", told: "ripple", not_told: "gap" } as const;
 const DOT = { conflict: "bg-conflict", gap: "bg-gap", ink: "bg-strong" } as const;
 
 type Toast = { title: string; body: string };
@@ -41,6 +43,7 @@ const TOAST: Record<ChaseResult, (team: string) => Toast> = {
 export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly: boolean; canDecide: boolean }) {
   const qc = useQueryClient();
   const [tab, setTab] = useQueryState("tab", parseAsStringLiteral(TABS).withDefault("overview"));
+  const [sel] = useQueryState("a", parseAsString);
   const [refused, setRefused] = useState(false); // a 403 demo_readonly from the server
   const readOnly = ro || refused;
   const [open, setOpen] = useState<Gap | null>(null);
@@ -95,6 +98,7 @@ export function CaseFile({ id, readOnly: ro, canDecide }: { id: string; readOnly
       {tab === "runs" && <Runs events={data.timeline} />}
       </TabPanel>
 
+      {sel && <ApprovalsScreen changeId={id} drawerOnly />}
       {open && <ApproveModal d={data} gap={open} readOnly={readOnly} canDecide={canDecide} busy={act.isPending} error={act.error && !isReadOnlyError(act.error) ? act.error.message : null} onClose={() => { setOpen(null); act.reset(); }} onConfirm={() => act.mutate(open)} />}
       <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 *:pointer-events-auto">
         <AnimatePresence>
@@ -157,8 +161,8 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               sub="Who needed to act, and what they did"
               action={
                 <div className="flex shrink-0 gap-4 text-xs text-faint">
-                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm" style={hatch("var(--faint)")} />Expected</span>
-                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm bg-strong" />Done</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded--sm" style={hatch("var(--faint)")} />Expected</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded--sm bg-covered" />Done</span>
                 </div>
               }
             />
@@ -171,7 +175,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
                       <p className="truncate text-md font-medium text-strong" title={t.name}>{t.name}</p>
                       <p className="line-clamp-2 text-sm text-faint [overflow-wrap:anywhere]" title={t.expected}>{t.expected}</p>
                     </div>
-                    <div className="order-last col-span-2 sm:order-none sm:col-span-1"><HatchedBar plan={100} actual={s.actual} max={100} label={`${t.name}: ${s.note(t)}`} /></div>
+                    <div className="order-last col-span-2 sm:order-none sm:col-span-1"><HatchedBar plan={100} actual={s.actual} max={100} tone={BAR_TONE[t.status]} label={`${t.name}: ${s.note(t)}`} /></div>
                     <p className="hidden text-sm text-body sm:block">{s.note(t)}</p>
                     <p className={`text-right text-sm font-medium ${t.status === "acked" ? "text-faint" : "text-gap-ink"}`}>{t.status === "not_told" ? "Not told" : teamDelta(t)}</p>
                   </li>
@@ -241,7 +245,7 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
             title="Pending on you"
             sub={pending.length ? `${pending.length} waiting for your OK` : "Nothing waiting"}
             empty="No approvals wait on you for this change."
-            rows={pending.slice(0, 4).map((a) => ({ id: a.id, icon: CircleCheck, tone: "gap", title: a.summary, sub: `Proposed by ${a.proposer}`, href: `/approvals?a=${a.id}` }))}
+            rows={pending.slice(0, 4).map((a) => ({ id: a.id, icon: CircleCheck, tone: "gap", title: a.summary, sub: `Proposed by ${a.proposer}`, href: `/reports/${encodeURIComponent(d.report.id)}?a=${encodeURIComponent(a.id)}` }))}
           />
         </div>
       </div>
@@ -265,12 +269,12 @@ function Overview({ d, gaps: g, pending, readOnly, onAct, onTimeline }: { d: Rep
               title={conflict.contracts[0]?.name ?? "Contract guarantee"}
               found={`Found ${day(conflict.detectedAt)} · ${conflict.severity} severity`}
               action={legal ? legal.action : "Review"}
-              onAction={legal && !readOnly ? () => onAct(legal) : undefined}
+              actionNode={legal ? <ActButton readOnly={readOnly} className="inline-flex items-center gap-0.5 rounded-control text-xs font-medium text-strong focus-visible:outline-2 focus-visible:outline-ripple disabled:opacity-50" onClick={() => onAct(legal)}>{legal.action}<ChevronRight aria-hidden className="size-3.5" /></ActButton> : undefined}
               docLine={conflict.sources[1]?.quote ?? "Restricted"}
               groups={conflict.sources.map((s, i) => ({
                 label: i === 0 ? "The decision says" : `${conflict.contracts[i - 1]?.name ?? `Contract ${i}`} says`,
                 chips: [{ text: s.quote ?? "Restricted to its owning team", tone: i === 0 ? "conflict" : "covered" }],
-                caption: s.artifactId ?? "Source restricted",
+                caption: sourceLabel(s.artifactId),
               }))}
             />
           </div>
@@ -324,8 +328,8 @@ function EventList({ events }: { events: TimelineEvent[] }) {
 function Artifacts({ d }: { d: ReportDetail }) {
   type Row = { key: string; icon: typeof FileText; title: string; quote?: string | null; meta: string; url?: string | null; demo?: boolean };
   const rows: Row[] = [
-    ...(d.sourceRef ? [{ key: "src", icon: FileText, title: "The announcement", quote: d.sourceRef.quote, meta: d.sourceRef.artifactId }] : []),
-    ...d.conflicts.flatMap((c) => c.sources.slice(1).map((s, i) => ({ key: `${c.id}-${i}`, icon: ShieldAlert, title: c.contracts[i]?.name ?? "Contract clause", quote: s.quote ?? "Restricted to its owning team", meta: s.artifactId ?? "restricted" }))),
+    ...(d.sourceRef ? [{ key: "src", icon: FileText, title: "The announcement", quote: d.sourceRef.quote, meta: sourceLabel(d.sourceRef.artifactId) }] : []),
+    ...d.conflicts.flatMap((c) => c.sources.slice(1).map((s, i) => ({ key: `${c.id}-${i}`, icon: ShieldAlert, title: c.contracts[i]?.name ?? "Contract clause", quote: s.quote ?? "Restricted to its owning team", meta: sourceLabel(s.artifactId) }))),
     ...d.timeline.filter((e) => e.kind === "issue" || e.kind === "notified" || e.kind === "proposed").map((e, i) => ({ key: `${e.id}-${i}`, icon: KIND_ICON[e.kind], title: e.text, meta: `${KIND_LABEL[e.kind]} · ${dayTime(e.at)}`, url: e.url, demo: e.demo })),
   ];
   return (

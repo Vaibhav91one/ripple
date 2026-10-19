@@ -37,7 +37,7 @@ function sections(rows: ApprovalRow[]): Section[] {
 const decidable = (r: ApprovalRow) => r.canDecide && r.status === "pending";
 
 /** `changeId` scopes the list to one change and drops the page header (the Approvals tab of /changes/[id]). */
-export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
+export function ApprovalsScreen({ changeId, drawerOnly }: { changeId?: string; drawerOnly?: boolean } = {}) {
   const qc = useQueryClient();
   const { name, title } = useNames();
   const [tab, setTab] = useState<"open" | "decided">("open");
@@ -74,7 +74,8 @@ export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
   const empty = data?.note ?? (tab === "open" ? "Nothing waiting on you. Agents and connectors propose; you decide." : "No decisions yet.");
 
   return (
-    <div className={changeId ? "mx-auto flex w-full max-w-[960px] flex-col gap-6" : "mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8"}>
+    <div className={drawerOnly ? undefined : changeId ? "mx-auto flex w-full max-w-[960px] flex-col gap-6" : "mx-auto flex w-full max-w-[960px] flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8"}>
+      {!drawerOnly && <>
       {isGraphDown(error) && <GraphDownBanner onRetry={() => void refetch()} />}
       <PageHeader title={changeId ? "Waiting for approval" : "Approvals"} subtitle={data?.sample ? "Sample proposals" : changeId ? `${rows.length} on this change` : `${open} waiting for a decision`}>
         <div role="tablist" aria-label="Show" className="flex gap-1 rounded-lg border border-hairline bg-surface p-0.5 text-sm">
@@ -135,6 +136,7 @@ export function ApprovalsScreen({ changeId }: { changeId?: string } = {}) {
           );
         })}
       </div>
+      </>}
 
       {shown && (
           <ApprovalDrawer

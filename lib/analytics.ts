@@ -14,6 +14,17 @@ const DAY = 86400;
 const median = (a: number[]) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor((a.length - 1) / 2)] : null);
 const list = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 
+/** "Legal and DevRel explain 67% of the 60 point gap." Ties at the cut-off are all named, so a tied team is never left out. */
+export function explainSentence(steps: { teamId: string; pts: number }[], loss: number, nameOf: (t: string) => string): string {
+  if (!steps.length) return "Every affected team has been told.";
+  const sorted = [...steps].sort((x, y) => y.pts - x.pts);
+  const cut = sorted[Math.min(1, sorted.length - 1)].pts;
+  const top = sorted.filter((x) => x.pts >= cut);
+  const names = top.map((x) => nameOf(x.teamId));
+  const who = list(names);
+  return `${who} ${top.length > 1 ? "explain" : "explains"} ${Math.round((100 * top.reduce((t, x) => t + x.pts, 0)) / loss)}% of the ${loss} point gap.`;
+}
+
 /** Demo approval history for an org with no approvals table rows. */
 const DEMO_AGENTS: Analytics["agents"] = {
   proposed: 6, approved: 4, rejected: 1, pending: 1, approvalRatePct: 80, medianDecisionHours: 3.5, demo: true,
@@ -76,9 +87,7 @@ export async function computeAnalytics(ctx: Context, caseId?: string | null): Pr
     note: `${teamName(t)} ${rip.teams.find((x) => x.teamId === t)?.why[0]?.reason ?? "is affected"}${t === "legal" && rip.counts.conflicts ? `, behind ${rip.counts.conflicts} open contract conflict` : ""}`,
   }));
   steps.sort((x, y) => y.pts - x.pts || Number(y.arrAtRisk !== null) - Number(x.arrAtRisk !== null) || x.id.localeCompare(y.id)); // biggest first; ties: the one carrying ARR, then by id
-  const top = steps.slice(0, 2);
-  const topPts = top.reduce((t, x) => t + x.pts, 0);
-  const takeaway = steps.length ? `${list(top.map((x) => teamName(x.teamId!)))} ${top.length > 1 ? "explain" : "explains"} ${Math.round((100 * topPts) / loss)}% of the ${loss} point gap.` : "Every affected team has been told.";
+  const takeaway = explainSentence(steps as { teamId: string; pts: number }[], loss, teamName);
 
   // heatmap
   const cells: Analytics["heatmap"]["cells"] = [];

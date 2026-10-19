@@ -3,6 +3,7 @@
 // a flatter, correct answer beats a confident, wrong one. Pure functions; only entityNames touches the graph.
 import { roQuery, graphName, type Graph } from "../graph/client";
 import { load } from "../graph/queries";
+import { isoToWords } from "../date";
 import type { Outcome, Suggestion } from "../schemas";
 
 export type Row = Record<string, unknown>;
@@ -54,15 +55,14 @@ export function needsSource(answer: string, calls: Call[]): boolean {
 /** An answer that already says it found nothing: a "treat it as a guess" notice after it would contradict it. */
 const NOT_FOUND = /\b(?:couldn'?t|could not|can'?t|cannot|didn'?t|did not) (?:find|see|open)\b|\bhasn'?t learned\b|\bno record\b|\bnothing (?:is )?recorded\b/i;
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const RAW_ID = /\b(?:d|art|ctr|conf|tkt|msg|pr)-[a-z0-9]+(?:-[a-z0-9]+)*\b/g;
 /**
- * The answer as a person reads it (#274): ISO dates in words ("30 Jun 2027"), raw ids swapped for their names (or dropped when
+ * The answer as a person reads it (#274): ISO dates in words ("Jun 30, 2027"), raw ids swapped for their names (or dropped when
  * in brackets and unknown). [[citation]] markers are left alone for the stream to turn into sources.
  */
 export function plainText(answer: string, names: Names = new Map()): string {
   return answer.split(/(\[\[[^\]]*\]\])/).map((part, i) => i % 2 ? part : part
-    .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y, mo, d) => (MONTHS[Number(mo) - 1] ? `${Number(d)} ${MONTHS[Number(mo) - 1]} ${y}` : m))
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, isoToWords)
     .replace(/\s*\((?:d|art|ctr|conf|tkt|msg|pr)-[a-z0-9-]+\)/g, (m) => { const id = m.trim().slice(1, -1); const n = names.get(id)?.name; return n ? ` (${n})` : ""; })
     .replace(RAW_ID, (id) => names.get(id)?.name ?? id)).join("");
 }

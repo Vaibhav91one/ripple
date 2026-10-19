@@ -15,11 +15,12 @@ import { describeEdge } from "@/lib/changes";
 import { ITEM_KINDS } from "@/lib/items/kinds";
 import { restrictedLine } from "@/lib/permissions/classify";
 import type { ItemView } from "@/lib/schemas";
+import { fmtDate } from "@/lib/date";
 
 const RESTRICTED = "Restricted";
 const KIND_OF_LABEL = new Map(Object.values(ITEM_KINDS).map((a) => [a.graphLabel.toLowerCase(), a.kind]));
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const date = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const date = fmtDate;
 const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 /** Status colours keep one meaning each: bad news is conflict, finished is covered, waiting is gap, the rest is the accent. */
 const tone = (s: string): Tone =>

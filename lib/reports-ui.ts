@@ -1,6 +1,7 @@
 // Formatting and state mapping for the Reports list and the case file (#233). Pure, so the copy rules are tested.
 import type { StatusTone } from "@/components/ui/status-pill";
 import type { ReportDetail, ReportRow, TeamProgress, TimelineEvent } from "@/lib/schemas/reports";
+import { fmtDate } from "./date";
 
 const DAY = 86_400;
 
@@ -17,7 +18,7 @@ export function usd(n: number | null): string {
 }
 
 /** "Jan 31" (UTC, so server and client agree). */
-export const day = (ts: number) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(ts * 1000);
+export const day = fmtDate;
 export const dayTime = (ts: number) =>
   new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(ts * 1000);
 
@@ -104,7 +105,7 @@ export function noticedSentence(d: ReportDetail): string | null {
   const k = conflict?.contracts.find((x) => x.guaranteedUntil);
   if (!conflict) return null;
   if (!k?.guaranteedUntil) return `The ${d.report.effectiveAt ? `${day(d.report.effectiveAt)} ` : ""}sunset clashes with a contract guarantee. The contract text is restricted to its owning team, so only the topology shows here.`;
-  const until = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(k.guaranteedUntil * 1000);
+  const until = fmtDate(k.guaranteedUntil);
   const legal = d.teams.find((t) => t.teamId === "legal");
   const n = conflict.contracts.length - 1;
   const more = n > 0 ? ` ${n} more contract${n > 1 ? "s say" : " says"} the same.` : "";
@@ -136,3 +137,6 @@ export async function runChase(
   if (!canDecide) return "proposed"; // waits in Approvals for an admin or lead
   return (await approve(p.id)) ? "sent" : "already"; // pending -> approve; failed -> approve again (decide allows a retry)
 }
+
+/** An artifact id in plain words, never the raw id ("art-msa-northwind"). */
+export const sourceLabel = (artifactId: string | null | undefined) => (!artifactId ? "Source restricted" : /msa|contract|ctr/i.test(artifactId) ? "Signed contract" : "Source document");

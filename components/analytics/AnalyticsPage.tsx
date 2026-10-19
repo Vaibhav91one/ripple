@@ -26,7 +26,7 @@ import type { Analytics, Scenario } from "@/lib/schemas/analytics";
 import { getAnalytics } from "./api";
 import { ForecastChart } from "./ForecastChart";
 import {
-  GAP_LABEL, GAP_TONE, actFirst, coverageSentence, defaultOn, exposedArr, fmtDay, fmtHours, fmtUsd, forecastWith, gapCount, heatmapGrid,
+  GAP_LABEL, GAP_TONE, systemGap, actFirst, coverageSentence, defaultOn, exposedArr, fmtDay, fmtHours, fmtUsd, forecastWith, gapCount, heatmapGrid,
   graphHref, heatmapSentence, listNames, plural, scenarioLabel, stepText, timeDots, timeSentence, waterfallAxis,
 } from "./model";
 
@@ -106,11 +106,11 @@ function GraphSection({ d }: { d: string }) {
     <section id="graph" className="mt-4 scroll-mt-6">
       <Card className="overflow-hidden !p-0">
         <div className="p-6 pb-4">
-          <CardHeader title="The graph behind these numbers" sub="Every figure above comes from Cypher over the company graph in FalkorDB. Hover a dot to light up what it touches; click it to see why. Escape closes it." />
+          <CardHeader title="The graph behind these numbers" sub="Every figure above is read from the company graph, not estimated. Hover a dot to light up what it touches; click it to see why. Escape closes it." />
         </div>
         <div className="grid border-t border-hairline lg:grid-cols-[1fr_380px]">
           <div className="min-w-0">{data ? <GraphEmbed d={d} team={team} view={data} height={560} /> : <div className="h-[560px] animate-pulse bg-raised/40" aria-busy="true" aria-label="Loading the graph" />}</div>
-          <aside aria-label="Cypher used" className="min-w-0 border-t border-hairline p-5 lg:border-l lg:border-t-0">
+          <aside aria-label="Queries used" className="min-w-0 border-t border-hairline p-5 lg:border-l lg:border-t-0">
             <h3 className="flex items-center gap-2 text-md font-medium text-strong"><Code2 size={16} aria-hidden /> Cypher used</h3>
             <p className="mt-1 text-sm text-faint">{data ? `${plural(data.cypher.length, "query", "queries")} built this view, run as written.` : "Loading the queries…"}</p>
             {data && q && (
@@ -158,7 +158,7 @@ function CoverageCard({ a }: { a: Analytics }) {
     <Card>
       <CardHeader title="Coverage" sub={`${c.title}${due}`} />
       <div className="mt-5">
-        <HeroNumber value={c.teams.affected ? `${c.pct}%` : "–"} delta={{ value: `${Math.abs(d)} pts`, dir: d < 0 ? "down" : "up", tone: d > 0 ? "good" : d < 0 ? "bad" : "neutral", vs: "vs yesterday" }}>
+        <HeroNumber value={c.teams.affected ? `${c.pct}%` : "–"} delta={d ? { value: `${Math.abs(d)} pts`, dir: d < 0 ? "down" : "up", tone: d > 0 ? "good" : "bad", vs: "vs yesterday" } : undefined}>
           {coverageSentence(a)}
         </HeroNumber>
       </div>
@@ -530,7 +530,7 @@ function BySystem({ a, team }: { a: Analytics; team: string | null }) {
           <DataTable caption="Systems" rows={systems} rowKey={(r) => r.id}
             columns={[
               { key: "n", header: "System", render: (r) => <><span className="block font-medium">{r.title}</span><span className="text-xs text-faint">{r.subtitle}</span></> },
-              { key: "s", header: "Status", render: (r) => <StatusPill tone={tone[r.status]}>{r.status === "neutral" ? "No gap" : r.status === "gap" ? "Not told" : r.status === "conflict" ? "Conflict" : "Covered"}</StatusPill> },
+              { key: "s", header: "Status", render: (r) => { const g = systemGap(r.id, q.nodes, q.data?.edges ?? []); return <><StatusPill tone={tone[g.status]}>{g.status === "neutral" ? "No gap" : g.status === "gap" ? "Not told" : g.status === "conflict" ? "Conflict" : "Covered"}</StatusPill>{g.teams.length > 0 && <span className="mt-1 block text-xs text-faint">{listNames(g.teams)} not told</span>}</>; } },
               { key: "c", header: "Linked records", align: "right", render: (r) => r.count },
             ]}
           />

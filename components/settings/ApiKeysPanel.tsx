@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { fmtDate } from "@/lib/date";
 
 export type KeyRow = { id: string; name: string; prefix: string; createdAt: string; revoked: boolean; lastUsedAt: string | null };
 
 const field = "rounded-md border border-hairline bg-raised px-2 py-1 text-sm text-body";
 const btn = "rounded-md border border-hairline bg-raised px-3 py-1 text-sm text-strong disabled:opacity-50";
-const day = (iso: string) => iso.slice(0, 10);
+const day = (iso: string) => fmtDate(Date.parse(iso) / 1000);
 
 /** Admin panel: create a key (shown once), list prefixes with last use, revoke. */
 export function ApiKeysPanel({ keys }: { keys: KeyRow[] }) {

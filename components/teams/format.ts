@@ -1,4 +1,5 @@
 import type { Kpi } from "@/lib/schemas";
+import { fmtDate } from "@/lib/date";
 
 /** Format a KPI value by its unit: 1,240 · $180k · 82% · 4.5h. */
 export function formatKpi(unit: Kpi["unit"], v: number): string {
@@ -9,4 +10,4 @@ export function formatKpi(unit: Kpi["unit"], v: number): string {
 }
 
 /** Epoch seconds → "Oct 12". */
-export const fmtDay = (ts: number) => new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+export const fmtDay = fmtDate;
