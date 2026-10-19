@@ -45,6 +45,8 @@ function recipients(e: RippleEvent, g: GraphReader, slack: boolean): Hit[] {
       return [...hits([g.teamLeadOf(e.payload.teamId)], "chase", "high"), ...hits([g.changeOwner(e.payload.changeId)], "chase_cc", "low")];
     case "task.assigned":
       return hits([e.payload.userId], "assignee", "normal");
+    case "task.done":
+      return []; // plumbing: the Courier refreshes the campaign tracker, nobody is notified
     case "task.due":
       return hits(g.taskAssignees(e.payload.taskId), "assignee", "normal");
     case "task.overdue":

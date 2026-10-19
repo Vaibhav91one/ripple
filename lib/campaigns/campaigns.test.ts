@@ -6,6 +6,11 @@ import { detectConflicts } from "../graph/queries";
 import { seed } from "../ingest/seed";
 import { slackClient } from "../connectors/slack/client";
 import { TOOLS } from "../agent/tools";
+import { load } from "../graph/queries";
+import { dispatchAgents } from "../../worker/handlers/route-event";
+import { completeTask } from "../tasks";
+import type { Context } from "../server/context";
+import { campaignStatus } from "./status";
 import { buildPlan } from "./plan";
 import { applyCampaignPlan, courierNext, createChangeChannel, postToChannel } from "./run";
 
@@ -139,5 +144,53 @@ describe("Courier (Postgres-free, Slack mocked)", () => {
     await postToChannel({ g, org, now: NOW, slack }, done.action === "slack_post" ? done.payload : null);
     expect(calls.map((c) => c.method)).toEqual(["chat.update", "chat.postMessage", "conversations.archive"]);
     expect(await courierNext(g, org, "d-1", NOW)).toEqual({ action: "none", reason: "closed" });
+  });
+});
+
+describe("Tracker refresh on access and task changes", () => {
+  /** Reopen the finished d-1 campaign and pin the tracker hash to the current state, so only a new change can move it. */
+  const baseline = async () => {
+    await query(g, "MATCH (c:Campaign {decisionId: 'd-1'}) SET c.status = 'active', c.channelId = 'C-CHG', c.trackerTs = '100.1'");
+    await query(g, "MATCH (k:Task) WHERE k.id STARTS WITH 'task-d-1-' SET k.status = 'open'");
+    await query(g, "MERGE (a:AccessRequest {id: 'ar-1'}) SET a.status = 'open', a.decisionId = 'd-1', a.teamId = 'legal', a.personId = 'p-x', a.resourceId = 'r-x'");
+    const step = await courierNext(g, org, "d-1", NOW);
+    if (step.action === "slack_post" && step.payload.op === "tracker") await query(g, "MATCH (c:Campaign {decisionId: 'd-1'}) SET c.trackerHash = $h", { h: step.payload.hash });
+    expect(await courierNext(g, org, "d-1", NOW)).toEqual({ action: "none", reason: "unchanged" });
+  };
+  const enqueueSpy = () => vi.fn(async (_n: string, _d: object) => "job");
+
+  t("campaignStatus without Postgres: ledger stages are empty, nothing throws", async () => {
+    const s = await campaignStatus(g, org, "d-1", NOW);
+    expect(s.teams.length).toBeGreaterThan(0);
+    for (const x of s.teams) expect([x.told, x.delivered, x.clicked]).toEqual([false, false, false]);
+  });
+
+  t("access.granted resolves the decision from the access request and a tracker update is proposed", async () => {
+    await baseline();
+    const enqueue = enqueueSpy();
+    const event = { type: "access.granted" as const, orgId: org.id, subject: { kind: "access_request", id: "ar-1" }, payload: { userId: "p-x", resource: "r-x" } };
+    expect(await dispatchAgents(event, enqueue, g)).toEqual(["courier"]);
+    expect(enqueue.mock.calls[0][1]).toMatchObject({ agent: "courier", input: { reason: "access.granted", decisionId: "d-1" } });
+    await query(g, load("it-decide").text, { ids: ["ar-1"], status: "granted", by: "it", now: NOW });
+    expect(await courierNext(g, org, "d-1", NOW)).toMatchObject({ action: "slack_post", payload: { op: "tracker" } });
+  });
+
+  t("task done resolves the decision from the task and a tracker update is proposed", async () => {
+    await baseline();
+    const ctx = { graph: g, writer: () => g, now: NOW, org, audit: async () => {}, viewer: { kind: "user", userId: "u", orgId: org.id, teamIds: [], role: "admin" } } as unknown as Context;
+    await completeTask(ctx, "task-d-1-legal");
+    const enqueue = enqueueSpy();
+    await dispatchAgents({ type: "task.done", orgId: org.id, subject: { kind: "task", id: "task-d-1-legal" }, payload: { taskId: "task-d-1-legal" } }, enqueue, g);
+    expect(enqueue.mock.calls[0][1]).toMatchObject({ agent: "courier", input: { reason: "task.done", decisionId: "d-1" } });
+    expect(await courierNext(g, org, "d-1", NOW)).toMatchObject({ action: "slack_post", payload: { op: "tracker" } });
+  });
+
+  t("a change without a campaign proposes nothing", async () => {
+    await query(g, "MERGE (a:AccessRequest {id: 'ar-2'}) SET a.status = 'granted', a.decisionId = 'd-2'");
+    const enqueue = enqueueSpy();
+    await dispatchAgents({ type: "access.granted", orgId: org.id, subject: { kind: "access_request", id: "ar-2" }, payload: { userId: "p-x", resource: "r-x" } }, enqueue, g);
+    const decisionId = (enqueue.mock.calls[0][1] as { input: { decisionId: string } }).input.decisionId;
+    expect(decisionId).toBe("d-2");
+    expect(await courierNext(g, org, decisionId, NOW)).toEqual({ action: "none", reason: "not_approved" });
   });
 });

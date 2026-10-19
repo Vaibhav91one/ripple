@@ -18,9 +18,9 @@ export const courier = defineAgent({
   tools: ["campaign_status", "propose_slack_channel_create", "propose_slack_post"],
   writes: ["slack_channel_create", "slack_post"],
   budget: { maxSteps: 6, maxTokens: 40_000 },
-  trigger: { events: ["ack.recorded", "access.granted", "task.assigned"] },
+  trigger: { events: ["ack.recorded", "access.granted", "task.assigned", "task.done"] },
   input: z.object({
-    reason: z.string().describe("What started the run: campaign.approved, ack.recorded, access.granted, task.assigned or manual"),
+    reason: z.string().describe("What started the run: campaign.approved, ack.recorded, access.granted, task.assigned, task.done or manual"),
     decisionId: z.string().nullable(),
   }),
   output: CourierReport,

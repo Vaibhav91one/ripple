@@ -158,6 +158,7 @@ const table: Row[] = [
       ["p-nia", "normal", DM, "assignee"],
     ],
   ],
+  ["task.done: plumbing, nobody is notified", ev("task.done", { taskId: "t1" }, { kind: "task", id: "t1" }), []],
   ["task.due: unassigned task -> nobody", ev("task.due", { taskId: "t3" }, { kind: "task", id: "t3" }), []],
   [
     "task.overdue: every assignee, high",
