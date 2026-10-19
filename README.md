@@ -18,8 +18,9 @@ The demo company, **Ledgerly**, has decided to sunset API v1. Ripple finds 40 cu
 
 ## Demo walkthrough
 
-<!-- H3: when docs/demo.gif is committed, add ![Demo walkthrough](docs/demo.gif) here -->
-The walkthrough GIF is coming; until then the live demo is the demo: <https://ripple.vaibhav.quest>.
+![Demo walkthrough](docs/demo.gif)
+
+[Watch the full-quality recording (webm)](docs/demo.webm)
 
 Prefer to click: open the [live demo](https://ripple.vaibhav.quest), ask the Assistant "We're removing API v1. What breaks, and who doesn't know yet?", then follow the case file. The three-minute path is in [docs/demo-script.md](docs/demo-script.md).
 
